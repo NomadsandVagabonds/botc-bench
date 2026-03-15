@@ -1,0 +1,178 @@
+{
+  "id": "trouble_brewing",
+  "name": "Trouble Brewing",
+  "roles": {
+    "townsfolk": [
+      {
+        "id": "washerwoman",
+        "name": "Washerwoman",
+        "ability": "You start knowing that 1 of 2 players is a particular Townsfolk.",
+        "first_night_order": 2,
+        "other_nights_order": null
+      },
+      {
+        "id": "librarian",
+        "name": "Librarian",
+        "ability": "You start knowing that 1 of 2 players is a particular Outsider. (Or that zero are in play.)",
+        "first_night_order": 3,
+        "other_nights_order": null
+      },
+      {
+        "id": "investigator",
+        "name": "Investigator",
+        "ability": "You start knowing that 1 of 2 players is a particular Minion.",
+        "first_night_order": 4,
+        "other_nights_order": null
+      },
+      {
+        "id": "chef",
+        "name": "Chef",
+        "ability": "You start knowing how many pairs of evil players there are.",
+        "first_night_order": 5,
+        "other_nights_order": null
+      },
+      {
+        "id": "empath",
+        "name": "Empath",
+        "ability": "Each night, you learn how many of your 2 alive neighbours are evil.",
+        "first_night_order": 6,
+        "other_nights_order": 5
+      },
+      {
+        "id": "fortune_teller",
+        "name": "Fortune Teller",
+        "ability": "Each night, choose 2 players: you learn if either is a Demon. There is a good player that registers as a Demon to you.",
+        "first_night_order": 7,
+        "other_nights_order": 6
+      },
+      {
+        "id": "undertaker",
+        "name": "Undertaker",
+        "ability": "Each night*, you learn which character the player that was executed today is.",
+        "first_night_order": null,
+        "other_nights_order": 7
+      },
+      {
+        "id": "monk",
+        "name": "Monk",
+        "ability": "Each night*, choose a player (not yourself): they are safe from the Demon tonight.",
+        "first_night_order": null,
+        "other_nights_order": 2
+      },
+      {
+        "id": "ravenkeeper",
+        "name": "Ravenkeeper",
+        "ability": "If you die at night, you are woken to choose a player: you learn their character.",
+        "first_night_order": null,
+        "other_nights_order": 4,
+        "acts_on_death": true
+      },
+      {
+        "id": "virgin",
+        "name": "Virgin",
+        "ability": "The 1st time you are nominated, if the nominator is a Townsfolk, they are executed immediately.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "slayer",
+        "name": "Slayer",
+        "ability": "Once per game, during the day, publicly choose a player: if they are the Demon, they die.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "soldier",
+        "name": "Soldier",
+        "ability": "You are safe from the Demon.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "mayor",
+        "name": "Mayor",
+        "ability": "If only 3 players live & no execution occurs, your team wins. If you die at night, another player might die instead.",
+        "first_night_order": null,
+        "other_nights_order": null
+      }
+    ],
+    "outsiders": [
+      {
+        "id": "butler",
+        "name": "Butler",
+        "ability": "Each night, choose a player (not yourself): tomorrow, you may only vote if they are voting too.",
+        "first_night_order": 8,
+        "other_nights_order": 8
+      },
+      {
+        "id": "drunk",
+        "name": "Drunk",
+        "ability": "You do not know you are the Drunk. You think you are a Townsfolk character, but you are not.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "recluse",
+        "name": "Recluse",
+        "ability": "You might register as evil & as a Minion or Demon, even if dead.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "saint",
+        "name": "Saint",
+        "ability": "If you die by execution, your team loses.",
+        "first_night_order": null,
+        "other_nights_order": null
+      }
+    ],
+    "minions": [
+      {
+        "id": "poisoner",
+        "name": "Poisoner",
+        "ability": "Each night, choose a player: they are poisoned tonight and tomorrow day.",
+        "first_night_order": 1,
+        "other_nights_order": 1
+      },
+      {
+        "id": "spy",
+        "name": "Spy",
+        "ability": "Each night, you see the Grimoire. You might register as good & as a Townsfolk or Outsider, even if dead.",
+        "first_night_order": 9,
+        "other_nights_order": 9
+      },
+      {
+        "id": "scarlet_woman",
+        "name": "Scarlet Woman",
+        "ability": "If there are 5 or more players alive & the Demon dies, you become the Demon.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "baron",
+        "name": "Baron",
+        "ability": "There are extra Outsiders in play. [+2 Outsiders]",
+        "first_night_order": null,
+        "other_nights_order": null,
+        "setup_modifies": true
+      }
+    ],
+    "demons": [
+      {
+        "id": "imp",
+        "name": "Imp",
+        "ability": "Each night*, choose a player: they die. If you kill yourself this way, a Minion becomes the Imp.",
+        "first_night_order": null,
+        "other_nights_order": 3
+      }
+    ]
+  },
+  "first_night_order": [
+    "poisoner", "washerwoman", "librarian", "investigator",
+    "chef", "empath", "fortune_teller", "butler", "spy"
+  ],
+  "other_nights_order": [
+    "poisoner", "monk", "imp", "ravenkeeper",
+    "empath", "fortune_teller", "undertaker", "butler", "spy"
+  ]
+}

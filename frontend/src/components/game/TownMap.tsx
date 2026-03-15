@@ -1,0 +1,854 @@
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useGameStore } from '../../stores/gameStore.ts';
+import { Phase } from '../../types/game.ts';
+import type { Message } from '../../types/game.ts';
+import { getProviderColor, shortModelName } from '../../utils/models.ts';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  findPath,
+  spriteZIndex,
+  TOWN_POSITIONS,
+  GROUP_DESTINATIONS,
+  CIRCLE_CENTER,
+  CIRCLE_RADIUS,
+  NIGHT_POSITIONS,
+  type Point,
+} from './pathfinding.ts';
+
+/**
+ * Pixel-art town map with waypoint-based movement.
+ *
+ * Sprites walk around the clocktower (never through it).
+ * The map is split into background + clocktower foreground layers
+ * so sprites correctly occlude behind the tower.
+ */
+
+// DX Terminal sprite IDs — each seat gets a unique character
+const SPRITE_IDS = [
+  1160, 2045, 3312, 4501, 5678, 6234, 7890, 8456,
+  9123, 10567, 11234, 12890, 13456, 14012, 15678,
+];
+
+function spriteUrl(seat: number): string {
+  const id = SPRITE_IDS[seat % SPRITE_IDS.length];
+  return `/sprites/sprite_${id}.gif`;
+}
+
+// Walk speed: seconds per waypoint segment (higher = slower)
+const WALK_SPEED = 2.5;
+
+// ---------------------------------------------------------------------------
+// Walking sprite — animates through a path of waypoints
+// ---------------------------------------------------------------------------
+
+function randomNearby(base: Point, seat: number): Point {
+  // Small jitter so each seat wanders near their spot, not into buildings
+  const t = Date.now() * 0.001 + seat * 137;
+  const dx = Math.sin(t) * 3;
+  const dy = Math.cos(t * 1.3) * 2;
+  return [
+    Math.max(15, Math.min(85, base[0] + dx)),
+    Math.max(25, Math.min(82, base[1] + dy)),
+  ];
+}
+
+interface WalkingSpriteProps {
+  seat: number;
+  target: Point;
+  isIdle: boolean;  // whether the sprite should wander
+  isNight: boolean;
+  color: string;
+  isDead: boolean;
+  isSelected: boolean;
+  isEvil: boolean;
+  showObserverInfo: boolean;
+  agentId: string;
+  characterName: string;
+  modelName: string;
+  role: string;
+  isPoisoned: boolean;
+  isDrunk: boolean;
+  isProtected: boolean;
+  onClick: () => void;
+}
+
+function WalkingSprite({
+  seat, target, isIdle, isNight, color, isDead, isSelected, isEvil,
+  showObserverInfo, agentId, characterName, modelName, role, isPoisoned, isDrunk, isProtected, onClick,
+}: WalkingSpriteProps) {
+  const [currentPos, setCurrentPos] = useState<Point>(target);
+  const [pathPoints, setPathPoints] = useState<Point[]>([]);
+  const [pathIndex, setPathIndex] = useState(0);
+  const prevTarget = useRef<Point>(target);
+  const [isMoving, setIsMoving] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // When target changes, compute path and start walking
+  useEffect(() => {
+    const prev = prevTarget.current;
+    if (prev[0] === target[0] && prev[1] === target[1]) return;
+
+    const path = findPath(prev, target);
+    setPathPoints(path);
+    setPathIndex(0);
+    prevTarget.current = target;
+  }, [target[0], target[1]]);
+
+  // Step through path points one at a time
+  useEffect(() => {
+    if (pathPoints.length === 0) return;
+    if (pathIndex >= pathPoints.length) return;
+
+    setCurrentPos(pathPoints[pathIndex]);
+
+    if (pathIndex < pathPoints.length - 1) {
+      const timer = setTimeout(() => {
+        setPathIndex(i => i + 1);
+      }, WALK_SPEED * 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [pathPoints, pathIndex]);
+
+  // Track whether the sprite is actively walking between waypoints
+  useEffect(() => {
+    const moving = pathPoints.length > 0 && pathIndex < pathPoints.length - 1;
+    setIsMoving(moving);
+  }, [pathPoints, pathIndex]);
+
+  // When sprite stops moving, capture current GIF frame to canvas
+  useEffect(() => {
+    if (!isMoving && imgRef.current && canvasRef.current) {
+      const img = imgRef.current;
+      const canvas = canvasRef.current;
+      const captureFrame = () => {
+        const w = img.naturalWidth || 32;
+        const h = img.naturalHeight || 32;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0);
+        }
+      };
+      // If image is already loaded, capture immediately
+      if (img.complete && img.naturalWidth > 0) {
+        captureFrame();
+      } else {
+        // Wait for load before capturing
+        img.addEventListener('load', captureFrame, { once: true });
+      }
+    }
+  }, [isMoving]);
+
+  // Idle wandering — when at target and in an idle phase, amble nearby
+  useEffect(() => {
+    if (!isIdle || isDead || isNight) return;
+
+    // Wait 5-12 seconds, then pick a nearby spot to wander to
+    const delay = 5000 + Math.random() * 7000 + seat * 800;
+    const timer = setInterval(() => {
+      const wanderTarget = randomNearby(target, seat);
+      const path = findPath(currentPos, wanderTarget);
+      setPathPoints(path);
+      setPathIndex(0);
+    }, delay);
+
+    return () => clearInterval(timer);
+  }, [isIdle, isDead, isNight, target[0], target[1]]);
+
+  const [x, y] = currentPos;
+  const zIndex = spriteZIndex(x, y);
+
+  const spriteFilter = isDead
+    ? 'grayscale(0.8) brightness(0.6) opacity(0.5)'
+    : isSelected
+    ? `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 12px ${color}66)`
+    : (showObserverInfo && isEvil)
+    ? 'drop-shadow(0 0 4px rgba(239,68,68,0.6)) drop-shadow(0 0 8px rgba(239,68,68,0.3)) drop-shadow(0 2px 3px rgba(0,0,0,0.6))'
+    : 'drop-shadow(0 2px 3px rgba(0,0,0,0.6))';
+
+  return (
+    <motion.div
+      style={{
+        position: 'absolute',
+        transform: 'translate(-50%, -50%)',
+        display: 'flex',
+        flexDirection: 'column' as const,
+        alignItems: 'center',
+        zIndex,
+        cursor: 'pointer',
+      }}
+      animate={{
+        left: `${x}%`,
+        top: `${y}%`,
+        scale: isSelected ? 1.15 : 1,
+      }}
+      transition={{
+        left: { duration: WALK_SPEED, ease: 'linear' },
+        top: { duration: WALK_SPEED, ease: 'linear' },
+        scale: { type: 'spring', stiffness: 200 },
+      }}
+      onClick={onClick}
+    >
+      {/* DX Terminal sprite — animated GIF when moving, frozen canvas when stationary */}
+      <img
+        ref={imgRef}
+        src={spriteUrl(seat)}
+        alt={agentId}
+        style={{
+          width: '6vw',
+          minWidth: 48,
+          maxWidth: 80,
+          imageRendering: 'pixelated',
+          filter: spriteFilter,
+          transition: 'filter 0.3s',
+          display: isMoving ? 'block' : 'none',
+        }}
+      />
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: '6vw',
+          minWidth: 48,
+          maxWidth: 80,
+          imageRendering: 'pixelated',
+          filter: spriteFilter,
+          transition: 'filter 0.3s',
+          display: isMoving ? 'none' : 'block',
+        }}
+      />
+
+      {/* Name label */}
+      <div style={{ textAlign: 'center', marginTop: 2, lineHeight: 1.1 }}>
+        <span style={{
+          background: `${color}cc`,
+          padding: '1px 4px',
+          borderRadius: 2,
+          fontSize: 9,
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+        }}>
+          {characterName || agentId}
+        </span>
+        <span style={{
+          display: 'block',
+          fontSize: 7,
+          color: 'rgba(255,255,255,0.4)',
+          marginTop: 1,
+          whiteSpace: 'nowrap',
+        }}>
+          {shortModelName(modelName || agentId)}
+        </span>
+        {showObserverInfo && (
+          <span style={{
+            display: 'block',
+            fontSize: 8,
+            color: isEvil ? '#f87171' : 'rgba(255,255,255,0.6)',
+            marginTop: 1,
+          }}>
+            {role}
+          </span>
+        )}
+      </div>
+
+      {/* Observer-mode status indicators */}
+      {showObserverInfo && (
+        <>
+{/* Evil glow applied via filter on the sprite img above */}
+          {isDrunk && (
+            <motion.div
+              style={{
+                position: 'absolute',
+                top: -28,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: 22,
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))',
+                zIndex: 1,
+              }}
+              animate={{ y: [0, -4, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              {'\uD83C\uDF7A'}
+            </motion.div>
+          )}
+          {isPoisoned && !isDrunk && (
+            <motion.div
+              style={{
+                position: 'absolute',
+                top: -28,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: 22,
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))',
+                zIndex: 1,
+              }}
+              animate={{ y: [0, -4, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              {'\uD83C\uDF77'}
+            </motion.div>
+          )}
+          {isProtected && (
+            <motion.div
+              style={{
+                position: 'absolute',
+                top: -28,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: 22,
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))',
+                zIndex: 1,
+              }}
+              animate={{ y: [0, -3, 0] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              {'\uD83D\uDEE1\uFE0F'}
+            </motion.div>
+          )}
+        </>
+      )}
+    </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Speech bubble
+// ---------------------------------------------------------------------------
+
+interface SpeechBubble {
+  seat: number;
+  content: string;
+  timestamp: number;
+}
+
+// ---------------------------------------------------------------------------
+// Main TownMap
+// ---------------------------------------------------------------------------
+
+export function TownMap() {
+  const gameState = useGameStore((s) => s.gameState);
+  const selectedPlayer = useGameStore((s) => s.selectedPlayer);
+  const selectPlayer = useGameStore((s) => s.selectPlayer);
+  const showObserverInfo = useGameStore((s) => s.showObserverInfo);
+  const selectGroup = useGameStore((s) => s.selectGroup);
+  const [bubbles, setBubbles] = useState<SpeechBubble[]>([]);
+  const bubblesRef = useRef<SpeechBubble[]>([]);
+  const [deathNarration, setDeathNarration] = useState<string | null>(null);
+  const deathTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Watch for death narration events
+  useEffect(() => {
+    if (!gameState?.messages.length) return;
+    const latest = gameState.messages[gameState.messages.length - 1];
+
+    let narration: string | null = null;
+
+    if (latest.type === 'narration' ||
+        (latest.type === 'system' && latest.content.includes('narration:'))) {
+      narration = latest.content.replace('narration:', '').trim();
+    } else if (latest.type === 'system' &&
+        (latest.content.includes('died') ||
+         latest.content.includes('EXECUTED') ||
+         latest.content.includes('dead'))) {
+      narration = latest.content;
+    }
+
+    if (narration) {
+      setDeathNarration(narration);
+      // Clear any existing timer
+      if (deathTimerRef.current) clearTimeout(deathTimerRef.current);
+      // Set new fade-out timer (won't be cancelled by new messages)
+      deathTimerRef.current = setTimeout(() => {
+        setDeathNarration(null);
+        deathTimerRef.current = null;
+      }, 8000);
+    }
+  }, [gameState?.messages.length]);
+
+  // Speech bubbles from new messages
+  useEffect(() => {
+    if (!gameState?.messages.length) return;
+    const latest = gameState.messages[gameState.messages.length - 1];
+    if (latest.senderSeat === undefined || latest.senderSeat === null) return;
+
+    const newBubble: SpeechBubble = {
+      seat: latest.senderSeat,
+      content: latest.content.slice(0, 80) + (latest.content.length > 80 ? '...' : ''),
+      timestamp: Date.now(),
+    };
+
+    bubblesRef.current = [
+      ...bubblesRef.current.filter(b => Date.now() - b.timestamp < 5000),
+      newBubble,
+    ];
+    setBubbles([...bubblesRef.current]);
+
+    const timer = setTimeout(() => {
+      bubblesRef.current = bubblesRef.current.filter(b => Date.now() - b.timestamp < 5000);
+      setBubbles([...bubblesRef.current]);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [gameState?.messages.length]);
+
+  // Compute target position for each player based on current phase
+  const getTarget = useCallback((seat: number): Point => {
+    if (!gameState) return TOWN_POSITIONS[seat % TOWN_POSITIONS.length];
+
+    const phase = gameState.phase;
+
+    // Night — scatter to buildings / edges
+    if (phase === Phase.NIGHT || phase === Phase.FIRST_NIGHT) {
+      return NIGHT_POSITIONS[seat % NIGHT_POSITIONS.length];
+    }
+
+    // Breakout groups — cluster near buildings
+    if (phase === Phase.DAY_BREAKOUT && gameState.breakoutGroups.length > 0) {
+      const groupIdx = gameState.breakoutGroups.findIndex(g =>
+        g.members.includes(seat)
+      );
+      if (groupIdx >= 0) {
+        const group = gameState.breakoutGroups[groupIdx];
+        const memberIdx = group.members.indexOf(seat);
+        const dest = GROUP_DESTINATIONS[groupIdx % GROUP_DESTINATIONS.length];
+        const angle = (memberIdx / group.members.length) * Math.PI * 2;
+        const spread = 4;
+        return [
+          dest[0] + Math.cos(angle) * spread,
+          dest[1] + Math.sin(angle) * spread,
+        ];
+      }
+    }
+
+    // Nominations / voting — semicircular arc in front of the clocktower
+    if (phase === Phase.NOMINATIONS || phase === Phase.VOTING) {
+      const aliveSeats = gameState.players
+        .filter(p => p.isAlive)
+        .map(p => p.seat);
+      const idx = aliveSeats.indexOf(seat);
+      if (idx >= 0) {
+        const total = aliveSeats.length;
+        // Arc from ~27° to ~153° (bottom-facing semicircle, all in front of tower)
+        const angle = Math.PI * 0.15 + (idx / (total - 1 || 1)) * Math.PI * 0.7;
+        return [
+          CIRCLE_CENTER[0] + Math.cos(angle) * CIRCLE_RADIUS,
+          CIRCLE_CENTER[1] + Math.sin(angle) * CIRCLE_RADIUS * 0.5,
+        ];
+      }
+    }
+
+    // Default — idle positions around the square
+    return TOWN_POSITIONS[seat % TOWN_POSITIONS.length];
+  }, [gameState?.phase, gameState?.breakoutGroups, gameState?.players]);
+
+  // Track current positions for speech bubble placement
+  const spritePositions = useRef<Map<number, Point>>(new Map());
+  const getSpritePos = (seat: number): Point => {
+    return spritePositions.current.get(seat) || getTarget(seat);
+  };
+
+  // Night action log — collect system/narration messages from the current night phase
+  const nightLogRef = useRef<HTMLDivElement>(null);
+  const nightMessages: Message[] = useMemo(() => {
+    if (!gameState) return [];
+    const phase = gameState.phase;
+    if (phase !== Phase.NIGHT && phase !== Phase.FIRST_NIGHT) return [];
+    // Gather messages that arrived during night (system or narration type)
+    const msgs = gameState.messages.filter(
+      (m) => m.type === 'system' || m.type === 'narrator' || m.type === 'narration',
+    );
+    // Show at most the last 20 night messages
+    return msgs.slice(-20);
+  }, [gameState?.messages.length, gameState?.phase]);
+
+  // Auto-scroll night log
+  useEffect(() => {
+    if (nightLogRef.current) {
+      nightLogRef.current.scrollTop = nightLogRef.current.scrollHeight;
+    }
+  }, [nightMessages.length]);
+
+  if (!gameState) return null;
+
+  const isNight = gameState.phase === Phase.NIGHT || gameState.phase === Phase.FIRST_NIGHT;
+
+  return (
+    <div style={styles.container}>
+      {/* Background layer (ground, buildings) */}
+      <img src="/map.jpg" alt="Town map" style={styles.mapImage} />
+
+      {/* Night overlay */}
+      <AnimatePresence>
+        {isNight && (
+          <motion.div
+            style={styles.nightOverlay}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.55 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 2 }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Clocktower foreground — same dimensions as map, alpha everywhere
+           except the upper tower. Sits at z-index 5 so sprites behind
+           the tower (z=2) are occluded, sprites in front (z=10+) are not. */}
+      <img src="/clocktower.png" alt="" style={styles.towerForeground} />
+
+      {/* Walking sprites */}
+      {gameState.players.map((player) => {
+        const phase = gameState.phase;
+        const isIdlePhase = phase === Phase.DAY_DISCUSSION
+          || phase === Phase.DAY_REGROUP
+          || phase === Phase.SETUP;
+        return (
+          <WalkingSprite
+            key={player.seat}
+            seat={player.seat}
+            target={getTarget(player.seat)}
+            isIdle={isIdlePhase}
+            isNight={isNight}
+            color={getProviderColor(player.modelName || player.agentId)}
+            isDead={!player.isAlive}
+            isSelected={selectedPlayer === player.seat}
+            isEvil={player.alignment === 'evil'}
+            showObserverInfo={showObserverInfo}
+            agentId={player.agentId}
+            characterName={player.characterName || ''}
+            modelName={player.modelName || ''}
+            role={player.role || ''}
+            isPoisoned={player.isPoisoned || false}
+            isDrunk={player.isDrunk || false}
+            isProtected={player.isProtected || false}
+            onClick={() => selectPlayer(
+              selectedPlayer === player.seat ? null : player.seat
+            )}
+          />
+        );
+      })}
+
+      {/* Speech bubbles */}
+      <AnimatePresence>
+        {bubbles.map((bubble) => {
+          const pos = getSpritePos(bubble.seat);
+          return (
+            <motion.div
+              key={`bubble-${bubble.seat}-${bubble.timestamp}`}
+              style={{
+                ...styles.speechBubble,
+                left: `${pos[0]}%`,
+                top: `${pos[1] - 10}%`,
+                zIndex: 100,
+              }}
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div style={styles.bubbleContent}>{bubble.content}</div>
+              <div style={styles.bubbleTail} />
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+
+      {/* Breakout group labels */}
+      {gameState.phase === Phase.DAY_BREAKOUT &&
+        gameState.breakoutGroups.map((group, idx) => {
+          const dest = GROUP_DESTINATIONS[idx % GROUP_DESTINATIONS.length];
+          return (
+            <div
+              key={group.id}
+              onClick={() => selectGroup(group.id)}
+              style={{
+                ...styles.groupLabel,
+                left: `${dest[0]}%`,
+                top: `${dest[1] - 8}%`,
+                cursor: 'pointer',
+              }}
+            >
+              Group {String.fromCharCode(65 + idx)}
+            </div>
+          );
+        })}
+
+      {/* Game Over overlay */}
+      {gameState.phase === Phase.GAME_OVER && (
+        <motion.div
+          style={styles.gameOverOverlay}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.5 }}
+        >
+          <motion.div
+            style={styles.gameOverCard}
+            initial={{ scale: 0.8, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.8, type: 'spring' }}
+          >
+            <div style={styles.gameOverTitle}>
+              {gameState.winner === 'good' ? 'Good Triumphs' : 'Evil Prevails'}
+            </div>
+            <div style={{
+              ...styles.gameOverWinner,
+              color: gameState.winner === 'good' ? '#4ade80' : '#f87171',
+            }}>
+              {(gameState.winner ?? 'unknown').toUpperCase()} WINS
+            </div>
+            {gameState.winCondition && (
+              <div style={styles.gameOverReason}>
+                {gameState.winCondition}
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Night atmosphere text */}
+      {isNight && (
+        <motion.div
+          style={styles.nightText}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.8, duration: 1.5, ease: 'easeOut' }}
+        >
+          Night falls on the village...
+        </motion.div>
+      )}
+
+      {/* Death narration (storyteller flavor text) */}
+      <AnimatePresence>
+        {deathNarration && (
+          <motion.div
+            style={styles.deathNarration}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div style={styles.deathNarrationText}>{deathNarration}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Night action log — parchment-style scrollable log */}
+      <AnimatePresence>
+        {isNight && showObserverInfo && nightMessages.length > 0 && (
+          <motion.div
+            style={styles.nightLog}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div style={styles.nightLogHeader}>Night Actions</div>
+            <div ref={nightLogRef} style={styles.nightLogBody}>
+              {nightMessages.map((msg) => (
+                <div key={msg.id} style={styles.nightLogEntry}>
+                  {msg.content}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    borderRadius: 8,
+  },
+  mapImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    display: 'block',
+    position: 'absolute',
+    inset: 0,
+    zIndex: 1,
+  },
+  nightOverlay: {
+    position: 'absolute',
+    inset: 0,
+    background: 'linear-gradient(180deg, #080820 0%, #12082a 50%, #0a0a1e 100%)',
+    pointerEvents: 'none',
+    zIndex: 15,
+  },
+  towerForeground: {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    zIndex: 5,
+    pointerEvents: 'none',
+  },
+  speechBubble: {
+    position: 'absolute',
+    transform: 'translate(-50%, -100%)',
+    pointerEvents: 'none',
+    maxWidth: 200,
+  },
+  bubbleContent: {
+    background: 'rgba(255,255,255,0.95)',
+    color: '#1a1a2e',
+    borderRadius: 8,
+    padding: '6px 10px',
+    fontSize: 11,
+    lineHeight: 1.3,
+    fontWeight: 500,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+  },
+  bubbleTail: {
+    width: 0,
+    height: 0,
+    borderLeft: '6px solid transparent',
+    borderRight: '6px solid transparent',
+    borderTop: '6px solid rgba(255,255,255,0.95)',
+    margin: '0 auto',
+  },
+  groupLabel: {
+    position: 'absolute',
+    transform: 'translate(-50%, -50%)',
+    background: 'rgba(99, 102, 241, 0.8)',
+    color: 'white',
+    padding: '3px 10px',
+    borderRadius: 12,
+    fontSize: 11,
+    fontWeight: 700,
+    zIndex: 150,
+    letterSpacing: 1,
+  },
+  nightText: {
+    position: 'absolute',
+    top: '42%',
+    left: 0,
+    right: 0,
+    textAlign: 'center' as const,
+    color: '#e8c868',
+    fontSize: 'clamp(20px, 3vw, 32px)',
+    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
+    fontStyle: 'italic',
+    fontWeight: 400,
+    letterSpacing: '0.15em',
+    textShadow: '0 0 20px rgba(232,200,104,0.5), 0 0 40px rgba(200,160,60,0.3), 0 0 80px rgba(180,140,40,0.15)',
+    zIndex: 95,
+    pointerEvents: 'none',
+  },
+  deathNarration: {
+    position: 'absolute',
+    bottom: '15%',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    width: 'min(500px, 80%)',
+    zIndex: 95,
+    pointerEvents: 'none',
+    textAlign: 'center',
+  },
+  deathNarrationText: {
+    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
+    fontStyle: 'italic',
+    fontSize: 'clamp(13px, 1.5vw, 17px)',
+    lineHeight: 1.5,
+    color: '#e8d4b0',
+    textShadow: '0 0 12px rgba(200,160,80,0.4), 0 2px 4px rgba(0,0,0,0.8)',
+    padding: '12px 20px',
+    background: 'linear-gradient(180deg, rgba(30,24,15,0.85) 0%, rgba(20,16,10,0.9) 100%)',
+    border: '1px solid rgba(196,162,101,0.3)',
+    borderRadius: 6,
+  },
+  gameOverOverlay: {
+    position: 'absolute',
+    inset: 0,
+    background: 'rgba(10, 8, 5, 0.75)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 200,
+  },
+  gameOverCard: {
+    textAlign: 'center' as const,
+    padding: '40px 60px',
+    background: 'linear-gradient(180deg, rgba(35,28,18,0.95) 0%, rgba(25,20,12,0.98) 100%)',
+    border: '2px solid rgba(196,162,101,0.4)',
+    borderRadius: 12,
+    boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 0 60px rgba(196,162,101,0.1)',
+  },
+  gameOverTitle: {
+    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
+    fontSize: 'clamp(16px, 2vw, 22px)',
+    fontStyle: 'italic',
+    color: '#c4a265',
+    letterSpacing: '0.15em',
+    marginBottom: 8,
+  },
+  gameOverWinner: {
+    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
+    fontSize: 'clamp(28px, 4vw, 48px)',
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textShadow: '0 0 20px currentColor',
+    marginBottom: 12,
+  },
+  gameOverReason: {
+    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
+    fontSize: 'clamp(12px, 1.3vw, 16px)',
+    fontStyle: 'italic',
+    color: '#a89070',
+    maxWidth: 400,
+  },
+  nightLog: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    width: 'min(280px, 35%)',
+    maxHeight: '40%',
+    zIndex: 120,
+    display: 'flex',
+    flexDirection: 'column',
+    background: 'linear-gradient(180deg, rgba(45,36,22,0.92) 0%, rgba(35,28,16,0.95) 100%)',
+    border: '1px solid rgba(196,162,101,0.35)',
+    borderRadius: 6,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+    pointerEvents: 'auto',
+  },
+  nightLogHeader: {
+    padding: '6px 12px',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.1em',
+    color: '#e8c868',
+    borderBottom: '1px solid rgba(196,162,101,0.2)',
+    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
+  },
+  nightLogBody: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '4px 0',
+  },
+  nightLogEntry: {
+    padding: '4px 12px',
+    fontSize: '0.75rem',
+    lineHeight: 1.4,
+    color: '#d4c4a0',
+    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
+    fontStyle: 'italic',
+    borderBottom: '1px solid rgba(196,162,101,0.08)',
+  },
+};

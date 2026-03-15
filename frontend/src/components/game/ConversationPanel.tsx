@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore.ts';
-import { getProviderColor, shortModelName, getPhaseLabel, getPhaseColor } from '../../utils/models.ts';
+import { getProviderColor, shortModelName, getPhaseLabel, getPhaseColor, getRoleTypeColor } from '../../utils/models.ts';
 import type { Message, Player, Phase } from '../../types/game.ts';
 import { MessageType } from '../../types/game.ts';
 
@@ -16,6 +16,8 @@ interface PhaseSection {
   isNight: boolean;
   groupId?: string | null;  // set for breakout group sections
 }
+
+type PanelTab = 'chat' | 'players' | 'whispers';
 
 // ── Phase icons ───────────────────────────────────────────────────────
 
@@ -80,6 +82,62 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
+// ── Clickable player name ─────────────────────────────────────────────
+
+function ClickablePlayerName({
+  sender,
+}: {
+  sender: Player;
+}) {
+  const selectPlayer = useGameStore((s) => s.selectPlayer);
+  const [hovered, setHovered] = useState(false);
+  const providerColor = getProviderColor(sender.modelName || sender.agentId);
+
+  return (
+    <span
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+      onClick={(e) => {
+        e.stopPropagation();
+        selectPlayer(sender.seat);
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: providerColor,
+          flexShrink: 0,
+        }}
+      />
+      <span
+        style={{
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          color: providerColor,
+          textDecoration: hovered ? 'underline' : 'none',
+          textUnderlineOffset: '2px',
+        }}
+      >
+        [{sender.seat}] {sender.characterName || shortModelName(sender.modelName || sender.agentId)}
+      </span>
+      {sender.characterName && (
+        <span
+          style={{
+            fontSize: '0.65rem',
+            color: 'rgba(255,255,255,0.3)',
+            fontWeight: 400,
+          }}
+        >
+          {shortModelName(sender.modelName || sender.agentId)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 // ── Single message ────────────────────────────────────────────────────
 
 function MessageRow({
@@ -123,39 +181,7 @@ function MessageRow({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-        {sender && (
-          <>
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: getProviderColor(sender.modelName || sender.agentId),
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: getProviderColor(sender.modelName || sender.agentId),
-              }}
-            >
-              [{sender.seat}] {sender.characterName || shortModelName(sender.modelName || sender.agentId)}
-            </span>
-            {sender.characterName && (
-              <span
-                style={{
-                  fontSize: '0.65rem',
-                  color: 'rgba(255,255,255,0.3)',
-                  fontWeight: 400,
-                }}
-              >
-                {shortModelName(sender.modelName || sender.agentId)}
-              </span>
-            )}
-          </>
-        )}
+        {sender && <ClickablePlayerName sender={sender} />}
         <TypeBadge type={message.type} />
       </div>
       <div
@@ -390,55 +416,199 @@ function buildSectionLabel(phase: string, dayNumber: number): string {
   }
 }
 
+// ── Player list row ──────────────────────────────────────────────────
+
+function PlayerRow({ player }: { player: Player }) {
+  const selectPlayer = useGameStore((s) => s.selectPlayer);
+  const showObserverInfo = useGameStore((s) => s.showObserverInfo);
+  const [hovered, setHovered] = useState(false);
+  const providerColor = getProviderColor(player.modelName || player.agentId);
+
+  return (
+    <div
+      onClick={() => selectPlayer(player.seat)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 14px',
+        cursor: 'pointer',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        background: hovered ? 'rgba(255,255,255,0.05)' : 'transparent',
+        transition: 'background 0.15s',
+      }}
+    >
+      {/* Provider-colored dot */}
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          background: providerColor,
+          flexShrink: 0,
+          boxShadow: `0 0 6px ${providerColor}66`,
+        }}
+      />
+
+      {/* Name + model column */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span
+            style={{
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              color: 'rgba(255,255,255,0.9)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {player.characterName || player.agentId}
+          </span>
+          <span
+            style={{
+              fontSize: '0.65rem',
+              color: 'rgba(255,255,255,0.3)',
+              flexShrink: 0,
+            }}
+          >
+            #{player.seat}
+          </span>
+        </div>
+        <div
+          style={{
+            fontSize: '0.7rem',
+            color: 'rgba(255,255,255,0.35)',
+            marginTop: 1,
+          }}
+        >
+          {shortModelName(player.modelName || player.agentId)}
+        </div>
+      </div>
+
+      {/* Role + alignment (observer only) */}
+      {showObserverInfo && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              color: getRoleTypeColor(player.roleType),
+            }}
+          >
+            {player.role}
+          </span>
+          <span
+            style={{
+              fontSize: '0.6rem',
+              fontWeight: 600,
+              padding: '1px 5px',
+              borderRadius: 4,
+              background: player.alignment === 'good'
+                ? 'rgba(59, 130, 246, 0.15)'
+                : 'rgba(239, 68, 68, 0.15)',
+              color: player.alignment === 'good' ? '#3B82F6' : '#EF4444',
+            }}
+          >
+            {player.alignment === 'good' ? 'GOOD' : 'EVIL'}
+          </span>
+        </div>
+      )}
+
+      {/* Status badges */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+        <span
+          style={{
+            fontSize: '0.62rem',
+            fontWeight: 600,
+            padding: '1px 6px',
+            borderRadius: 4,
+            background: player.isAlive
+              ? 'rgba(16, 185, 129, 0.15)'
+              : 'rgba(239, 68, 68, 0.15)',
+            color: player.isAlive ? '#10B981' : '#EF4444',
+          }}
+        >
+          {player.isAlive ? 'ALIVE' : 'DEAD'}
+        </span>
+
+        {/* Observer-only status indicators */}
+        {showObserverInfo && (
+          <div style={{ display: 'flex', gap: 3 }}>
+            {player.isPoisoned && !player.isDrunk && (
+              <span style={{ fontSize: '0.6rem', color: '#A855F7', fontWeight: 600 }}>POI</span>
+            )}
+            {player.isDrunk && (
+              <span style={{ fontSize: '0.6rem', color: '#F59E0B', fontWeight: 600 }}>DRK</span>
+            )}
+            {player.isProtected && (
+              <span style={{ fontSize: '0.6rem', color: '#22D3EE', fontWeight: 600 }}>PRO</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Players tab content ──────────────────────────────────────────────
+
+function PlayersTab({ players }: { players: Player[] }) {
+  // Show alive players first, then dead, each sorted by seat
+  const sortedPlayers = useMemo(() => {
+    const alive = players.filter((p) => p.isAlive).sort((a, b) => a.seat - b.seat);
+    const dead = players.filter((p) => !p.isAlive).sort((a, b) => a.seat - b.seat);
+    return [...alive, ...dead];
+  }, [players]);
+
+  return (
+    <div style={{ overflowY: 'auto', flex: 1 }}>
+      {sortedPlayers.length === 0 ? (
+        <div style={{ padding: 24, textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>
+          No players yet
+        </div>
+      ) : (
+        <>
+          <div
+            style={{
+              padding: '8px 14px 4px',
+              fontSize: '0.65rem',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: 'rgba(255,255,255,0.3)',
+            }}
+          >
+            {players.filter((p) => p.isAlive).length} alive / {players.filter((p) => !p.isAlive).length} dead
+          </div>
+          {sortedPlayers.map((player) => (
+            <PlayerRow key={player.seat} player={player} />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────
 
 export function ConversationPanel() {
   const gameState = useGameStore((s) => s.gameState);
-  const selectedGroup = useGameStore((s) => s.selectedGroup);
   const selectGroup = useGameStore((s) => s.selectGroup);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<PanelTab>('chat');
 
   const players = gameState?.players ?? [];
   const messages = gameState?.messages ?? [];
   const whispers = gameState?.whispers ?? [];
   const breakoutGroups = gameState?.breakoutGroups ?? [];
 
-  // Compute tab list: "Public" + one per active breakout group
-  const latestRound = useMemo(() => {
-    if (!breakoutGroups.length) return -1;
-    return Math.max(...breakoutGroups.map((g) => g.roundNumber));
-  }, [breakoutGroups]);
-
-  const currentGroups = useMemo(
-    () => breakoutGroups.filter((g) => g.roundNumber === latestRound),
-    [breakoutGroups, latestRound],
-  );
-
-  const tabs = useMemo(() => {
-    const t: { id: string | null; label: string }[] = [
-      { id: null, label: 'Public' },
-    ];
-    currentGroups.forEach((g, idx) => {
-      const memberNames = g.members
-        .map((seat: any) => {
-          const p = players.find((pl) => pl.seat === (typeof seat === 'string' ? parseInt(seat) : seat));
-          return p ? (p.characterName || shortModelName(p.modelName || p.agentId)) : `S${seat}`;
-        })
-        .join(', ');
-      t.push({
-        id: g.id,
-        label: `Grp ${String.fromCharCode(65 + idx)}: ${memberNames}`,
-      });
-    });
-    // Add whispers tab if any exist
-    if (whispers.length > 0) {
-      t.push({ id: '__whispers__', label: 'Whispers' });
-    }
-    return t;
-  }, [currentGroups, whispers.length]);
+  const hasWhispers = whispers.length > 0;
 
   // Build a lookup from groupId to label for breakout group badges
   const groupLabels = useMemo(() => {
@@ -459,18 +629,17 @@ export function ConversationPanel() {
     return labels;
   }, [breakoutGroups, players]);
 
-  // Filter messages for the selected tab
+  // For the chat tab, show ALL messages inline
+  const chatMessages = useMemo(() => messages, [messages]);
+
+  // For the whispers tab
+  const whisperMessages = useMemo(() => whispers, [whispers]);
+
+  // Pick the right messages based on active tab
   const filteredMessages = useMemo(() => {
-    if (selectedGroup === '__whispers__') {
-      return whispers;
-    }
-    if (selectedGroup) {
-      // Show messages for this specific group only
-      return messages.filter((m) => m.groupId === selectedGroup);
-    }
-    // Public: show ALL messages (including breakout) inline in chronological order
-    return messages;
-  }, [messages, whispers, selectedGroup]);
+    if (activeTab === 'whispers') return whisperMessages;
+    return chatMessages;
+  }, [activeTab, chatMessages, whisperMessages]);
 
   // Group messages into phase sections
   const sections = useMemo(
@@ -526,66 +695,119 @@ export function ConversationPanel() {
     setAutoScroll(atBottom);
   }
 
+  // Keep selectedGroup in sync — clear it when switching to chat
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      selectGroup(null);
+    } else if (activeTab === 'whispers') {
+      selectGroup('__whispers__');
+    }
+  }, [activeTab, selectGroup]);
+
+  // Build tab list
+  const tabs: { id: PanelTab; label: string; show: boolean }[] = [
+    { id: 'chat', label: 'Chat', show: true },
+    { id: 'players', label: 'Players', show: true },
+    { id: 'whispers', label: 'Whispers', show: hasWhispers },
+  ];
+
   return (
     <div style={styles.container}>
       {/* Tabs */}
       <div style={styles.tabs}>
-        {tabs.map((tab) => (
+        {tabs.filter((t) => t.show).map((tab) => (
           <button
-            key={tab.id ?? 'public'}
-            onClick={() => selectGroup(tab.id)}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
             style={{
               ...styles.tab,
-              borderBottom: selectedGroup === tab.id
+              borderBottom: activeTab === tab.id
                 ? '2px solid #6366F1'
                 : '2px solid transparent',
-              color: selectedGroup === tab.id
+              color: activeTab === tab.id
                 ? 'rgba(255,255,255,0.9)'
                 : 'rgba(255,255,255,0.45)',
             }}
           >
             {tab.label}
+            {tab.id === 'whispers' && whispers.length > 0 && (
+              <span
+                style={{
+                  marginLeft: 5,
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  color: '#A855F7',
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  padding: '0px 5px',
+                  borderRadius: 8,
+                }}
+              >
+                {whispers.length}
+              </span>
+            )}
+            {tab.id === 'players' && players.length > 0 && (
+              <span
+                style={{
+                  marginLeft: 5,
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.35)',
+                  background: 'rgba(255,255,255,0.06)',
+                  padding: '0px 5px',
+                  borderRadius: 8,
+                }}
+              >
+                {players.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Messages with accordion sections */}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        style={styles.messages}
-      >
-        {sections.length === 0 ? (
-          <div style={styles.empty} className="text-muted">
-            No messages yet
+      {/* Tab content */}
+      {activeTab === 'players' ? (
+        <PlayersTab players={players} />
+      ) : (
+        <>
+          {/* Messages with accordion sections */}
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            style={styles.messages}
+          >
+            {sections.length === 0 ? (
+              <div style={styles.empty} className="text-muted">
+                {activeTab === 'whispers' ? 'No whispers yet' : 'No messages yet'}
+              </div>
+            ) : (
+              sections.map((section) => (
+                <AccordionSection
+                  key={section.key}
+                  section={section}
+                  isExpanded={expandedSections.has(section.key)}
+                  onToggle={() => toggleSection(section.key)}
+                  players={players}
+                />
+              ))
+            )}
           </div>
-        ) : (
-          sections.map((section) => (
-            <AccordionSection
-              key={section.key}
-              section={section}
-              isExpanded={expandedSections.has(section.key)}
-              onToggle={() => toggleSection(section.key)}
-              players={players}
-            />
-          ))
-        )}
-      </div>
 
-      {/* Auto-scroll indicator */}
-      {!autoScroll && (
-        <button
-          onClick={() => {
-            setAutoScroll(true);
-            scrollRef.current?.scrollTo({
-              top: scrollRef.current.scrollHeight,
-              behavior: 'smooth',
-            });
-          }}
-          style={styles.scrollBtn}
-        >
-          Scroll to bottom
-        </button>
+          {/* Auto-scroll indicator */}
+          {!autoScroll && (
+            <button
+              onClick={() => {
+                setAutoScroll(true);
+                scrollRef.current?.scrollTo({
+                  top: scrollRef.current.scrollHeight,
+                  behavior: 'smooth',
+                });
+              }}
+              style={styles.scrollBtn}
+            >
+              Scroll to bottom
+            </button>
+          )}
+        </>
       )}
     </div>
   );
@@ -614,6 +836,8 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     transition: 'color 0.15s',
+    display: 'flex',
+    alignItems: 'center',
   },
   messages: {
     flex: 1,

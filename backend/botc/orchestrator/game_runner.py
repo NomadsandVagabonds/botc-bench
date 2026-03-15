@@ -67,6 +67,69 @@ from botc.orchestrator.agent import Agent
 
 logger = logging.getLogger(__name__)
 
+
+def _sanitize_speech(raw_text: str) -> tuple[str, str]:
+    """Separate public speech from internal/command content.
+
+    Returns (clean_speech, internal_content) where:
+    - clean_speech: what other agents see in their context
+    - internal_content: stripped material (observer-only, may be empty)
+    """
+    internal_parts: list[str] = []
+    text = raw_text
+
+    # Strip <THINK>...</THINK> blocks (case-insensitive, handle unclosed)
+    def _collect_think(m: re.Match) -> str:
+        internal_parts.append(m.group(0))
+        return ""
+    text = re.sub(r"<THINK>.*?</THINK>", _collect_think, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<THINK>.*", _collect_think, text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Strip <MEMORY>...</MEMORY> blocks
+    def _collect_memory(m: re.Match) -> str:
+        internal_parts.append(m.group(0))
+        return ""
+    text = re.sub(r"<MEMORY>.*?</MEMORY>", _collect_memory, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<MEMORY>.*", _collect_memory, text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Strip remaining XML tags (SAY, ACTION, MEMORY, THINK wrappers)
+    text = re.sub(r"</?(?:SAY|ACTION|MEMORY|THINK)[^>]*>", "", text, flags=re.IGNORECASE)
+
+    # Strip command patterns from the text, collecting them as internal
+    command_patterns = [
+        r"\{PASS\}",
+        r"\{NOMINATE:\s*[^}]*\}",
+        r"\{RECALL:\s*[^}]*\}",
+        r"\{VOTE:\s*[^}]*\}",
+        r"\{SLAYER_SHOT:\s*[^}]*\}",
+    ]
+    for pat in command_patterns:
+        def _collect_cmd(m: re.Match, _pat=pat) -> str:
+            internal_parts.append(m.group(0))
+            return ""
+        text = re.sub(pat, _collect_cmd, text, flags=re.IGNORECASE)
+
+    # Strip lines that look like internal notes (evil team info, analysis)
+    filtered_lines: list[str] = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("**EVIL TEAM"):
+            internal_parts.append(stripped)
+        elif stripped.startswith("- Bluffs available"):
+            internal_parts.append(stripped)
+        elif stripped.startswith("- **CRITICAL"):
+            internal_parts.append(stripped)
+        elif stripped.startswith("- Prime Suspects:"):
+            internal_parts.append(stripped)
+        elif stripped.startswith("- Secondary Suspects:"):
+            internal_parts.append(stripped)
+        else:
+            filtered_lines.append(line)
+
+    clean = "\n".join(filtered_lines).strip()
+    internal = "\n".join(internal_parts).strip()
+    return clean, internal
+
 _DEMON_NIGHT_ACTION_ROLES = {
     "imp",
     "fang_gu",
@@ -144,6 +207,7 @@ class GameRunner:
         agent_ids = [c.agent_id for c in self.agent_configs]
         self.state = create_game(self.game_config, agent_ids)
         state = self.state
+        self._validate_roles_match_script(state)
 
         # Create agents and store model info on players
         for i, config in enumerate(self.agent_configs):
@@ -163,6 +227,7 @@ class GameRunner:
 
         # First night
         await self._run_first_night(state)
+        self._validate_roles_match_script(state)
 
         # Main game loop
         while state.phase != GamePhase.GAME_OVER:
@@ -210,6 +275,7 @@ class GameRunner:
             transition(state, GamePhase.NIGHT)
             self._emit("phase.change", {"phase": state.phase.value, "day": state.day_number})
             await self._run_night(state)
+            self._validate_roles_match_script(state)
 
             # Check win after night kills
             result = check_win_conditions(state)
@@ -241,6 +307,24 @@ class GameRunner:
         await self._run_debrief(state)
 
         return self._compile_result(state)
+
+    def _validate_roles_match_script(self, state: GameState) -> None:
+        """Assert that every in-play role belongs to the current script."""
+        script = load_script(state.config.script)
+        valid_role_ids = set(script.roles.keys())
+        mismatches = [
+            (player.seat, player.role.id)
+            for player in state.players
+            if player.role.id not in valid_role_ids
+        ]
+        if not mismatches:
+            return
+        mismatch_text = ", ".join(
+            f"Seat {seat}: {role_id}" for seat, role_id in mismatches
+        )
+        raise RuntimeError(
+            f"Script-role mismatch in '{state.config.script}'. Invalid roles in play: {mismatch_text}"
+        )
 
     # -------------------------------------------------------------------
     # Phase handlers
@@ -351,9 +435,14 @@ class GameRunner:
         # Emit night.action events for observer mode (before resolution)
         self._emit_night_actions(state, actions, first_night=False)
 
+        dead_before = {p.seat for p in state.players if not p.is_alive}
+
         msg_count_before = len(state.all_messages)
         deaths = resolve_night(state, actions)
         self._broadcast_new_messages(state, msg_count_before)
+        revived_seats = sorted(
+            seat for seat in dead_before if state.player_at(seat).is_alive
+        )
 
         # Juggler learns number of correct day-1 guesses on the first eligible night.
         msg_count_before = len(state.all_messages)
@@ -385,6 +474,26 @@ class GameRunner:
             })
             # Notify the dead player of their new status
             self._send_death_notification(player, state)
+
+        # Dawn announcements for players who became alive again overnight.
+        for seat in revived_seats:
+            player = state.player_at(seat)
+            announcement = f"At dawn, {player.character_name} is alive again."
+            state.add_message(Message.system(
+                state.phase_id,
+                announcement,
+            ))
+            self._emit("resurrection", {
+                "seat": seat,
+                "cause": "night_resurrection",
+            })
+            self._emit("message.new", {
+                "seat": None,
+                "content": announcement,
+                "type": "system",
+                "phase": state.phase.value,
+                "day": state.day_number,
+            })
 
     async def _collect_night_actions(
         self, state: GameState, *, first_night: bool
@@ -450,21 +559,26 @@ class GameRunner:
             self._check_slayer_shot(agent, state, parsed)
 
             if parsed.say:
-                msg = Message(
-                    id=uuid.uuid4().hex,
-                    type=MessageType.PUBLIC_SPEECH,
-                    phase_id=state.phase_id,
-                    sender_seat=player.seat,
-                    content=parsed.say,
-                )
-                state.add_message(msg)
-                self._emit("message.new", {
-                    "seat": player.seat,
-                    "content": parsed.say,
-                    "type": "public",
-                    "phase": state.phase.value,
-                    "day": state.day_number,
-                })
+                clean_say, internal_say = _sanitize_speech(parsed.say)
+                if clean_say:
+                    msg = Message(
+                        id=uuid.uuid4().hex,
+                        type=MessageType.PUBLIC_SPEECH,
+                        phase_id=state.phase_id,
+                        sender_seat=player.seat,
+                        content=clean_say,
+                    )
+                    state.add_message(msg)
+                    emit_data: dict[str, Any] = {
+                        "seat": player.seat,
+                        "content": clean_say,
+                        "type": "public",
+                        "phase": state.phase.value,
+                        "day": state.day_number,
+                    }
+                    if internal_say:
+                        emit_data["internal"] = internal_say
+                    self._emit("message.new", emit_data)
 
             if parsed.think:
                 self._emit("player.reasoning", {
@@ -578,21 +692,26 @@ class GameRunner:
             self._check_slayer_shot(agent, state, parsed)
 
             if parsed.say:
-                msg = Message(
-                    id=uuid.uuid4().hex,
-                    type=MessageType.PUBLIC_SPEECH,
-                    phase_id=state.phase_id,
-                    sender_seat=player.seat,
-                    content=parsed.say,
-                )
-                state.add_message(msg)
-                self._emit("message.new", {
-                    "seat": player.seat,
-                    "content": parsed.say,
-                    "type": "public",
-                    "phase": state.phase.value,
-                    "day": state.day_number,
-                })
+                clean_say, internal_say = _sanitize_speech(parsed.say)
+                if clean_say:
+                    msg = Message(
+                        id=uuid.uuid4().hex,
+                        type=MessageType.PUBLIC_SPEECH,
+                        phase_id=state.phase_id,
+                        sender_seat=player.seat,
+                        content=clean_say,
+                    )
+                    state.add_message(msg)
+                    emit_data: dict[str, Any] = {
+                        "seat": player.seat,
+                        "content": clean_say,
+                        "type": "public",
+                        "phase": state.phase.value,
+                        "day": state.day_number,
+                    }
+                    if internal_say:
+                        emit_data["internal"] = internal_say
+                    self._emit("message.new", emit_data)
 
     async def _run_nomination_phase(self, state: GameState) -> bool:
         """Full BotC nomination flow with pre-nomination discussion,
@@ -987,17 +1106,7 @@ class GameRunner:
 
                 parsed_discussion = parse_response(raw_text)
 
-                # Strip THINK blocks and XML tags (case-insensitive, handle unclosed)
-                speech_text = re.sub(
-                    r"<THINK>.*?</THINK>", "", raw_text, flags=re.DOTALL | re.IGNORECASE
-                ).strip()
-                # Also catch unclosed <THINK> (model forgot closing tag)
-                speech_text = re.sub(
-                    r"<THINK>.*", "", speech_text, flags=re.DOTALL | re.IGNORECASE
-                ).strip()
-                speech_text = re.sub(
-                    r"</?(?:SAY|ACTION|MEMORY|THINK)[^>]*>", "", speech_text, flags=re.IGNORECASE
-                ).strip()
+                speech_text, internal_content = _sanitize_speech(raw_text)
 
             except Exception as e:
                 logger.warning(
@@ -1005,6 +1114,7 @@ class GameRunner:
                     player.seat, e,
                 )
                 speech_text = ""
+                internal_content = ""
                 parsed_discussion = ParsedResponse()
 
             if speech_text:
@@ -1016,13 +1126,16 @@ class GameRunner:
                     content=speech_text,
                 )
                 state.add_message(msg)
-                self._emit("message.new", {
+                emit_data: dict[str, Any] = {
                     "seat": player.seat,
                     "content": speech_text,
                     "type": "public",
                     "phase": state.phase.value,
                     "day": state.day_number,
-                })
+                }
+                if internal_content:
+                    emit_data["internal"] = internal_content
+                self._emit("message.new", emit_data)
 
             self._handle_day_special_actions(agent, state, parsed_discussion)
 
@@ -1131,20 +1244,15 @@ class GameRunner:
             prompt_text = build_defense_prompt(speaker, other, accusation_text, state)
             msg_type = MessageType.DEFENSE
 
+        internal_content = ""
         try:
             response = await agent.provider.complete_with_retry(
                 system_prompt=agent._system_prompt or "",
                 messages=[{"role": "user", "content": prompt_text}],
                 temperature=agent.llm_config.temperature,
-                max_tokens=150,
+                max_tokens=300,
             )
-            speech_text = response.content.strip()
-
-            # Strip any XML-tagged blocks the model might have included
-            # (especially <THINK>...</THINK> which contains private reasoning)
-            speech_text = re.sub(r"<THINK>.*?</THINK>", "", speech_text, flags=re.DOTALL | re.IGNORECASE).strip()
-            speech_text = re.sub(r"<THINK>.*", "", speech_text, flags=re.DOTALL | re.IGNORECASE).strip()
-            speech_text = re.sub(r"</?(?:SAY|ACTION|MEMORY|THINK)[^>]*>", "", speech_text, flags=re.IGNORECASE).strip()
+            speech_text, internal_content = _sanitize_speech(response.content.strip())
 
             self.token_tracker.record(
                 agent_id=agent.agent_id,
@@ -1173,13 +1281,16 @@ class GameRunner:
         )
         state.add_message(msg)
 
-        self._emit("message.new", {
+        emit_data: dict[str, Any] = {
             "seat": speaker.seat,
             "content": speech_text,
             "type": speech_type,
             "phase": state.phase.value,
             "day": state.day_number,
-        })
+        }
+        if internal_content:
+            emit_data["internal"] = internal_content
+        self._emit("message.new", emit_data)
 
         return speech_text
 

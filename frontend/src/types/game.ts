@@ -94,6 +94,8 @@ export interface Message {
   phase?: Phase;
   /** Day number when this message was created (for accordion grouping). */
   dayNumber?: number;
+  /** Internal reasoning / commands stripped from public speech (observer-only). */
+  internal?: string;
 }
 
 export interface BreakoutGroup {

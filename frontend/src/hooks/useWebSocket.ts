@@ -90,6 +90,8 @@ function normalizeEvent(raw: { type: string; data: any }): ServerEvent | null {
           // Pass through phase/day from backend when available (e.g. private_info)
           ...(data?.phase != null ? { phase: data.phase } : {}),
           ...(data?.day != null ? { dayNumber: data.day } : {}),
+          // Internal reasoning stripped from public speech (observer-only)
+          ...(data?.internal ? { internal: data.internal } : {}),
         },
       } as any;
     }
@@ -115,6 +117,8 @@ function normalizeEvent(raw: { type: string; data: any }): ServerEvent | null {
       return { type: 'execution', seat: data?.seat, role: data?.role, deathCause: data?.death_cause, deathDay: data?.death_day, deathPhase: data?.death_phase } as any;
     case 'death':
       return { type: 'death', seat: data?.seat, cause: data?.cause ?? 'night', deathCause: data?.death_cause, deathDay: data?.death_day, deathPhase: data?.death_phase } as any;
+    case 'resurrection':
+      return { type: 'resurrection', seat: data?.seat, cause: data?.cause ?? 'night_resurrection' } as any;
     case 'night.action':
       return { type: 'night.action', seat: data?.seat, name: data?.name, role: data?.role, roleId: data?.role_id, action: data?.action, targetSeat: data?.target_seat, targetName: data?.target_name, effect: data?.effect, day: data?.day } as any;
     case 'breakout.formed':

@@ -143,9 +143,11 @@ function ClickablePlayerName({
 function MessageRow({
   message,
   players,
+  showObserverInfo,
 }: {
   message: Message;
   players: Player[];
+  showObserverInfo: boolean;
 }) {
   const sender = message.senderSeat !== null
     ? players.find((p) => p.seat === message.senderSeat)
@@ -156,6 +158,9 @@ function MessageRow({
   const isAccusation = message.type === MessageType.ACCUSATION;
   const isDefense = message.type === MessageType.DEFENSE;
   const isSpeech = isAccusation || isDefense;
+
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const hasInternal = !!message.internal && showObserverInfo;
 
   // Distinct styling for accusation/defense speeches
   const speechStyle: React.CSSProperties = isSpeech
@@ -200,6 +205,62 @@ function MessageRow({
       >
         {message.content}
       </div>
+      {hasInternal && (
+        <div
+          style={{
+            marginTop: 4,
+            background: 'rgba(139, 92, 246, 0.08)',
+            borderRadius: 4,
+            border: '1px solid rgba(139, 92, 246, 0.15)',
+            overflow: 'hidden',
+          }}
+        >
+          <button
+            onClick={() => setInternalExpanded(!internalExpanded)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              width: '100%',
+              padding: '3px 8px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              color: 'rgba(139, 92, 246, 0.6)',
+              letterSpacing: '0.03em',
+            }}
+          >
+            <span
+              style={{
+                transform: internalExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.15s',
+                fontSize: '0.6rem',
+              }}
+            >
+              {'\u25B6'}
+            </span>
+            Internal Reasoning
+          </button>
+          {internalExpanded && (
+            <div
+              style={{
+                padding: '4px 8px 6px',
+                fontSize: '0.78rem',
+                fontStyle: 'italic',
+                color: 'rgba(255, 255, 255, 0.5)',
+                lineHeight: 1.4,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                opacity: 0.85,
+              }}
+            >
+              {message.internal}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -295,11 +356,13 @@ function AccordionSection({
   isExpanded,
   onToggle,
   players,
+  showObserverInfo,
 }: {
   section: PhaseSection;
   isExpanded: boolean;
   onToggle: () => void;
   players: Player[];
+  showObserverInfo: boolean;
 }) {
   return (
     <div>
@@ -328,7 +391,7 @@ function AccordionSection({
               }}
             >
               {section.messages.map((msg) => (
-                <MessageRow key={msg.id} message={msg} players={players} />
+                <MessageRow key={msg.id} message={msg} players={players} showObserverInfo={showObserverInfo} />
               ))}
             </div>
           </motion.div>
@@ -597,6 +660,7 @@ function PlayersTab({ players }: { players: Player[] }) {
 export function ConversationPanel() {
   const gameState = useGameStore((s) => s.gameState);
   const selectGroup = useGameStore((s) => s.selectGroup);
+  const showObserverInfo = useGameStore((s) => s.showObserverInfo);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -787,6 +851,7 @@ export function ConversationPanel() {
                   isExpanded={expandedSections.has(section.key)}
                   onToggle={() => toggleSection(section.key)}
                   players={players}
+                  showObserverInfo={showObserverInfo}
                 />
               ))
             )}

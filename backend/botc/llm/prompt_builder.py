@@ -7,7 +7,7 @@ the agent's identity, role, and response format.
 from __future__ import annotations
 
 from botc.engine.roles import load_script
-from botc.engine.types import Alignment, GameState, Player, RoleType
+from botc.engine.types import Alignment, GameState, Player, RoleType, ROLE_DISTRIBUTION
 
 RESPONSE_FORMAT = """\
 You MUST respond using these XML tags:
@@ -65,6 +65,12 @@ def build_system_prompt(player: Player, state: GameState) -> str:
     dead_status = ""
     if not player.is_alive:
         dead_status = _build_dead_status(player)
+    script_priorities = _build_script_priorities(script, state)
+    script_priorities_block = (
+        f"SCRIPT-SPECIFIC PRIORITIES:\n{script_priorities}\n\n"
+        if script_priorities
+        else ""
+    )
 
     return f"""\
 You are playing Blood on the Clocktower, a social deduction game.
@@ -118,7 +124,7 @@ GAME PHASES:
 5. Voting: All players vote on nominations (dead players may use their ghost vote).
 6. Execution: Player with the most votes (majority required) is executed.
 
-MEMORY SYSTEM:
+{script_priorities_block}MEMORY SYSTEM:
 - You will NOT see the full conversation history each turn.
 - Instead you see: your own <MEMORY> notes + the last few messages.
 - Your <MEMORY> notes are your lifeline — update them EVERY turn with key facts,
@@ -143,6 +149,54 @@ SOCIAL TACTICS (optional — use what feels natural):
 ROLE REFERENCE:
 {role_reference}
 """
+
+
+def _build_script_priorities(script, state: GameState) -> str:
+    """Script-specific deduction goals for richer social-play scaffolds."""
+    if script.script_id not in {"sects_and_violets", "bad_moon_rising"}:
+        return ""
+
+    lines: list[str] = []
+    base_counts = ROLE_DISTRIBUTION.get(len(state.players))
+    if base_counts:
+        t, o, m, d = base_counts
+        lines.append(
+            f"- Base role counts for {len(state.players)} players: "
+            f"{t} Townsfolk, {o} Outsiders, {m} Minion, {d} Demon (before modifiers)."
+        )
+
+    demon_names = ", ".join(r.name for r in script.demons)
+    lines.append(
+        f"- Treat \"which Demon is in play\" as a primary question each day: {demon_names}."
+    )
+    lines.append(
+        "- Keep a ranked Demon shortlist in <MEMORY> and update it after each night/day."
+    )
+    lines.append(
+        "- Build legal world models from script classes (Townsfolk/Outsider/Minion/Demon). "
+        "Reject worlds with impossible class counts or duplicate characters."
+    )
+
+    if script.script_id == "sects_and_violets":
+        lines.append(
+            "- Outsider counts can shift via setup modifiers (Fang Gu: +1 Outsider; "
+            "Vigormortis: +1 or -1 Outsider). Use Outsider-claim math to narrow worlds."
+        )
+        lines.append(
+            "- Test Demon signatures: Vortox (false Townsfolk info + no-execution risk), "
+            "No Dashii (poisoned Townsfolk neighbors), Fang Gu jumps, Vigormortis dead-minion utility."
+        )
+
+    if script.script_id == "bad_moon_rising":
+        lines.append(
+            "- Outsider counts can shift (Godfather adds +1 Outsider)."
+        )
+        lines.append(
+            "- Test Demon signatures: Po charge/burst kills, Pukka delayed poison kill, "
+            "Shabaloth two kills with occasional regurgitation, Zombuul execution-day constraints."
+        )
+
+    return "\n".join(lines)
 
 
 def _build_role_reference(script) -> str:
@@ -456,6 +510,9 @@ def build_debrief_prompt(player: Player, state: GameState) -> str:
     winner_label = state.winner.value if state.winner else "unknown"
     win_reason = state.win_condition or ""
 
+    # Check if Poisoner was actually in play (only mention poison if relevant)
+    poisoner_in_play = any(p.role.id == "poisoner" for p in state.players)
+
     # Build the full reveal table
     lines: list[str] = []
     lines.append("=== THE GRIMOIRE IS REVEALED ===\n")
@@ -464,19 +521,20 @@ def build_debrief_prompt(player: Player, state: GameState) -> str:
         lines.append(f"Reason: {win_reason}")
     lines.append("")
 
-    lines.append("PLAYER ROLES:")
+    lines.append("Here are the TRUE roles and alignments of every player:")
+    lines.append("")
     for p in state.players:
         status = "ALIVE" if p.is_alive else "DEAD"
         notes: list[str] = []
         if p.is_drunk:
-            notes.append("DRUNK (thought they were " + p.effective_role.name + ")")
-        if p.is_poisoned:
-            notes.append("POISONED")
-        note_str = f" [{', '.join(notes)}]" if notes else ""
-        you_marker = " <-- THIS IS YOU" if p.seat == player.seat else ""
+            notes.append("DRUNK — believed they were " + p.effective_role.name + ", but their info was unreliable")
+        if p.is_poisoned and poisoner_in_play:
+            notes.append("POISONED — their ability gave wrong information")
+        note_str = f"\n    ** {'; '.join(notes)} **" if notes else ""
+        you_marker = "  <<<< THIS IS YOU" if p.seat == player.seat else ""
         lines.append(
-            f"  Seat {p.seat}: {p.character_name} — {p.role.name} "
-            f"({p.alignment.value}) [{status}]{note_str}{you_marker}"
+            f"  Seat {p.seat}: {p.character_name} — TRUE ROLE: {p.role.name} "
+            f"({p.alignment.value.upper()}) [{status}]{you_marker}{note_str}"
         )
 
     # Key night actions summary
@@ -504,9 +562,9 @@ def build_debrief_prompt(player: Player, state: GameState) -> str:
 
     lines.append("")
     lines.append(
-        "The game is over and all secrets are revealed. React naturally to "
-        "what you've learned — surprise, vindication, humor, grudging respect, "
-        "whatever fits. Keep it short and fun (2-3 sentences max). "
+        "The game is over and all secrets are revealed. React to what you've "
+        "learned — surprise, vindication, humor, grudging respect, whatever fits. "
+        "Keep it short and fun (2-3 sentences max). "
         "No need for XML tags, just speak freely."
     )
 
@@ -528,8 +586,7 @@ def build_accusation_prompt(
         f"Speak in character as {nominator.character_name}. "
         f"Do NOT include private reasoning — everything you say is public.\n\n"
         f"Keep your speech concise (2-4 sentences). Do NOT use XML tags. "
-        f"Just speak your accusation aloud.\n\n"
-        f"Tip: Use {{RECALL: {nominee.character_name} claims}} in your ACTION to check what they said before."
+        f"Just speak your accusation aloud."
     )
 
 
@@ -552,8 +609,7 @@ def build_defense_prompt(
         f"Speak in character as {nominee.character_name}. "
         f"Do NOT include private reasoning — everything you say is public.\n\n"
         f"Keep your speech concise (2-4 sentences). Do NOT use XML tags. "
-        f"Just speak your defense aloud.\n\n"
-        f"Tip: Use {{RECALL: your previous statements}} to reference what you said earlier."
+        f"Just speak your defense aloud."
     )
 
 

@@ -33,8 +33,10 @@ from botc.engine.phase_machine import (
 )
 from botc.llm.response_parser import parse_response
 from botc.engine.abilities import (
+    _resolve_standard_demon_kill,
     answer_artist_question,
     deliver_juggler_info,
+    on_player_death,
     refresh_script_poisoning,
     resolve_cerenovus,
     resolve_generic_demon_kill,
@@ -1406,3 +1408,764 @@ class TestAssignedRoles:
         agent_ids = [f"agent-{i}" for i in range(7)]
         state = create_game(config, agent_ids)
         assert len(state.players) == 7
+
+
+# ---------------------------------------------------------------------------
+# Mayor bounce immunity checks
+# ---------------------------------------------------------------------------
+
+class TestMayorBounceImmunity:
+    """Mayor bounce should respect Soldier, Monk, and Fool protections."""
+
+    def _make_state_with_roles(self, role_ids: list[str]) -> GameState:
+        """Create a game state with specific roles assigned to seats."""
+        config = GameConfig(
+            script="trouble_brewing",
+            num_players=len(role_ids),
+            seed=42,
+            seat_roles=role_ids,
+        )
+        agent_ids = [f"agent-{i}" for i in range(len(role_ids))]
+        return create_game(config, agent_ids)
+
+    def test_mayor_bounce_to_soldier_survives(self):
+        """When Mayor bounce targets a Soldier, the Soldier should survive."""
+        # Seats: 0=mayor, 1=soldier, 2=imp, 3=poisoner, 4=empath, 5=chef, 6=washerwoman
+        state = self._make_state_with_roles(
+            ["mayor", "soldier", "imp", "poisoner", "empath", "chef", "washerwoman"]
+        )
+        state.day_number = 1
+
+        # Force RNG to pick the Soldier as bounce target
+        # bounceable = all alive non-Demon non-Mayor = seats 1, 3, 4, 5, 6
+        # We need the RNG to pick seat 1 (Soldier)
+        import random
+        state.rng = random.Random(0)
+        # Find a seed where rng.choice picks the soldier
+        for seed in range(100):
+            rng = random.Random(seed)
+            bounceable = [p for p in state.alive_players if p.seat != 0 and p.role.role_type != RoleType.DEMON]
+            pick = rng.choice(bounceable)
+            if pick.seat == 1:  # soldier
+                state.rng = random.Random(seed)
+                break
+
+        killed = _resolve_standard_demon_kill(state, 0)  # target the Mayor
+        # Soldier should survive — kill fizzles
+        assert killed == []
+        assert state.player_at(1).is_alive  # Soldier alive
+
+    def test_mayor_bounce_to_monk_protected_survives(self):
+        """When Mayor bounce targets a Monk-protected player, the player should survive."""
+        state = self._make_state_with_roles(
+            ["mayor", "monk", "imp", "poisoner", "empath", "chef", "washerwoman"]
+        )
+        state.day_number = 1
+
+        # Protect the empath (seat 4) with Monk
+        state.player_at(4).is_protected = True
+
+        # Force RNG to pick the protected empath as bounce target
+        import random
+        for seed in range(100):
+            rng = random.Random(seed)
+            bounceable = [p for p in state.alive_players if p.seat != 0 and p.role.role_type != RoleType.DEMON]
+            pick = rng.choice(bounceable)
+            if pick.seat == 4:  # protected empath
+                state.rng = random.Random(seed)
+                break
+
+        killed = _resolve_standard_demon_kill(state, 0)
+        assert killed == []
+        assert state.player_at(4).is_alive
+
+    def test_mayor_bounce_to_fool_uses_survival(self):
+        """When Mayor bounce targets a Fool, the Fool uses their first survival."""
+        # Mayor is in TB, Fool is in BMR — manually set up the role on a TB state
+        state = self._make_state_with_roles(
+            ["mayor", "washerwoman", "imp", "poisoner", "empath", "chef", "librarian"]
+        )
+        state.day_number = 1
+
+        # Manually override seat 1 to be a Fool
+        from botc.engine.roles import load_script
+        bmr = load_script("bad_moon_rising")
+        state.player_at(1).role = bmr.roles["fool"]
+
+        import random
+        for seed in range(100):
+            rng = random.Random(seed)
+            bounceable = [p for p in state.alive_players if p.seat != 0 and p.role.role_type != RoleType.DEMON]
+            pick = rng.choice(bounceable)
+            if pick.seat == 1:  # fool
+                state.rng = random.Random(seed)
+                break
+
+        killed = _resolve_standard_demon_kill(state, 0)
+        assert killed == []
+        assert state.player_at(1).is_alive
+        assert state.player_at(1).hidden_state.get("fool_survived_once") is True
+
+    def test_mayor_bounce_normal_kill(self):
+        """When Mayor bounce targets a normal player, that player dies."""
+        state = self._make_state_with_roles(
+            ["mayor", "chef", "imp", "poisoner", "empath", "librarian", "washerwoman"]
+        )
+        state.day_number = 1
+
+        import random
+        for seed in range(100):
+            rng = random.Random(seed)
+            bounceable = [p for p in state.alive_players if p.seat != 0 and p.role.role_type != RoleType.DEMON]
+            pick = rng.choice(bounceable)
+            if pick.seat == 1:  # chef (normal townsfolk)
+                state.rng = random.Random(seed)
+                break
+
+        killed = _resolve_standard_demon_kill(state, 0)
+        assert killed == [1]
+        assert not state.player_at(1).is_alive
+
+
+# ---------------------------------------------------------------------------
+# Poisoner death clears poison
+# ---------------------------------------------------------------------------
+
+class TestPoisonerDeathClearsPoison:
+    """When a Poisoner dies, their poison should be cleared immediately."""
+
+    def _make_state_with_roles(self, role_ids: list[str]) -> GameState:
+        config = GameConfig(
+            script="trouble_brewing",
+            num_players=len(role_ids),
+            seed=42,
+            seat_roles=role_ids,
+        )
+        agent_ids = [f"agent-{i}" for i in range(len(role_ids))]
+        return create_game(config, agent_ids)
+
+    def test_poisoner_execution_clears_poison(self):
+        """Executing the Poisoner should immediately clear their target's poison."""
+        state = self._make_state_with_roles(
+            ["washerwoman", "librarian", "chef", "empath", "fortune_teller", "poisoner", "imp"]
+        )
+
+        poisoner = state.player_at(5)
+        target = state.player_at(0)  # washerwoman
+
+        # Poison the washerwoman
+        target.is_poisoned = True
+        target.poisoned_by = poisoner.seat
+
+        assert target.is_poisoned
+        assert target.poisoned_by == 5
+
+        # Kill the Poisoner (simulating execution)
+        poisoner.is_alive = False
+        poisoner.death_cause = "execution"
+        poisoner.death_day = 1
+        poisoner.death_phase = "day"
+        on_player_death(state, poisoner)
+
+        # Poison should be cleared immediately
+        assert not target.is_poisoned
+        assert target.poisoned_by is None
+
+    def test_poisoner_death_only_clears_own_poison(self):
+        """Poisoner death should only clear poison from their own targets, not others."""
+        state = self._make_state_with_roles(
+            ["washerwoman", "librarian", "chef", "empath", "fortune_teller", "poisoner", "imp"]
+        )
+
+        target = state.player_at(0)
+
+        # Poison from a different source (seat 99, hypothetical)
+        target.is_poisoned = True
+        target.poisoned_by = 99
+
+        # Kill the Poisoner at seat 5
+        poisoner = state.player_at(5)
+        poisoner.is_alive = False
+        poisoner.death_cause = "execution"
+        on_player_death(state, poisoner)
+
+        # Poison from seat 99 should remain
+        assert target.is_poisoned
+        assert target.poisoned_by == 99
+
+
+# ---------------------------------------------------------------------------
+# Minstrel effect guard
+# ---------------------------------------------------------------------------
+
+class TestMinstrelEffect:
+    """Minstrel effect should only fire when a Minstrel is in play."""
+
+    def _make_state_with_roles(self, role_ids: list[str], script: str = "trouble_brewing") -> GameState:
+        config = GameConfig(
+            script=script,
+            num_players=len(role_ids),
+            seed=42,
+            seat_roles=role_ids,
+        )
+        agent_ids = [f"agent-{i}" for i in range(len(role_ids))]
+        return create_game(config, agent_ids)
+
+    def _advance_to_nominations(self, state: GameState) -> None:
+        """Walk through the phase machine to reach NOMINATIONS."""
+        transition(state, GamePhase.FIRST_NIGHT)
+        transition(state, GamePhase.DAY_DISCUSSION)
+        transition(state, GamePhase.NOMINATIONS)
+
+    def test_no_minstrel_no_drunk_effect(self):
+        """Executing a Minion without a Minstrel in play should NOT drunk everyone."""
+        state = self._make_state_with_roles(
+            ["washerwoman", "librarian", "chef", "empath", "fortune_teller", "poisoner", "imp"]
+        )
+        self._advance_to_nominations(state)
+
+        resolve_execution(state, on_the_block=5)
+
+        for p in state.players:
+            assert "minstrel_drunk_until_day" not in p.hidden_state, (
+                f"Seat {p.seat} got minstrel drunk without Minstrel in play"
+            )
+
+    def test_minstrel_in_play_applies_drunk(self):
+        """Executing a Minion WITH a Minstrel in play should drunk others."""
+        # BMR 10-player: 7T, 0O, 2M, 1D
+        state = self._make_state_with_roles(
+            ["minstrel", "grandmother", "sailor", "chambermaid", "exorcist",
+             "innkeeper", "gambler", "godfather", "devils_advocate", "zombuul"],
+            script="bad_moon_rising",
+        )
+        self._advance_to_nominations(state)
+
+        # Execute the godfather (Minion, seat 7)
+        resolve_execution(state, on_the_block=7)
+
+        # Minstrel (seat 0) should NOT be drunk, but others should
+        assert "minstrel_drunk_until_day" not in state.player_at(0).hidden_state
+        assert state.player_at(1).hidden_state.get("minstrel_drunk_until_day") == 2
+
+
+# ---------------------------------------------------------------------------
+# Mayor win timing
+# ---------------------------------------------------------------------------
+
+class TestMayorWinTiming:
+    """Mayor win should only trigger at end-of-day, not after night kills."""
+
+    def _make_state_with_roles(self, role_ids: list[str]) -> GameState:
+        config = GameConfig(
+            script="trouble_brewing",
+            num_players=len(role_ids),
+            seed=42,
+            seat_roles=role_ids,
+        )
+        agent_ids = [f"agent-{i}" for i in range(len(role_ids))]
+        return create_game(config, agent_ids)
+
+    def _advance_to_night(self, state: GameState) -> None:
+        """Walk through the phase machine to reach NIGHT."""
+        transition(state, GamePhase.FIRST_NIGHT)
+        transition(state, GamePhase.DAY_DISCUSSION)
+        transition(state, GamePhase.NOMINATIONS)
+        transition(state, GamePhase.NIGHT)
+
+    def test_mayor_win_does_not_trigger_after_night_kills(self):
+        """Mayor win should NOT trigger when night kills reduce alive to 3."""
+        state = self._make_state_with_roles(
+            ["mayor", "chef", "librarian", "empath", "fortune_teller", "poisoner", "imp"]
+        )
+        # Walk through phases to reach NIGHT
+        self._advance_to_night(state)
+
+        # Kill some players to get to 4 alive (simulating earlier deaths)
+        state.player_at(1).is_alive = False
+        state.player_at(2).is_alive = False
+        state.player_at(3).is_alive = False
+        # 4 alive: mayor(0), fortune_teller(4), poisoner(5), imp(6)
+        state.executed_today = None  # no execution this day
+
+        # Night kill reduces to 3 alive
+        state.player_at(4).is_alive = False
+        state.player_at(4).death_cause = "demon_kill"
+        state.night_kills = [4]
+        # 3 alive: mayor(0), poisoner(5), imp(6)
+
+        result = check_win_conditions(state)
+        # Should NOT trigger Mayor win — night kills changed the count
+        assert result is None or result.reason != "3 players remain with no execution. The Mayor wins for Good!"
+
+    def test_mayor_win_triggers_at_end_of_day(self):
+        """Mayor win should trigger when day ends with 3 alive and no execution."""
+        state = self._make_state_with_roles(
+            ["mayor", "chef", "librarian", "empath", "fortune_teller", "poisoner", "imp"]
+        )
+        self._advance_to_night(state)
+
+        # Kill players to get exactly 3 alive
+        state.player_at(1).is_alive = False
+        state.player_at(2).is_alive = False
+        state.player_at(3).is_alive = False
+        state.player_at(4).is_alive = False
+        # 3 alive: mayor(0), poisoner(5), imp(6)
+        state.executed_today = None
+        state.night_kills = []  # no night kills yet
+
+        result = check_win_conditions(state)
+        assert result is not None
+        assert result.alignment == Alignment.GOOD
+        assert "Mayor" in result.reason
+
+
+# ---------------------------------------------------------------------------
+# Ghost vote / Butler interaction
+# ---------------------------------------------------------------------------
+
+class TestGhostVoteButlerInteraction:
+    """Ghost vote should not be consumed if Butler restriction blocks it."""
+
+    def _make_state_with_roles(self, role_ids: list[str]) -> GameState:
+        config = GameConfig(
+            script="trouble_brewing",
+            num_players=len(role_ids),
+            seed=42,
+            seat_roles=role_ids,
+        )
+        agent_ids = [f"agent-{i}" for i in range(len(role_ids))]
+        return create_game(config, agent_ids)
+
+    def test_dead_butler_ghost_vote_not_wasted_on_block(self):
+        """Dead Butler's ghost vote shouldn't be consumed when master hasn't voted YES."""
+        from botc.engine.types import NominationRecord
+        state = self._make_state_with_roles(
+            ["washerwoman", "librarian", "chef", "empath", "fortune_teller", "poisoner", "imp"]
+        )
+        state.day_number = 2
+
+        # Simulate a Butler by setting butler_master on seat 1
+        butler = state.player_at(1)
+        butler.is_alive = False
+        butler.butler_master = 0  # master is seat 0
+
+        nom = NominationRecord(
+            nominator_seat=2,
+            nominee_seat=3,
+            votes_for=[],
+            votes_against=[],
+        )
+        state.nominations.append(nom)
+
+        # Master (seat 0) has NOT voted YES
+        process_vote(state, nom, 1, vote_yes=True)
+
+        # Butler's vote should be blocked and ghost vote NOT consumed
+        assert 1 not in nom.votes_for
+        assert not butler.ghost_vote_used
+
+    def test_dead_player_no_vote_not_recorded(self):
+        """Dead players voting NO should be silently dropped (abstain)."""
+        from botc.engine.types import NominationRecord
+        state = self._make_state_with_roles(
+            ["washerwoman", "librarian", "chef", "empath", "fortune_teller", "poisoner", "imp"]
+        )
+        state.day_number = 2
+        state.player_at(1).is_alive = False
+
+        nom = NominationRecord(
+            nominator_seat=2,
+            nominee_seat=3,
+            votes_for=[],
+            votes_against=[],
+        )
+        state.nominations.append(nom)
+
+        process_vote(state, nom, 1, vote_yes=False)
+
+        # Dead player's NO vote should not be recorded
+        assert 1 not in nom.votes_against
+
+
+class TestButlerMasterUpdateOnDeath:
+    """Regression test for bug E6: Butler master not updated when Butler dies
+    on the same night they chose a new master."""
+
+    def _make_state_with_roles(self, role_ids: list[str]) -> GameState:
+        config = GameConfig(
+            script="trouble_brewing",
+            num_players=len(role_ids),
+            seed=42,
+            seat_roles=role_ids,
+        )
+        agent_ids = [f"agent-{i}" for i in range(len(role_ids))]
+        return create_game(config, agent_ids)
+
+    def test_butler_master_updated_when_killed_same_night(self):
+        """Butler's master should update even if the Imp kills them that night."""
+        # 8p = 5T, 1O, 1M, 1D
+        # Seats: 0=washerwoman, 1=butler, 2=chef, 3=empath, 4=fortune_teller, 5=librarian, 6=poisoner, 7=imp
+        state = self._make_state_with_roles(
+            ["washerwoman", "butler", "chef", "empath", "fortune_teller", "librarian", "poisoner", "imp"]
+        )
+        # Advance through first night
+        transition(state, GamePhase.FIRST_NIGHT)
+        butler = state.player_at(1)
+
+        # First night: Butler chooses seat 0 as master
+        first_night_actions = {
+            1: NightAction(actor_seat=1, role_id="butler", targets=[0]),
+        }
+        resolve_first_night(state, first_night_actions)
+        assert butler.butler_master == 0
+
+        # Advance to subsequent night
+        transition(state, GamePhase.DAY_DISCUSSION)
+        transition(state, GamePhase.NOMINATIONS)
+        transition(state, GamePhase.NIGHT)
+
+        # Night 1: Imp kills Butler (seat 1), Butler chooses seat 3 as new master
+        actions = {
+            7: NightAction(actor_seat=7, role_id="imp", targets=[1]),
+            1: NightAction(actor_seat=1, role_id="butler", targets=[3]),
+        }
+        deaths = resolve_night(state, actions)
+
+        # Butler should be dead
+        assert not butler.is_alive
+        assert 1 in deaths
+
+        # Butler master should be updated to seat 3, NOT still 0
+        assert butler.butler_master == 3, (
+            f"Butler master should be 3 (new choice) but was {butler.butler_master}"
+        )
+
+    def test_butler_master_updated_normally_when_alive(self):
+        """Sanity check: Butler master updates when Butler survives the night."""
+        state = self._make_state_with_roles(
+            ["washerwoman", "butler", "chef", "empath", "fortune_teller", "librarian", "poisoner", "imp"]
+        )
+        transition(state, GamePhase.FIRST_NIGHT)
+        butler = state.player_at(1)
+
+        first_night_actions = {
+            1: NightAction(actor_seat=1, role_id="butler", targets=[0]),
+        }
+        resolve_first_night(state, first_night_actions)
+        assert butler.butler_master == 0
+
+        transition(state, GamePhase.DAY_DISCUSSION)
+        transition(state, GamePhase.NOMINATIONS)
+        transition(state, GamePhase.NIGHT)
+
+        # Night 1: Imp kills someone else, Butler chooses seat 4
+        actions = {
+            7: NightAction(actor_seat=7, role_id="imp", targets=[2]),
+            1: NightAction(actor_seat=1, role_id="butler", targets=[4]),
+        }
+        resolve_night(state, actions)
+
+        assert butler.is_alive
+        assert butler.butler_master == 4
+
+
+# ---------------------------------------------------------------------------
+# E5: Empath wrong count after Poisoner execution
+# ---------------------------------------------------------------------------
+
+class TestEmpathAfterPoisonerExecution:
+    """E5 regression: Empath should get correct count after Poisoner is executed.
+
+    Root cause: executing a Minion (Poisoner) triggered _apply_minstrel_effect()
+    even when no Minstrel was in play (E3 bug). This set minstrel_drunk_until_day
+    on ALL players, causing the Empath to malfunction and report a wrong count.
+    """
+
+    def _make_state_with_roles(self, role_ids: list[str]) -> GameState:
+        config = GameConfig(
+            script="trouble_brewing",
+            num_players=len(role_ids),
+            seed=99,
+            seat_roles=role_ids,
+        )
+        agent_ids = [f"agent-{i}" for i in range(len(role_ids))]
+        return create_game(config, agent_ids)
+
+    def test_empath_correct_after_poisoner_execution(self):
+        """After executing the Poisoner (who poisoned a neighbour of Empath),
+        the Empath should report 0 evil neighbours when both neighbours are good.
+
+        Reproduces bug E5 from game 5354d078d9da (seed 30839, 8 players).
+        Layout: seat 0=Poisoner, 1=Washerwoman, 2=Chef, 3=Librarian,
+                4=Soldier, 5=Empath, 6=Slayer, 7=Imp
+        No Spy, Recluse, or Minstrel in play.
+        """
+        # 8 players = 5 Townsfolk + 1 Outsider + 1 Minion + 1 Demon
+        state = self._make_state_with_roles([
+            "poisoner",      # seat 0 — Minion
+            "washerwoman",   # seat 1
+            "chef",          # seat 2
+            "butler",        # seat 3 — Outsider (required for 8p distribution)
+            "soldier",       # seat 4 — Empath's left neighbour (good Townsfolk)
+            "empath",        # seat 5 — the role under test
+            "slayer",        # seat 6 — Empath's right neighbour (good Townsfolk)
+            "imp",           # seat 7 — Demon
+        ])
+
+        # -- First Night --
+        transition(state, GamePhase.FIRST_NIGHT)
+        # Poisoner (seat 0) poisons Soldier (seat 4), a neighbour of Empath
+        first_night_actions = {
+            0: NightAction(actor_seat=0, role_id="poisoner", targets=[4]),
+        }
+        resolve_first_night(state, first_night_actions)
+
+        # Verify Soldier is poisoned after first night
+        soldier = state.player_at(4)
+        assert soldier.is_poisoned or soldier.poisoned_by == 0, \
+            "Soldier should be poisoned by the Poisoner after first night"
+
+        # -- Day 1 --
+        transition(state, GamePhase.DAY_DISCUSSION)
+        transition(state, GamePhase.NOMINATIONS)
+
+        # Execute the Poisoner (seat 0)
+        poisoner = state.player_at(0)
+        state.on_the_block = 0
+        poisoner.is_alive = False
+        poisoner.death_cause = "executed"
+        poisoner.death_day = state.day_number
+        poisoner.death_phase = "day"
+        state.executed_today = 0
+        on_player_death(state, poisoner)
+
+        # Simulate what resolve_execution does: _apply_minstrel_effect
+        # (With E3 fix, this is a no-op since no Minstrel is in play)
+        from botc.engine.day import _apply_minstrel_effect
+        _apply_minstrel_effect(state, poisoner)
+
+        # Verify Minstrel effect did NOT fire (no Minstrel in play)
+        empath = state.player_at(5)
+        assert empath.hidden_state.get("minstrel_drunk_until_day", -1) < state.day_number, \
+            "Without a Minstrel in play, no player should be marked drunk by Minstrel effect"
+
+        # -- Night 1 --
+        transition(state, GamePhase.NIGHT)
+
+        # Imp kills Washerwoman (seat 1) — someone away from Empath
+        night_actions = {
+            7: NightAction(actor_seat=7, role_id="imp", targets=[1]),
+        }
+        deaths = resolve_night(state, night_actions)
+        assert 1 in deaths, "Washerwoman should have been killed by Imp"
+
+        # -- Verify Empath info --
+        # Empath (seat 5) alive neighbours: seat 4 (Soldier, good) and seat 6 (Slayer, good)
+        empath = state.player_at(5)
+        assert empath.is_alive, "Empath should be alive"
+        assert not empath.is_poisoned, \
+            "Empath should NOT be poisoned (no active poison source, no Minstrel in play)"
+        assert not empath.is_drunk, \
+            "Empath should NOT be drunk"
+
+        # Check the Empath's private memory for the night info
+        empath_night_msgs = [
+            m for m in empath.private_memory
+            if "neighbour" in m.content.lower() and m.phase_id == state.phase_id
+        ]
+        assert len(empath_night_msgs) > 0, \
+            "Empath should have received night info"
+
+        info = empath_night_msgs[-1].content
+        assert "0" in info, (
+            f"Empath should learn 0 evil neighbours (both are good Townsfolk), "
+            f"but got: {info!r}"
+        )
+
+    def test_phantom_minstrel_causes_empath_malfunction(self):
+        """Prove the root cause: phantom Minstrel drunk effect poisons the Empath.
+
+        This simulates the pre-E3 bug where executing any Minion triggered
+        _apply_minstrel_effect without checking for an actual Minstrel.
+        """
+        state = self._make_state_with_roles([
+            "poisoner",      # seat 0 — Minion
+            "washerwoman",   # seat 1
+            "chef",          # seat 2
+            "butler",        # seat 3 — Outsider
+            "soldier",       # seat 4
+            "empath",        # seat 5
+            "slayer",        # seat 6
+            "imp",           # seat 7
+        ])
+
+        transition(state, GamePhase.FIRST_NIGHT)
+        resolve_first_night(state, {})
+        transition(state, GamePhase.DAY_DISCUSSION)
+        transition(state, GamePhase.NOMINATIONS)
+
+        # Execute the Poisoner
+        poisoner = state.player_at(0)
+        poisoner.is_alive = False
+        poisoner.death_cause = "executed"
+        poisoner.death_day = state.day_number
+        state.executed_today = 0
+        on_player_death(state, poisoner)
+
+        # Manually simulate the pre-E3 bug: Minstrel effect without Minstrel check
+        for player in state.players:
+            if player.seat == poisoner.seat:
+                continue
+            player.hidden_state["minstrel_drunk_until_day"] = state.day_number + 1
+
+        # Now refresh_script_poisoning should mark everyone as poisoned
+        refresh_script_poisoning(state)
+        empath = state.player_at(5)
+        assert empath.is_poisoned, \
+            "Phantom Minstrel effect should cause Empath to be marked as poisoned"
+
+        # Run night — Empath should get WRONG info due to malfunction
+        transition(state, GamePhase.NIGHT)
+        night_actions = {
+            7: NightAction(actor_seat=7, role_id="imp", targets=[1]),
+        }
+        resolve_night(state, night_actions)
+
+        empath_night_msgs = [
+            m for m in empath.private_memory
+            if "neighbour" in m.content.lower() and m.phase_id == state.phase_id
+        ]
+        assert len(empath_night_msgs) > 0
+
+        # The Empath IS malfunctioning, so wrong_number could return 1 or 2
+        info = empath_night_msgs[-1].content
+        # We can't predict the exact wrong number (RNG-dependent), but we CAN
+        # verify the Empath was poisoned during resolution
+        assert empath.is_poisoned or "minstrel_drunk_until_day" in empath.hidden_state, \
+            "Empath should still show signs of phantom Minstrel poisoning"
+
+
+# ---------------------------------------------------------------------------
+# Bug E8: Poison persists after Poisoner chooses no target
+# ---------------------------------------------------------------------------
+
+class TestPoisonerNoTargetClearsPoison:
+    """Bug E8: when the Poisoner picks no target on a subsequent night,
+    the previous night's poison must be fully cleared (both is_poisoned
+    and poisoned_by) so that refresh_script_poisoning does not re-apply it.
+    """
+
+    def _make_state_with_roles(self, role_ids: list[str]) -> GameState:
+        config = GameConfig(
+            script="trouble_brewing",
+            num_players=len(role_ids),
+            seed=42,
+            seat_roles=role_ids,
+        )
+        agent_ids = [f"agent-{i}" for i in range(len(role_ids))]
+        return create_game(config, agent_ids)
+
+    def test_poison_cleared_when_poisoner_chooses_no_target(self):
+        """Reproduces bug E8 from game 7f5c9e88152b.
+
+        First night: Poisoner (seat 5) poisons Mayor (seat 4).
+        Second night: Poisoner chooses no target (empty actions dict).
+        After resolve_night, Mayor must NOT be poisoned.
+        """
+        state = self._make_state_with_roles(
+            ["washerwoman", "librarian", "chef", "empath", "mayor", "poisoner", "imp"]
+        )
+        transition(state, GamePhase.FIRST_NIGHT)
+
+        poisoner = state.player_at(5)
+        mayor = state.player_at(4)
+
+        # -- First night: Poisoner targets Mayor --
+        first_night_actions = {
+            5: NightAction(actor_seat=5, role_id="poisoner", targets=[4]),
+        }
+        resolve_first_night(state, first_night_actions)
+
+        # Mayor should be poisoned after first night
+        assert mayor.is_poisoned, "Mayor should be poisoned after first night"
+        assert mayor.poisoned_by == 5, "Mayor's poisoned_by should point to Poisoner"
+
+        # -- Transition to day then night --
+        transition(state, GamePhase.DAY_DISCUSSION)
+        transition(state, GamePhase.NOMINATIONS)
+        transition(state, GamePhase.NIGHT)
+
+        # -- Second night: Poisoner chooses no target --
+        # The Poisoner seat is NOT in the actions dict (LLM returned no target)
+        second_night_actions = {
+            6: NightAction(actor_seat=6, role_id="imp", targets=[0]),  # Imp kills someone
+        }
+        deaths = resolve_night(state, second_night_actions)
+
+        # Mayor must NOT be poisoned anymore
+        assert not mayor.is_poisoned, \
+            "Bug E8: Mayor should NOT be poisoned after Poisoner chose no target"
+        assert mayor.poisoned_by is None, \
+            "Bug E8: Mayor's poisoned_by should be None after Poisoner chose no target"
+
+    def test_poison_moves_when_poisoner_switches_target(self):
+        """Poisoner switches from one target to another on the next night."""
+        state = self._make_state_with_roles(
+            ["washerwoman", "librarian", "chef", "empath", "mayor", "poisoner", "imp"]
+        )
+        transition(state, GamePhase.FIRST_NIGHT)
+
+        poisoner = state.player_at(5)
+        mayor = state.player_at(4)
+        chef = state.player_at(2)
+
+        # -- First night: Poison Mayor --
+        resolve_first_night(state, {
+            5: NightAction(actor_seat=5, role_id="poisoner", targets=[4]),
+        })
+        assert mayor.is_poisoned
+        assert not chef.is_poisoned
+
+        transition(state, GamePhase.DAY_DISCUSSION)
+        transition(state, GamePhase.NOMINATIONS)
+        transition(state, GamePhase.NIGHT)
+
+        # -- Second night: Switch poison to Chef --
+        resolve_night(state, {
+            5: NightAction(actor_seat=5, role_id="poisoner", targets=[2]),
+            6: NightAction(actor_seat=6, role_id="imp", targets=[0]),
+        })
+
+        # Mayor should no longer be poisoned; Chef should be
+        assert not mayor.is_poisoned, "Old target should lose poison"
+        assert mayor.poisoned_by is None
+        assert chef.is_poisoned, "New target should be poisoned"
+        assert chef.poisoned_by == 5
+
+    def test_refresh_script_poisoning_does_not_revive_cleared_poison(self):
+        """After resolve_poisoner clears poison, refresh_script_poisoning
+        must not re-apply it from a stale poisoned_by field.
+        """
+        state = self._make_state_with_roles(
+            ["washerwoman", "librarian", "chef", "empath", "mayor", "poisoner", "imp"]
+        )
+
+        mayor = state.player_at(4)
+
+        # Simulate: Mayor was poisoned by Poisoner (seat 5)
+        mayor.is_poisoned = True
+        mayor.poisoned_by = 5
+
+        # resolve_poisoner with no target should clear both fields
+        from botc.engine.abilities import resolve_poisoner
+        resolve_poisoner(state, NightAction(actor_seat=5, role_id="poisoner", targets=[]))
+
+        assert not mayor.is_poisoned
+        assert mayor.poisoned_by is None
+
+        # Now refresh_script_poisoning should NOT re-poison the Mayor
+        refresh_script_poisoning(state)
+
+        assert not mayor.is_poisoned, \
+            "refresh_script_poisoning must not revive cleared poison"

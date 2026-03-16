@@ -17,6 +17,7 @@ from .abilities import (
     apply_godfather_bonus_kill,
     refresh_script_poisoning,
     resolve_bmr_demon_kill,
+    resolve_butler,
     resolve_fortune_teller,
     resolve_generic_demon_kill,
     resolve_imp_kill,
@@ -83,12 +84,16 @@ def resolve_first_night(
 
             # Handle action abilities (Poisoner, Fortune Teller, Butler)
             if actual_role_id in FIRST_NIGHT_ACTION_ABILITIES:
-                if action:
+                # Poisoner must always resolve (even with no target) to clear old poison
+                if action or actual_role_id == "poisoner":
+                    effective_action = action or NightAction(
+                        actor_seat=player.seat, role_id=actual_role_id, targets=[]
+                    )
                     info = _invoke_action_ability(
                         FIRST_NIGHT_ACTION_ABILITIES[actual_role_id],
                         state,
                         player,
-                        action,
+                        effective_action,
                     )
                     if info:
                         _deliver_info(state, player, info)
@@ -194,6 +199,16 @@ def resolve_night(
                 info = OTHER_NIGHT_INFO_ABILITIES[effective_role_id](state, player)
                 if info:
                     _deliver_info(state, player, info)
+
+    # Butler's master choice is a passive constraint, not a game effect on others.
+    # If the Butler died earlier this night (e.g. Imp kill), their pre-collected
+    # action was skipped by _can_act_at_night().  Apply it now so butler_master
+    # is always up-to-date for ghost-vote enforcement the next day.
+    # Calling resolve_butler again for an already-processed Butler is harmless
+    # (idempotent — just sets butler_master to the same value).
+    for player in state.players:
+        if player.role.id == "butler" and player.seat in actions:
+            resolve_butler(state, player, actions[player.seat])
 
     # Godfather bonus kill resolves after normal night order.
     bonus_kills = apply_godfather_bonus_kill(state)

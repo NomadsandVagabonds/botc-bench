@@ -119,6 +119,7 @@ def _clear_dead_poisoner_poison(state: GameState) -> None:
         if not poisoner.is_alive:
             for p in state.players:
                 if p.poisoned_by == poisoner.seat:
+                    p.is_poisoned = False
                     p.poisoned_by = None
 
 
@@ -172,12 +173,16 @@ def resolve_night(
 
             # Other action abilities
             if actual_role_id in OTHER_NIGHT_ACTION_ABILITIES:
-                if action:
+                # Poisoner must always resolve (even with no target) to clear old poison
+                if action or actual_role_id == "poisoner":
+                    effective_action = action or NightAction(
+                        actor_seat=player.seat, role_id=actual_role_id, targets=[]
+                    )
                     info = _invoke_action_ability(
                         OTHER_NIGHT_ACTION_ABILITIES[actual_role_id],
                         state,
                         player,
-                        action,
+                        effective_action,
                     )
                     if info:
                         _deliver_info(state, player, info)

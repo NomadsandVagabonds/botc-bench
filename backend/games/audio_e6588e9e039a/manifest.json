@@ -1,0 +1,742 @@
+[
+  {
+    "index": -1,
+    "file": "intro.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "intro",
+    "text": "A long time ago, in the sleepy town of Ravenswood Bluff...",
+    "event_index": -1,
+    "duration_s": 38.591565
+  },
+  {
+    "index": 0,
+    "file": "0000.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Night falls upon the village. The first night begins.",
+    "event_index": 2,
+    "duration_s": 4.551111
+  },
+  {
+    "index": 1,
+    "file": "0001.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Dawn breaks over the village. Day 1 begins. The townsfolk gather to discuss.",
+    "event_index": 7,
+    "duration_s": 6.037188
+  },
+  {
+    "index": 2,
+    "file": "0002.mp3",
+    "speaker": "Gareth",
+    "seat": 0,
+    "type": "public",
+    "text": "Greetings, friends. A dark night indeed\u2014our Storyteller dead, and a Demon among us. I'm Gareth, and ",
+    "event_index": 8,
+    "duration_s": 33.111655
+  },
+  {
+    "index": 3,
+    "file": "0003.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "Greetings, everyone. I am Solveig, and like Gareth, I am committed to uncovering the truth about our",
+    "event_index": 10,
+    "duration_s": 26.006349
+  },
+  {
+    "index": 4,
+    "file": "0004.mp3",
+    "speaker": "Nerys",
+    "seat": 3,
+    "type": "public",
+    "text": "Greetings, all. I'm Nerys, and I share your resolve\u2014this Demon won't claim another soul while I draw",
+    "event_index": 12,
+    "duration_s": 51.3161
+  },
+  {
+    "index": 5,
+    "file": "0005.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Greetings, everyone. I am Valdis, and I stand with the intention of uncovering the truth. Nerys, you",
+    "event_index": 14,
+    "duration_s": 48.483265
+  },
+  {
+    "index": 6,
+    "file": "0006.mp3",
+    "speaker": "Gareth",
+    "seat": 0,
+    "type": "public",
+    "text": "*I take a breath, looking between Solveig and Edwen with measured calm.*\n\nEdwen's mathematics is sou",
+    "event_index": 40,
+    "duration_s": 62.322358
+  },
+  {
+    "index": 7,
+    "file": "0007.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "Alright, everyone, as we regroup, I want to reiterate the importance of clarity in our claims. We ha",
+    "event_index": 41,
+    "duration_s": 44.210794
+  },
+  {
+    "index": 8,
+    "file": "0008.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Alright, listen up everyone. Gareth has hit the nail on the head. My role as the Butler (an Outsider",
+    "event_index": 42,
+    "duration_s": 63.715556
+  },
+  {
+    "index": 9,
+    "file": "0009.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Thank you, everyone, for your insights. I appreciate the emphasis on clarity and information-gatheri",
+    "event_index": 43,
+    "duration_s": 65.294512
+  },
+  {
+    "index": 10,
+    "file": "0010.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Nominations are now open.",
+    "event_index": 44,
+    "duration_s": 1.811156
+  },
+  {
+    "index": 11,
+    "file": "0011.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "system",
+    "text": "Nominations are now open. Each living player may nominate one other player for execution. Each playe",
+    "event_index": 45,
+    "duration_s": 28.235465
+  },
+  {
+    "index": 12,
+    "file": "0012.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "I urge everyone to consider the inconsistencies in our claims. Edwen's assertion that two out of mys",
+    "event_index": 48,
+    "duration_s": 33.250975
+  },
+  {
+    "index": 13,
+    "file": "0013.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Solveig, you've nominated Valdis for their vague claim, and I agree that Valdis's claim is an issue.",
+    "event_index": 50,
+    "duration_s": 28.235465
+  },
+  {
+    "index": 14,
+    "file": "0014.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "I appreciate the concerns raised about my claims, but I urge you to reconsider. While I've presented",
+    "event_index": 53,
+    "duration_s": 37.523447
+  },
+  {
+    "index": 15,
+    "file": "0015.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "system",
+    "text": "Solveig (Seat 1) nominates Valdis (Seat 4) for execution.",
+    "event_index": 55,
+    "duration_s": 6.640907
+  },
+  {
+    "index": 16,
+    "file": "0016.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "accusation",
+    "text": "Fellow townsfolk, I stand before you today to nominate Valdis for execution. My suspicions have grow",
+    "event_index": 57,
+    "duration_s": 34.319093
+  },
+  {
+    "index": 17,
+    "file": "0017.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "defense",
+    "text": "Fellow townsfolk, I stand before you not as a Demon, but as a loyal member of our community fighting",
+    "event_index": 59,
+    "duration_s": 38.034286
+  },
+  {
+    "index": 18,
+    "file": "0018.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Nominations are now open.",
+    "event_index": 67,
+    "duration_s": 2.136236
+  },
+  {
+    "index": 19,
+    "file": "0019.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "Fellow townsfolk, our attempt to execute Valdis has not gone as planned, but we must remain vigilant",
+    "event_index": 70,
+    "duration_s": 26.517188
+  },
+  {
+    "index": 20,
+    "file": "0020.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Solveig, you nominated Valdis and then didn't even vote for your own nomination. That's a strange wa",
+    "event_index": 72,
+    "duration_s": 18.901043
+  },
+  {
+    "index": 21,
+    "file": "0021.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Fellow townsfolk, while I appreciate the caution exercised during this tense moment, I urge you to r",
+    "event_index": 75,
+    "duration_s": 30.000181
+  },
+  {
+    "index": 22,
+    "file": "0022.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "system",
+    "text": "Edwen (Seat 2) nominates Solveig (Seat 1) for execution.",
+    "event_index": 77,
+    "duration_s": 5.851429
+  },
+  {
+    "index": 23,
+    "file": "0023.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "accusation",
+    "text": "Solveig, the Storyteller is dead, and the silence is deafening. Someone here is a killer, and your c",
+    "event_index": 79,
+    "duration_s": 15.650249
+  },
+  {
+    "index": 24,
+    "file": "0024.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "defense",
+    "text": "Edwen, while I appreciate your concern, I must remind you that calmness does not equate to guilt. As",
+    "event_index": 81,
+    "duration_s": 22.941315
+  },
+  {
+    "index": 25,
+    "file": "0025.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Nominations are now open.",
+    "event_index": 89,
+    "duration_s": 1.996916
+  },
+  {
+    "index": 26,
+    "file": "0026.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "Edwen, your accusation against me is both unwarranted and perplexing. Calmness in the face of chaos ",
+    "event_index": 92,
+    "duration_s": 27.445986
+  },
+  {
+    "index": 27,
+    "file": "0027.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "I appreciate Edwen's attempt to stir the pot, but I must stress that calmness can often lead to clar",
+    "event_index": 96,
+    "duration_s": 31.393379
+  },
+  {
+    "index": 28,
+    "file": "0028.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "system",
+    "text": "Valdis (Seat 4) nominates Edwen (Seat 2) for execution.",
+    "event_index": 98,
+    "duration_s": 5.665669
+  },
+  {
+    "index": 29,
+    "file": "0029.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "accusation",
+    "text": "Fellow townsfolk, I stand before you today to nominate Edwen for execution, for their behavior has r",
+    "event_index": 100,
+    "duration_s": 38.823764
+  },
+  {
+    "index": 31,
+    "file": "0031.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Nominations are now open.",
+    "event_index": 110,
+    "duration_s": 2.229116
+  },
+  {
+    "index": 32,
+    "file": "0032.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "I find Valdis's nomination of Edwen to be quite suspicious, especially given their vague claim of be",
+    "event_index": 113,
+    "duration_s": 23.870113
+  },
+  {
+    "index": 33,
+    "file": "0033.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Valdis, your accusation is a blatant lie! I did not engage in any whispers with anyone last night. T",
+    "event_index": 115,
+    "duration_s": 21.223039
+  },
+  {
+    "index": 34,
+    "file": "0034.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Fellow townsfolk, I see that my nomination of Edwen has failed, but I urge you to consider the incon",
+    "event_index": 118,
+    "duration_s": 29.303583
+  },
+  {
+    "index": 35,
+    "file": "0035.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Darkness descends. Night 1 begins.",
+    "event_index": 119,
+    "duration_s": 3.622313
+  },
+  {
+    "index": 36,
+    "file": "0036.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narration",
+    "text": "A haunted chair finally achieved its lifelong dream of revenge, folding Edwen in half like a love le",
+    "event_index": 125,
+    "duration_s": 7.662585
+  },
+  {
+    "index": 37,
+    "file": "0037.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Dawn breaks over the village. Day 2 begins. The townsfolk gather to discuss.",
+    "event_index": 127,
+    "duration_s": 6.687347
+  },
+  {
+    "index": 38,
+    "file": "0038.mp3",
+    "speaker": "Gareth",
+    "seat": 0,
+    "type": "public",
+    "text": "Edwen is dead. A good player, a sharp thinker, and a threat to whoever walks among us as the Demon.\n",
+    "event_index": 128,
+    "duration_s": 59.118005
+  },
+  {
+    "index": 39,
+    "file": "0039.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "Fellow townsfolk, Edwen's death has left us with a crucial opportunity to assess the remaining playe",
+    "event_index": 130,
+    "duration_s": 42.771156
+  },
+  {
+    "index": 40,
+    "file": "0040.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Listen to me! I am dead, murdered by the Demon, a good player gone! Gareth is right, Valdis, you lie",
+    "event_index": 132,
+    "duration_s": 42.167438
+  },
+  {
+    "index": 41,
+    "file": "0041.mp3",
+    "speaker": "Nerys",
+    "seat": 3,
+    "type": "public",
+    "text": "*I sit forward, my expression troubled.*\n\nHold on. Everyone's focused on Valdis right now, but I nee",
+    "event_index": 133,
+    "duration_s": 64.133515
+  },
+  {
+    "index": 42,
+    "file": "0042.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Fellow townsfolk, I appreciate the gravity of our situation following Edwen's tragic demise. However",
+    "event_index": 134,
+    "duration_s": 64.597914
+  },
+  {
+    "index": 43,
+    "file": "0043.mp3",
+    "speaker": "Gareth",
+    "seat": 0,
+    "type": "public",
+    "text": "*I stand up, addressing the full group with clarity and conviction*\n\nAlright, everyone. Here's what ",
+    "event_index": 161,
+    "duration_s": 59.489524
+  },
+  {
+    "index": 44,
+    "file": "0044.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "Everyone, I appreciate the urgency of our discussions. As the Ravenkeeper, I want to clarify that I ",
+    "event_index": 162,
+    "duration_s": 44.628753
+  },
+  {
+    "index": 45,
+    "file": "0045.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Listen closely, all of you, for I can no longer speak after this, should my ghost vote be cast.\n\nSol",
+    "event_index": 163,
+    "duration_s": 68.916825
+  },
+  {
+    "index": 46,
+    "file": "0046.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Fellow townsfolk, while I understand the gravity of the accusations, we must examine the facts caref",
+    "event_index": 164,
+    "duration_s": 58.978685
+  },
+  {
+    "index": 47,
+    "file": "0047.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Nominations are now open.",
+    "event_index": 165,
+    "duration_s": 2.136236
+  },
+  {
+    "index": 48,
+    "file": "0048.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "system",
+    "text": "Nominations are now open. Each living player may nominate one other player for execution. Each playe",
+    "event_index": 166,
+    "duration_s": 28.281905
+  },
+  {
+    "index": 49,
+    "file": "0049.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "Valdis's attempts to redirect suspicion onto me raise serious concerns about their true intentions. ",
+    "event_index": 169,
+    "duration_s": 27.910385
+  },
+  {
+    "index": 50,
+    "file": "0050.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Both Solveig and Valdis are demonstrably evil. Solveig's entire defense of her Ravenkeeper role is b",
+    "event_index": 171,
+    "duration_s": 31.021859
+  },
+  {
+    "index": 51,
+    "file": "0051.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Fellow townsfolk, while I understand the weight of the accusations against me, I urge you to scrutin",
+    "event_index": 174,
+    "duration_s": 36.548209
+  },
+  {
+    "index": 52,
+    "file": "0052.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "system",
+    "text": "Gareth (Seat 0) nominates Valdis (Seat 4) for execution.",
+    "event_index": 176,
+    "duration_s": 5.944308
+  },
+  {
+    "index": 53,
+    "file": "0053.mp3",
+    "speaker": "Gareth",
+    "seat": 0,
+    "type": "accusation",
+    "text": "Friends of Ravenswood, I nominate Valdis because their story doesn't hold water. They've been too qu",
+    "event_index": 178,
+    "duration_s": 23.962993
+  },
+  {
+    "index": 54,
+    "file": "0054.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "defense",
+    "text": "Friends of Ravenswood, I understand your concerns, but let\u2019s not rush to judgment. My quiet demeanor",
+    "event_index": 180,
+    "duration_s": 32.554376
+  },
+  {
+    "index": 55,
+    "file": "0055.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Nominations are now open.",
+    "event_index": 188,
+    "duration_s": 1.904036
+  },
+  {
+    "index": 56,
+    "file": "0056.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "I stand firm in my belief that Valdis has not been forthcoming with vital information, and their shi",
+    "event_index": 191,
+    "duration_s": 27.771066
+  },
+  {
+    "index": 57,
+    "file": "0057.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Solveig, you claim Ravenkeeper, you were pushed by Gareth and me on Valdis, yet you abstained or vot",
+    "event_index": 193,
+    "duration_s": 16.253968
+  },
+  {
+    "index": 58,
+    "file": "0058.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Friends of Ravenswood, I implore you to reconsider this rush to judgment against me. We should focus",
+    "event_index": 196,
+    "duration_s": 23.684354
+  },
+  {
+    "index": 59,
+    "file": "0059.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "system",
+    "text": "Valdis (Seat 4) nominates Solveig (Seat 1) for execution.",
+    "event_index": 198,
+    "duration_s": 6.455147
+  },
+  {
+    "index": 60,
+    "file": "0060.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "accusation",
+    "text": "Fellow townsfolk, we must act decisively against the evil lurking among us, and I believe Solveig is",
+    "event_index": 200,
+    "duration_s": 39.195283
+  },
+  {
+    "index": 61,
+    "file": "0061.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "defense",
+    "text": "Fellow townsfolk, I must implore you to reconsider this accusation against me. I stand before you as",
+    "event_index": 202,
+    "duration_s": 34.319093
+  },
+  {
+    "index": 62,
+    "file": "0062.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "Nominations are now open.",
+    "event_index": 209,
+    "duration_s": 2.368435
+  },
+  {
+    "index": 63,
+    "file": "0063.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "public",
+    "text": "Fellow townsfolk, I urge you to see the truth in Valdis's defense! Their attempt to shift blame onto",
+    "event_index": 212,
+    "duration_s": 22.987755
+  },
+  {
+    "index": 64,
+    "file": "0064.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "public",
+    "text": "Valdis's lie about me whispering sealed my fate, and now the town has sealed hers. It's clear she's ",
+    "event_index": 214,
+    "duration_s": 14.210612
+  },
+  {
+    "index": 65,
+    "file": "0065.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "public",
+    "text": "Fellow townsfolk, it seems my plea for justice against Solveig has fallen on deaf ears. However, I u",
+    "event_index": 217,
+    "duration_s": 24.891791
+  },
+  {
+    "index": 66,
+    "file": "0066.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "The votes have been counted.",
+    "event_index": 218,
+    "duration_s": 1.904036
+  },
+  {
+    "index": 67,
+    "file": "0067.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "The game is over. The good team is victorious.",
+    "event_index": 221,
+    "duration_s": 5.479909
+  },
+  {
+    "index": 68,
+    "file": "0068.mp3",
+    "speaker": "Narrator",
+    "seat": null,
+    "type": "narrator",
+    "text": "The Grimoire is revealed. Let us hear from the players.",
+    "event_index": 222,
+    "duration_s": 4.87619
+  },
+  {
+    "index": 69,
+    "file": "0069.mp3",
+    "speaker": "Gareth",
+    "seat": 0,
+    "type": "debrief",
+    "text": "Well, I'll be damned \u2014 I was completely making stuff up the whole time and we *still* won! So much f",
+    "event_index": 228,
+    "duration_s": 20.944399
+  },
+  {
+    "index": 70,
+    "file": "0070.mp3",
+    "speaker": "Solveig",
+    "seat": 1,
+    "type": "debrief",
+    "text": "Wow, I can\u2019t believe we actually pulled it off! I had my doubts with the Drunk claiming to be the Vi",
+    "event_index": 229,
+    "duration_s": 15.882449
+  },
+  {
+    "index": 71,
+    "file": "0071.mp3",
+    "speaker": "Edwen",
+    "seat": 2,
+    "type": "debrief",
+    "text": "A Drunk thought they were a Virgin! That's absolutely classic and explains so much. Glad my death as",
+    "event_index": 230,
+    "duration_s": 14.582132
+  },
+  {
+    "index": 72,
+    "file": "0072.mp3",
+    "speaker": "Nerys",
+    "seat": 3,
+    "type": "debrief",
+    "text": "Well, that's rough! I thought I had a solid read on everyone, but clearly the Drunk was doing exactl",
+    "event_index": 231,
+    "duration_s": 23.452154
+  },
+  {
+    "index": 73,
+    "file": "0073.mp3",
+    "speaker": "Valdis",
+    "seat": 4,
+    "type": "debrief",
+    "text": "Well, that was a twist! I guess being the Imp wasn\u2019t enough to keep me in the game. Kudos to the goo",
+    "event_index": 232,
+    "duration_s": 17.554286
+  }
+]

@@ -50,7 +50,34 @@ export interface ConfiguredGameRequest {
   seat_roles?: string[];  // optional pre-assigned role IDs per seat
   seed?: number;
   max_days?: number;
-  reveal_models?: boolean;
+  reveal_models?: string; // "true" | "false" | "scramble"
+  share_stats?: boolean;
+}
+
+// ── Model stats types ────────────────────────────────────────────────
+
+export interface AlignmentStats {
+  played: number;
+  wins: number;
+  win_rate: number;
+}
+
+export interface ModelStats {
+  games_played: number;
+  as_good: AlignmentStats;
+  as_evil: AlignmentStats;
+  as_demon: AlignmentStats;
+}
+
+export interface ModelStatsResponse {
+  models: Record<string, ModelStats>;
+  rankings: {
+    good: string[];
+    evil: string[];
+    demon: string[];
+    overall: string[];
+  };
+  total_games: number;
 }
 
 export interface GameStatusResponse {
@@ -109,4 +136,43 @@ export async function getGameStatus(id: string): Promise<GameStatusResponse> {
 /** Stop a running game immediately. */
 export async function stopGame(id: string): Promise<{ status: string; message: string }> {
   return request(`/api/games/${id}/stop`, { method: 'POST' });
+}
+
+/** Fetch per-model historical stats and rankings. */
+export async function getModelStats(): Promise<ModelStatsResponse> {
+  return request<ModelStatsResponse>('/api/stats/models');
+}
+
+// ── Audio / TTS ─────────────────────────────────────────────────────
+
+export interface AudioClip {
+  index: number;
+  file: string | null;
+  speaker: string;
+  seat: number | null;
+  type: string;
+  text: string;
+  event_index: number;
+  duration_s: number;
+  error?: string;
+}
+
+export interface AudioManifest {
+  game_id: string;
+  clips: AudioClip[];
+}
+
+/** Fetch the TTS audio manifest for a game. */
+export async function getAudioManifest(gameId: string): Promise<AudioManifest> {
+  return request<AudioManifest>(`/api/games/${gameId}/audio/manifest`);
+}
+
+/** Get the URL for an individual audio clip. */
+export function getAudioClipUrl(gameId: string, filename: string): string {
+  return `${BASE_URL}/api/games/${gameId}/audio/${filename}`;
+}
+
+/** Trigger TTS generation for a game (idempotent). */
+export async function generateGameAudio(gameId: string): Promise<{ clips_generated: number }> {
+  return request(`/api/games/${gameId}/audio/generate`, { method: 'POST' });
 }

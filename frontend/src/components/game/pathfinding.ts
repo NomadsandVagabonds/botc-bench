@@ -77,15 +77,26 @@ for (const [a, b] of EDGES) {
 
 // ---------------------------------------------------------------------------
 // Clocktower occlusion zone
-// The tower occupies roughly x: 38-62%, y: 25-58% of the map.
-// Sprites with their center in this zone should go behind the tower.
+// The tower has an isometric shape — narrower at top, wider at base.
+// We define it as a series of horizontal slices rather than one rectangle.
+// Coordinates are in % of map dimensions.
 // ---------------------------------------------------------------------------
 
-const TOWER_BOUNDS = { x1: 36, x2: 64, y1: 20, y2: 55 };
+// Each slice: [yTop, yBottom, xLeft, xRight]
+const TOWER_SLICES: [number, number, number, number][] = [
+  [10, 20, 44, 56],   // bell/peak — very narrow
+  [20, 30, 40, 60],   // upper tower
+  [30, 42, 38, 62],   // mid tower (clock face area)
+  [42, 52, 37, 63],   // lower tower / base
+];
 
 export function isBehindTower(x: number, y: number): boolean {
-  return x > TOWER_BOUNDS.x1 && x < TOWER_BOUNDS.x2
-      && y > TOWER_BOUNDS.y1 && y < TOWER_BOUNDS.y2;
+  for (const [yTop, yBot, xLeft, xRight] of TOWER_SLICES) {
+    if (y >= yTop && y <= yBot && x >= xLeft && x <= xRight) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -205,20 +216,20 @@ function lineIntersectsTower(a: Point, b: Point): boolean {
  *  All on cobblestone paths, clear of buildings and tower. */
 export const TOWN_POSITIONS: Point[] = [
   [22, 50],              // seat 0 - left path
-  [28, 36],              // seat 1 - upper-left path
-  [38, 28],              // seat 2 - left of tower front
-  [50, 24],              // seat 3 - tower front
-  [62, 28],              // seat 4 - right of tower front
-  [72, 36],              // seat 5 - upper-right path
+  [25, 36],              // seat 1 - upper-left path
+  [30, 26],              // seat 2 - far left of tower
+  [50, 14],              // seat 3 - above tower
+  [70, 26],              // seat 4 - far right of tower
+  [75, 36],              // seat 5 - upper-right path
   [78, 50],              // seat 6 - right path
-  [72, 64],              // seat 7 - lower-right path
-  [62, 72],              // seat 8 - bottom-right
-  [50, 76],              // seat 9 - bottom center
-  [38, 72],              // seat 10 - bottom-left
-  [28, 64],              // seat 11 - lower-left path
-  [25, 58],              // seat 12 - mid-left
-  [35, 55],              // seat 13 - inner left
-  [65, 55],              // seat 14 - inner right
+  [72, 66],              // seat 7 - lower-right path
+  [62, 74],              // seat 8 - bottom-right
+  [50, 78],              // seat 9 - bottom center
+  [38, 74],              // seat 10 - bottom-left
+  [28, 66],              // seat 11 - lower-left path
+  [22, 58],              // seat 12 - mid-left
+  [28, 55],              // seat 13 - inner left (clear of tower)
+  [72, 55],              // seat 14 - inner right (clear of tower)
 ];
 
 /** Breakout group gathering positions (near buildings). */

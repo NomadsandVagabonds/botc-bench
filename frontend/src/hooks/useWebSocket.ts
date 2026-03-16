@@ -71,7 +71,7 @@ function normalizeEvent(raw: { type: string; data: any }): ServerEvent | null {
     case 'phase.change':
       // Don't default dayNumber to 0 — use undefined so the store preserves
       // the previous day when backend omits it (e.g. nominations resume)
-      return { type: 'phase.change', phase: data?.phase, dayNumber: data?.day } as any;
+      return { type: 'phase.change', phase: data?.phase, dayNumber: data?.day, playerStatuses: data?.player_statuses } as any;
     case 'message.new': {
       // Map backend message types to frontend MessageType values
       let msgType = data?.type ?? 'public';
@@ -139,15 +139,19 @@ function normalizeEvent(raw: { type: string; data: any }): ServerEvent | null {
     case 'game.over':
       return { type: 'game.over', winner: data?.winner, winCondition: data?.reason } as any;
     case 'whisper.notification':
-      return { type: 'whisper.notification', message: { id: crypto.randomUUID(), type: 'whisper_notification', phaseId: '', senderSeat: data?.from, content: `Seat ${data?.from} whispered to Seat ${data?.to}`, timestamp: Date.now() } } as any;
+      return { type: 'whisper.notification', fromSeat: data?.from, toSeat: data?.to, whisperContent: data?.content ?? '', message: { id: crypto.randomUUID(), type: 'whisper_notification', phaseId: '', senderSeat: data?.from, content: `Seat ${data?.from} whispered to Seat ${data?.to}`, timestamp: Date.now() } } as any;
     case 'event.history': {
       // Batch of historical events from before this client connected.
       // Normalize each sub-event and collect the valid ones.
+      // Tag each with its raw index so audio sync can map clips to events.
       const rawEvents: Array<{ type: string; data: any }> = data?.events ?? [];
       const normalized: ServerEvent[] = [];
-      for (const rawEvt of rawEvents) {
-        const evt = normalizeEvent(rawEvt);
-        if (evt) normalized.push(evt);
+      for (let i = 0; i < rawEvents.length; i++) {
+        const evt = normalizeEvent(rawEvents[i]);
+        if (evt) {
+          (evt as any)._rawIndex = i;
+          normalized.push(evt);
+        }
       }
       return { type: 'event.history', events: normalized } as any;
     }

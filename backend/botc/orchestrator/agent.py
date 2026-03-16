@@ -13,7 +13,7 @@ from botc.comms.context_manager import build_agent_context
 from botc.engine.types import GameState, Player
 from botc.llm.prompt_builder import build_system_prompt
 from botc.llm.provider import AgentConfig, LLMProvider, LLMResponse, ProviderFactory
-from botc.llm.response_parser import ParsedResponse, parse_response
+from botc.llm.response_parser import ParsedResponse, parse_response, resolve_names_to_seats
 from botc.llm.token_tracker import TokenTracker
 
 logger = logging.getLogger(__name__)
@@ -70,12 +70,12 @@ class Agent:
         # Single-message conversation: just the current context
         messages = [{"role": "user", "content": context}]
 
-        # Call LLM
+        # Call LLM — 4096 tokens to avoid truncating verbose models
         response: LLMResponse = await self.provider.complete_with_retry(
             system_prompt=self._system_prompt,
             messages=messages,
             temperature=self.llm_config.temperature,
-            max_tokens=2048,
+            max_tokens=4096,
         )
 
         # Track tokens
@@ -88,8 +88,10 @@ class Agent:
             latency_ms=response.latency_ms,
         )
 
-        # Parse the response
+        # Parse the response and resolve character names to seat numbers
         parsed = parse_response(response.content)
+        name_map = {p.character_name.lower(): p.seat for p in state.players if p.character_name}
+        resolve_names_to_seats(parsed, name_map)
 
         # Store memory if provided
         if parsed.memory:

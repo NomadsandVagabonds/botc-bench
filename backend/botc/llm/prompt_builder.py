@@ -72,6 +72,14 @@ def build_system_prompt(player: Player, state: GameState) -> str:
         else ""
     )
 
+    # Model performance stats (only when both flags are on)
+    stats_block = ""
+    if state.config.share_stats and state.config.reveal_models in (True, "true"):
+        from botc.api.stats import build_stats_prompt_section
+        stats_section = build_stats_prompt_section()
+        if stats_section:
+            stats_block = f"\n{stats_section}\n"
+
     return f"""\
 You are playing Blood on the Clocktower, a social deduction game.
 You are {player.character_name}, a resident of the sleepy medieval town of Ravenswood Bluff.
@@ -145,7 +153,7 @@ SOCIAL TACTICS (optional — use what feels natural):
 - These are suggestions, not rules. Play however feels right for the situation.
 
 {RESPONSE_FORMAT}
-
+{stats_block}
 ROLE REFERENCE:
 {role_reference}
 """

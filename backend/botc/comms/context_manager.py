@@ -58,15 +58,22 @@ def build_game_state_summary(player: Player, state: GameState) -> str:
 
     reveal = state.config.reveal_models
 
+    def _model_tag(p: "Player", is_self: bool) -> str:
+        """Build model tag based on reveal mode."""
+        if is_self:
+            return f" [{p.model_name}]" if p.model_name else ""
+        if reveal in (True, "true", "scramble"):
+            name = p.display_model_name or p.model_name
+            return f" [{name}]" if name else ""
+        return ""
+
     # Alive players
     lines.append("")
     lines.append("ALIVE PLAYERS:")
     for p in alive:
         you = " ← YOU" if p.seat == player.seat else ""
-        model_tag = ""
-        if p.model_name and (reveal or p.seat == player.seat):
-            model_tag = f" [{p.model_name}]"
-        lines.append(f"  Seat {p.seat}: {p.character_name}{model_tag}{you}")
+        tag = _model_tag(p, p.seat == player.seat)
+        lines.append(f"  Seat {p.seat}: {p.character_name}{tag}{you}")
 
     # Dead players
     if dead:
@@ -75,10 +82,8 @@ def build_game_state_summary(player: Player, state: GameState) -> str:
         for p in dead:
             ghost = "ghost vote available" if not p.ghost_vote_used else "ghost vote USED"
             you = " ← YOU" if p.seat == player.seat else ""
-            model_tag = ""
-            if p.model_name and (reveal or p.seat == player.seat):
-                model_tag = f" [{p.model_name}]"
-            lines.append(f"  Seat {p.seat}: {p.character_name}{model_tag} ({ghost}){you}")
+            tag = _model_tag(p, p.seat == player.seat)
+            lines.append(f"  Seat {p.seat}: {p.character_name}{tag} ({ghost}){you}")
 
     # Recent deaths/executions summary
     if state.executed_today is not None:
@@ -341,12 +346,35 @@ def build_phase_instructions(player: Player, state: GameState) -> str:
         return _night_instructions(player, state, first_night=False)
 
     if phase == GamePhase.DAY_DISCUSSION:
+        if state.day_number <= 1:
+            return (
+                "It is the open discussion phase (Day 1).\n"
+                "Day 1 — most characters have very little information. If you have night information "
+                "or false information you think it is strategic to share at the beginning, share it "
+                "in 2-3 sentences. If you have nothing to share, use {PASS} to stay silent — "
+                "padding with 'I'm listening' adds nothing. Save discussion for breakout groups."
+            )
         return (
-            "It is the open discussion phase. You may address all players.\n"
+            f"It is the open discussion phase (Day {state.day_number}).\n"
             "Speak publicly to share information, make accusations, or defend yourself."
         )
 
     if phase == GamePhase.DAY_BREAKOUT:
+        # Check if we're in group preference phase (no groups formed yet for this round)
+        current_round_groups = [
+            g for g in state.breakout_groups if g.round_number == state.breakout_round
+        ]
+        if not current_round_groups:
+            return (
+                f"It is breakout round {state.breakout_round}. Time to split into small groups.\n"
+                "Choose a group to join or create a new one:\n"
+                "  - Use {JOIN: group_a}, {JOIN: group_b}, or {JOIN: group_c} to join a named group\n"
+                "  - Use {CREATE_GROUP} to start a new group\n"
+                "Think strategically about who you want to talk to privately. "
+                "Evil players might want to group with their allies. "
+                "Good players might want to split up information roles across groups.\n"
+                "You MUST use one of these actions — do not just talk."
+            )
         return (
             f"It is breakout round {state.breakout_round}. "
             "You are in a small group. Speak to your group members.\n"
@@ -406,10 +434,32 @@ def _night_instructions(player: Player, state: GameState, *, first_night: bool) 
             "You will receive any relevant information when the night ends."
         )
 
+    # Build explicit action instruction based on role type
+    if role.id == "poisoner":
+        action_hint = "Use {NIGHT_TARGET: <seat_number>} to choose who to poison tonight."
+    elif role.id in ("imp", "fang_gu", "no_dashii", "vortox", "po", "pukka", "shabaloth", "zombuul", "vigormortis"):
+        action_hint = "Use {NIGHT_TARGET: <seat_number>} to choose who to kill tonight."
+    elif role.id == "monk":
+        action_hint = "Use {NIGHT_TARGET: <seat_number>} to choose who to protect tonight."
+    elif role.id == "fortune_teller":
+        action_hint = "Use {NIGHT_TARGET_TWO: <seat1>, <seat2>} to choose two players to divine."
+    elif role.id == "butler":
+        action_hint = "Use {NIGHT_TARGET: <seat_number>} to choose your master."
+    elif role.id == "ravenkeeper":
+        action_hint = "Use {NIGHT_TARGET: <seat_number>} to choose a player to learn the role of."
+    else:
+        action_hint = "Use {NIGHT_TARGET: <seat_number>} in your ACTION to select your target."
+
+    # List eligible targets — name with seat number for the action command
+    eligible = [p for p in state.players if p.seat != player.seat and p.is_alive]
+    target_list = ", ".join(f"{p.character_name} ({p.seat})" for p in eligible)
+
     return (
-        f"It is night. As the {role.name}, you must use your ability.\n"
-        f"Ability: {role.ability_text}\n"
-        "Choose your target(s)."
+        f"It is night. As the {role.name}, you MUST use your ability now.\n"
+        f"Ability: {role.ability_text}\n\n"
+        f"{action_hint}\n"
+        f"Eligible targets: {target_list}\n\n"
+        "You MUST include the action in your <ACTION> block or your ability will not activate."
     )
 
 

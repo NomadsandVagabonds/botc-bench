@@ -210,9 +210,24 @@ class GameRunner:
         self._validate_roles_match_script(state)
 
         # Create agents and store model info on players
+        all_model_ids = [c.model for c in self.agent_configs]
         for i, config in enumerate(self.agent_configs):
             player = state.players[i]
             player.model_name = config.model
+            # Set display name based on reveal_models mode
+            reveal = state.config.reveal_models
+            if reveal in (True, "true"):
+                player.display_model_name = config.model
+            elif reveal == "scramble":
+                # Assign a random (mostly incorrect) model name from the pool
+                import random as _rng
+                other_models = [m for m in all_model_ids if m != config.model]
+                if other_models:
+                    player.display_model_name = _rng.choice(other_models)
+                else:
+                    player.display_model_name = config.model  # fallback if all same model
+            else:
+                player.display_model_name = ""
             agent = Agent(player, config, self.token_tracker)
             agent.initialize(state)
             self.agents[i] = agent
@@ -682,6 +697,7 @@ class GameRunner:
                         self._emit("whisper.notification", {
                             "from": player.seat,
                             "to": action.target,
+                            "content": action.value or "",
                         })
                     except ValueError as e:
                         logger.warning("Whisper failed: %s", e)
@@ -1820,6 +1836,20 @@ class GameRunner:
     # -------------------------------------------------------------------
 
     def _emit(self, event_type: str, data: dict) -> None:
+        # For phase.change events, include current player status flags
+        # so the frontend can update poison/drunk/protected indicators
+        if event_type == "phase.change" and self.state:
+            data["player_statuses"] = [
+                {
+                    "seat": p.seat,
+                    "is_alive": p.is_alive,
+                    "is_poisoned": p.is_poisoned,
+                    "is_drunk": p.is_drunk,
+                    "is_protected": p.is_protected,
+                }
+                for p in self.state.players
+            ]
+
         # Record every broadcast event for late-joining WebSocket clients
         self.event_history.append({"type": event_type, "data": data})
         try:

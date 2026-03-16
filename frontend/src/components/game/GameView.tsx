@@ -24,16 +24,50 @@ export function GameView() {
   useReplayController();
   const gameState = useGameStore((s) => s.gameState);
   const replayMode = useGameStore((s) => s.replayMode);
+  const masterVolume = useGameStore((s) => s.masterVolume);
+  const musicVolume = useGameStore((s) => s.musicVolume);
+  const voiceVolume = useGameStore((s) => s.voiceVolume);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const introPlayedRef = useRef(false);
   const [muted, setMuted] = useState(false);
   const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Play narrator intro once when game state loads (for any game — live or replay)
+  useEffect(() => {
+    if (!gameState || introPlayedRef.current) return;
+    // For replay mode, the replay controller handles the intro clip — skip here
+    if (replayMode) return;
+    introPlayedRef.current = true;
+
+    const intro = new Audio('/intro.mp3');
+    intro.volume = masterVolume * voiceVolume;
+    intro.play().catch(() => {
+      // Autoplay blocked — will play on first interaction
+      const unlock = () => {
+        intro.volume = masterVolume * voiceVolume;
+        intro.play().catch(() => {});
+        window.removeEventListener('pointerdown', unlock);
+      };
+      window.addEventListener('pointerdown', unlock, { once: true });
+    });
+
+    return () => { intro.pause(); intro.src = ''; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, replayMode]);
+
+  // Sync game music volume from store
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = masterVolume * musicVolume;
+    }
+  }, [masterVolume, musicVolume]);
 
   const playAudio = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    audio.volume = 0.35;
+    audio.volume = masterVolume * musicVolume;
     audio.loop = true;
     audio.muted = muted;
 

@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   findPath,
   spriteZIndex,
+  isBehindTower,
   TOWN_POSITIONS,
   GROUP_DESTINATIONS,
   CIRCLE_CENTER,
@@ -42,14 +43,18 @@ const WALK_SPEED = 2.5;
 // ---------------------------------------------------------------------------
 
 function randomNearby(base: Point, seat: number): Point {
-  // Small jitter so each seat wanders near their spot, not into buildings
+  // Small jitter so each seat wanders near their spot, avoiding the tower zone
   const t = Date.now() * 0.001 + seat * 137;
   const dx = Math.sin(t) * 3;
   const dy = Math.cos(t * 1.3) * 2;
-  return [
-    Math.max(15, Math.min(85, base[0] + dx)),
-    Math.max(25, Math.min(82, base[1] + dy)),
-  ];
+  let nx = Math.max(15, Math.min(85, base[0] + dx));
+  let ny = Math.max(15, Math.min(82, base[1] + dy));
+  // Push out of tower bounds if wandering drifted in
+  if (isBehindTower(nx, ny)) {
+    if (nx < 50) nx = 35;
+    else nx = 65;
+  }
+  return [nx, ny];
 }
 
 interface WalkingSpriteProps {
@@ -69,12 +74,13 @@ interface WalkingSpriteProps {
   isPoisoned: boolean;
   isDrunk: boolean;
   isProtected: boolean;
+  isTalking: boolean;
   onClick: () => void;
 }
 
 function WalkingSprite({
   seat, target, isIdle, isNight, color, isDead, isSelected, isEvil,
-  showObserverInfo, agentId, characterName, modelName, role, isPoisoned, isDrunk, isProtected, onClick,
+  showObserverInfo, agentId, characterName, modelName, role, isPoisoned, isDrunk, isProtected, isTalking, onClick,
 }: WalkingSpriteProps) {
   const [currentPos, setCurrentPos] = useState<Point>(target);
   const [pathPoints, setPathPoints] = useState<Point[]>([]);
@@ -162,7 +168,7 @@ function WalkingSprite({
   const zIndex = spriteZIndex(x, y);
 
   const spriteFilter = isDead
-    ? 'grayscale(0.8) brightness(0.6) opacity(0.5)'
+    ? 'grayscale(0.8) brightness(0.6)'
     : isSelected
     ? `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 12px ${color}66)`
     : (showObserverInfo && isEvil)
@@ -179,6 +185,7 @@ function WalkingSprite({
         alignItems: 'center',
         zIndex,
         cursor: 'pointer',
+        opacity: isDead ? 0.7 : 1,
       }}
       animate={{
         left: `${x}%`,
@@ -207,8 +214,17 @@ function WalkingSprite({
           display: isMoving ? 'block' : 'none',
         }}
       />
-      <canvas
+      <motion.canvas
         ref={canvasRef}
+        animate={!isMoving ? {
+          rotate: [0, -1.5, 0, 1.5, 0],
+          y: [0, -1, 0, -1, 0],
+        } : {}}
+        transition={!isMoving ? {
+          duration: 3 + seat * 0.3,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        } : {}}
         style={{
           width: '6vw',
           minWidth: 48,
@@ -279,10 +295,9 @@ function WalkingSprite({
             <motion.div
               style={{
                 position: 'absolute',
-                top: -28,
+                top: -30,
                 left: '50%',
                 transform: 'translateX(-50%)',
-                fontSize: 22,
                 pointerEvents: 'none',
                 filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))',
                 zIndex: 1,
@@ -290,7 +305,7 @@ function WalkingSprite({
               animate={{ y: [0, -4, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             >
-              {'\uD83C\uDF77'}
+              <img src="/poison.png" alt="poisoned" style={{ width: 24, height: 24 }} />
             </motion.div>
           )}
           {isProtected && (
@@ -312,6 +327,25 @@ function WalkingSprite({
             </motion.div>
           )}
         </>
+      )}
+
+      {/* Talking indicator — bubble.png above the current speaker */}
+      {isTalking && (
+        <motion.div
+          key={`talking-${seat}`}
+          style={{
+            position: 'absolute',
+            top: -40,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            pointerEvents: 'none',
+            zIndex: 100,
+          }}
+          animate={{ opacity: [1, 1, 0, 0], y: [0, -3, -3, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 0.5, 1] }}
+        >
+          <img src="/bubble.png" alt="" style={{ width: 35, height: 35 }} />
+        </motion.div>
       )}
     </motion.div>
   );
@@ -341,6 +375,9 @@ export function TownMap() {
   const bubblesRef = useRef<SpeechBubble[]>([]);
   const [deathNarration, setDeathNarration] = useState<string | null>(null);
   const deathTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [talkingSeats, setTalkingSeats] = useState<number[]>([]);
+  const talkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevMsgCountRef = useRef(0);
 
   // Watch for death narration events
   useEffect(() => {
@@ -371,30 +408,56 @@ export function TownMap() {
     }
   }, [gameState?.messages.length]);
 
-  // Speech bubbles from new messages
+  // Speech bubbles + talking indicator from new messages
+  const msgCount = gameState?.messages.length ?? 0;
   useEffect(() => {
-    if (!gameState?.messages.length) return;
-    const latest = gameState.messages[gameState.messages.length - 1];
-    if (latest.senderSeat === undefined || latest.senderSeat === null) return;
+    if (!gameState || msgCount === 0 || msgCount <= prevMsgCountRef.current) {
+      prevMsgCountRef.current = msgCount;
+      return;
+    }
 
-    const newBubble: SpeechBubble = {
-      seat: latest.senderSeat,
-      content: latest.content.slice(0, 80) + (latest.content.length > 80 ? '...' : ''),
-      timestamp: Date.now(),
-    };
+    // Process all new messages since last render
+    const newMsgs = gameState.messages.slice(prevMsgCountRef.current);
+    prevMsgCountRef.current = msgCount;
 
-    bubblesRef.current = [
-      ...bubblesRef.current.filter(b => Date.now() - b.timestamp < 5000),
-      newBubble,
-    ];
+    let lastSpeakerSeat: number | null = null;
+
+    for (const msg of newMsgs) {
+      if (msg.senderSeat === undefined || msg.senderSeat === null) continue;
+
+      // Add text speech bubble
+      const newBubble: SpeechBubble = {
+        seat: msg.senderSeat,
+        content: msg.content.slice(0, 80) + (msg.content.length > 80 ? '...' : ''),
+        timestamp: Date.now(),
+      };
+      bubblesRef.current = [
+        ...bubblesRef.current.filter(b => Date.now() - b.timestamp < 5000),
+        newBubble,
+      ];
+
+      lastSpeakerSeat = msg.senderSeat;
+    }
+
     setBubbles([...bubblesRef.current]);
 
+    // Show talking bubble.png indicator — keep last 2 speakers
+    if (lastSpeakerSeat !== null) {
+      setTalkingSeats(prev => {
+        const filtered = prev.filter(s => s !== lastSpeakerSeat);
+        const updated = [...filtered, lastSpeakerSeat];
+        // Keep only the last 2
+        return updated.slice(-2);
+      });
+    }
+
+    // Clear old text bubbles
     const timer = setTimeout(() => {
       bubblesRef.current = bubblesRef.current.filter(b => Date.now() - b.timestamp < 5000);
       setBubbles([...bubblesRef.current]);
     }, 5000);
     return () => clearTimeout(timer);
-  }, [gameState?.messages.length]);
+  }, [msgCount, gameState]);
 
   // Compute target position for each player based on current phase
   const getTarget = useCallback((seat: number): Point => {
@@ -524,6 +587,7 @@ export function TownMap() {
             isPoisoned={player.isPoisoned || false}
             isDrunk={player.isDrunk || false}
             isProtected={player.isProtected || false}
+            isTalking={talkingSeats.includes(player.seat)}
             onClick={() => selectPlayer(
               selectedPlayer === player.seat ? null : player.seat
             )}

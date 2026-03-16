@@ -50,6 +50,12 @@ export interface GameStore {
   // All nominations across all days (never cleared — for stats)
   allNominations: import('../types/game.ts').NominationRecord[];
 
+  // Audio volumes (0-1)
+  masterVolume: number;
+  voiceVolume: number;
+  musicVolume: number;
+  setVolumes: (master: number, voice: number, music: number) => void;
+
   // Replay system
   replayMode: boolean;
   replayQueue: ServerEvent[];
@@ -94,6 +100,10 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   nightActions: [],
   debriefMessages: [],
   allNominations: [],
+  masterVolume: 0.8,
+  voiceVolume: 1.0,
+  musicVolume: 0.5,
+  setVolumes: (master, voice, music) => set({ masterVolume: master, voiceVolume: voice, musicVolume: music }),
   replayMode: false,
   replayQueue: [],
   replayIndex: 0,
@@ -157,6 +167,15 @@ export const useGameStore = create<GameStore>()((set, get) => ({
           phaseUpdate.nightKills = [];
           phaseUpdate.onTheBlock = null;
         }
+        // Apply player status updates (poison/drunk/protected) if present
+        const statuses = (event as any).playerStatuses as Array<{ seat: number; is_alive: boolean; is_poisoned: boolean; is_drunk: boolean; is_protected: boolean }> | undefined;
+        if (statuses && phaseUpdate.players) {
+          phaseUpdate.players = phaseUpdate.players.map((p: any) => {
+            const s = statuses.find((st: any) => st.seat === p.seat);
+            if (!s) return p;
+            return { ...p, isAlive: s.is_alive, isPoisoned: s.is_poisoned, isDrunk: s.is_drunk, isProtected: s.is_protected };
+          });
+        }
         set({ gameState: phaseUpdate });
         break;
       }
@@ -201,10 +220,26 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
       case 'whisper.notification': {
         if (!gameState) break;
+        const fromPlayer = gameState.players.find(p => p.seat === (event as any).fromSeat);
+        const toPlayer = gameState.players.find(p => p.seat === (event as any).toSeat);
+        const fromName = fromPlayer ? `${fromPlayer.characterName || 'Seat ' + fromPlayer.seat}` : `Seat ${(event as any).fromSeat}`;
+        const toName = toPlayer ? `${toPlayer.characterName || 'Seat ' + toPlayer.seat}` : `Seat ${(event as any).toSeat}`;
+        const whisperContent = (event as any).whisperContent || '';
+        const whisperMsg = {
+          ...event.message,
+          // Public notification (shown in chat)
+          content: `${fromName} whispered to ${toName}`,
+          // Full content for whispers tab (observer mode)
+          whisperContent,
+          fromSeat: (event as any).fromSeat,
+          toSeat: (event as any).toSeat,
+          fromName,
+          toName,
+        };
         set({
           gameState: {
             ...gameState,
-            whispers: [...gameState.whispers, event.message],
+            whispers: [...gameState.whispers, whisperMsg],
           },
         });
         break;
@@ -603,6 +638,15 @@ export const useGameStore = create<GameStore>()((set, get) => ({
                 hExecuted = null;
                 hNightKills.length = 0;
               }
+              // Apply player status updates (poison/drunk/protected)
+              const pStatuses = (pc as any).playerStatuses as Array<{ seat: number; is_alive: boolean; is_poisoned: boolean; is_drunk: boolean; is_protected: boolean }> | undefined;
+              if (pStatuses) {
+                hPlayers = hPlayers.map(p => {
+                  const s = pStatuses.find(st => st.seat === p.seat);
+                  if (!s) return p;
+                  return { ...p, isAlive: s.is_alive, isPoisoned: s.is_poisoned, isDrunk: s.is_drunk, isProtected: s.is_protected };
+                });
+              }
               break;
             }
             case 'message.new': {
@@ -885,8 +929,28 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
   // ── Replay ──────────────────────────────────────────────────────
   startReplay: (initialState, events) => {
-    // Apply the initial game.state, then queue the rest for timed playback
-    get().applyEvent(initialState);
+    // Apply initial state but override to setup phase (not game_over)
+    // so the replay starts from the beginning visually
+    const cleanState = {
+      ...initialState,
+      state: {
+        ...(initialState as any).state,
+        phase: 'setup',
+        dayNumber: 0,
+        winner: undefined,
+        winCondition: undefined,
+        // Reset all players to alive for visual start
+        players: ((initialState as any).state?.players ?? []).map((p: any) => ({
+          ...p,
+          isAlive: true,
+        })),
+        messages: [],
+        nominations: [],
+        nightKills: [],
+        executedToday: undefined,
+      },
+    };
+    get().applyEvent(cleanState);
     set({
       replayMode: true,
       replayQueue: events,

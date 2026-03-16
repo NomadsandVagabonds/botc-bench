@@ -385,9 +385,9 @@ def resolve_washerwoman(state: GameState, player: Player) -> str:
     if _info_malfunctions(state, player):
         all_seats = [p.seat for p in state.players if p.seat != player.seat]
         pair = wrong_player_pair(target.seat, other.seat, all_seats, state.rng)
-        if state.rng.random() < 0.5:
-            all_townsfolk_names = [p.role.name for p in state.players if p.role.role_type == RoleType.TOWNSFOLK]
-            role_name = wrong_role(role_name, all_townsfolk_names, state.rng)
+        # Always change the role name so the combo is never accidentally correct
+        all_townsfolk_names = [p.role.name for p in state.players if p.role.role_type == RoleType.TOWNSFOLK]
+        role_name = wrong_role(role_name, all_townsfolk_names, state.rng)
 
     return (
         f"You learn that either {_player_label(state, pair[0])} or {_player_label(state, pair[1])} "

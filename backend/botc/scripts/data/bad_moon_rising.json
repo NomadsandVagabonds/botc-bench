@@ -1,0 +1,221 @@
+{
+  "id": "bad_moon_rising",
+  "name": "Bad Moon Rising",
+  "roles": {
+    "townsfolk": [
+      {
+        "id": "grandmother",
+        "name": "Grandmother",
+        "ability": "You start knowing a good player & their character. If the Demon kills them, you die too.",
+        "first_night_order": 1,
+        "other_nights_order": null
+      },
+      {
+        "id": "sailor",
+        "name": "Sailor",
+        "ability": "Each night, choose an alive player: either you or they are drunk until dusk. You can't die.",
+        "first_night_order": 2,
+        "other_nights_order": 1
+      },
+      {
+        "id": "chambermaid",
+        "name": "Chambermaid",
+        "ability": "Each night, choose 2 alive players (not yourself): you learn how many woke tonight due to their ability.",
+        "first_night_order": 3,
+        "other_nights_order": 2
+      },
+      {
+        "id": "exorcist",
+        "name": "Exorcist",
+        "ability": "Each night*, choose a player (different from last night): if they are the Demon, they don't wake tonight.",
+        "first_night_order": 4,
+        "other_nights_order": 3
+      },
+      {
+        "id": "innkeeper",
+        "name": "Innkeeper",
+        "ability": "Each night*, choose 2 players: they can't die tonight, but one is drunk until dusk.",
+        "first_night_order": 5,
+        "other_nights_order": 4
+      },
+      {
+        "id": "gambler",
+        "name": "Gambler",
+        "ability": "Each night*, choose a player & guess their character: if you guess wrong, you die.",
+        "first_night_order": 6,
+        "other_nights_order": 5
+      },
+      {
+        "id": "gossip",
+        "name": "Gossip",
+        "ability": "Each day, you may make a public statement. Tonight, if it was true, a player dies.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "courtier",
+        "name": "Courtier",
+        "ability": "Once per game, at night, choose a character: they are drunk for 3 days & nights.",
+        "first_night_order": 7,
+        "other_nights_order": 6
+      },
+      {
+        "id": "professor",
+        "name": "Professor",
+        "ability": "Once per game, at night, choose a dead player: if they are good, they are resurrected.",
+        "first_night_order": 8,
+        "other_nights_order": 7
+      },
+      {
+        "id": "minstrel",
+        "name": "Minstrel",
+        "ability": "When a Minion dies by execution, all other players (except Travellers) are drunk until dusk tomorrow.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "tea_lady",
+        "name": "Tea Lady",
+        "ability": "If both your alive neighbours are good, they can't die.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "pacifist",
+        "name": "Pacifist",
+        "ability": "Executed good players might not die.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "fool",
+        "name": "Fool",
+        "ability": "The first time you die, you don't.",
+        "first_night_order": null,
+        "other_nights_order": null
+      }
+    ],
+    "outsiders": [
+      {
+        "id": "goon",
+        "name": "Goon",
+        "ability": "Each night, the 1st player to choose you with their ability is drunk until dusk. You become their alignment.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "lunatic",
+        "name": "Lunatic",
+        "ability": "You think you are a Demon, but you are not. The Demon knows who you are & who you choose at night.",
+        "first_night_order": 9,
+        "other_nights_order": null
+      },
+      {
+        "id": "tinker",
+        "name": "Tinker",
+        "ability": "You might die at any time.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "moonchild",
+        "name": "Moonchild",
+        "ability": "When you learn you die, choose 1 alive player. If good, they die tonight.",
+        "first_night_order": null,
+        "other_nights_order": null
+      }
+    ],
+    "minions": [
+      {
+        "id": "godfather",
+        "name": "Godfather",
+        "ability": "You start knowing which Outsiders are in play. If 1 died today, choose a player tonight: they die. [+1 Outsider]",
+        "first_night_order": 10,
+        "other_nights_order": 8,
+        "setup_modifies": true
+      },
+      {
+        "id": "devils_advocate",
+        "name": "Devil's Advocate",
+        "ability": "Each night, choose a living player (different to last night): if executed tomorrow, they don't die.",
+        "first_night_order": 11,
+        "other_nights_order": 9
+      },
+      {
+        "id": "assassin",
+        "name": "Assassin",
+        "ability": "Once per game, at night*, choose a player: they die, even if for some reason they could not.",
+        "first_night_order": 12,
+        "other_nights_order": 10
+      },
+      {
+        "id": "mastermind",
+        "name": "Mastermind",
+        "ability": "If the Demon dies by execution, play for 1 more day. If a good player is not executed that day, evil wins.",
+        "first_night_order": 13,
+        "other_nights_order": null
+      }
+    ],
+    "demons": [
+      {
+        "id": "zombuul",
+        "name": "Zombuul",
+        "ability": "Each night*, if no-one died today, choose a player: they die. The 1st time you die, you keep playing but appear dead.",
+        "first_night_order": null,
+        "other_nights_order": 14
+      },
+      {
+        "id": "pukka",
+        "name": "Pukka",
+        "ability": "Each night, choose a player: they are poisoned. The previously poisoned player dies, then recovers.",
+        "first_night_order": null,
+        "other_nights_order": 12
+      },
+      {
+        "id": "shabaloth",
+        "name": "Shabaloth",
+        "ability": "Each night*, choose 2 players: they die. A dead player you chose last night might resurrect.",
+        "first_night_order": null,
+        "other_nights_order": 13
+      },
+      {
+        "id": "po",
+        "name": "Po",
+        "ability": "Each night*, you may choose a player: they die. If you chose no-one last night, choose up to 3 players tonight.",
+        "first_night_order": null,
+        "other_nights_order": 11
+      }
+    ]
+  },
+  "first_night_order": [
+    "grandmother",
+    "sailor",
+    "chambermaid",
+    "exorcist",
+    "innkeeper",
+    "gambler",
+    "courtier",
+    "professor",
+    "lunatic",
+    "godfather",
+    "devils_advocate",
+    "assassin",
+    "mastermind"
+  ],
+  "other_nights_order": [
+    "sailor",
+    "chambermaid",
+    "exorcist",
+    "innkeeper",
+    "gambler",
+    "courtier",
+    "professor",
+    "godfather",
+    "devils_advocate",
+    "assassin",
+    "po",
+    "pukka",
+    "shabaloth",
+    "zombuul"
+  ]
+}

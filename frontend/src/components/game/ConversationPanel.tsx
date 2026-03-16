@@ -86,16 +86,19 @@ function TypeBadge({ type }: { type: string }) {
 
 function ClickablePlayerName({
   sender,
+  showRole,
 }: {
   sender: Player;
+  showRole?: boolean;
 }) {
   const selectPlayer = useGameStore((s) => s.selectPlayer);
   const [hovered, setHovered] = useState(false);
   const providerColor = getProviderColor(sender.modelName || sender.agentId);
+  const isEvil = sender.alignment === 'evil';
 
   return (
     <span
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}
       onClick={(e) => {
         e.stopPropagation();
         selectPlayer(sender.seat);
@@ -123,11 +126,25 @@ function ClickablePlayerName({
       >
         [{sender.seat}] {sender.characterName || shortModelName(sender.modelName || sender.agentId)}
       </span>
+      {showRole && sender.role && (
+        <span
+          style={{
+            fontSize: '0.6rem',
+            fontWeight: 700,
+            color: isEvil ? '#f87171' : '#93c5fd',
+            background: isEvil ? 'rgba(248,113,113,0.1)' : 'rgba(147,197,253,0.1)',
+            padding: '1px 4px',
+            borderRadius: 3,
+          }}
+        >
+          {sender.role}
+        </span>
+      )}
       {sender.characterName && (
         <span
           style={{
-            fontSize: '0.65rem',
-            color: 'rgba(255,255,255,0.3)',
+            fontSize: '0.6rem',
+            color: 'rgba(255,255,255,0.25)',
             fontWeight: 400,
           }}
         >
@@ -186,7 +203,7 @@ function MessageRow({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-        {sender && <ClickablePlayerName sender={sender} />}
+        {sender && <ClickablePlayerName sender={sender} showRole={showObserverInfo} />}
         <TypeBadge type={message.type} />
       </div>
       <div
@@ -772,7 +789,7 @@ export function ConversationPanel() {
   const tabs: { id: PanelTab; label: string; show: boolean }[] = [
     { id: 'chat', label: 'Chat', show: true },
     { id: 'players', label: 'Players', show: true },
-    { id: 'whispers', label: 'Whispers', show: hasWhispers },
+    { id: 'whispers', label: 'Whispers', show: true },
   ];
 
   return (
@@ -831,6 +848,50 @@ export function ConversationPanel() {
       {/* Tab content */}
       {activeTab === 'players' ? (
         <PlayersTab players={players} />
+      ) : activeTab === 'whispers' ? (
+        <div ref={scrollRef} onScroll={handleScroll} style={styles.messages}>
+          {whispers.length === 0 ? (
+            <div style={styles.empty} className="text-muted">No whispers yet</div>
+          ) : (
+            whispers.map((w: any, i: number) => {
+              const from = players.find(p => p.seat === w.fromSeat);
+              const to = players.find(p => p.seat === w.toSeat);
+              const fromName = from?.characterName || `Seat ${w.fromSeat}`;
+              const toName = to?.characterName || `Seat ${w.toSeat}`;
+              const fromRole = showObserverInfo && from?.role ? from.role : null;
+              const toRole = showObserverInfo && to?.role ? to.role : null;
+              const fromColor = from ? getProviderColor(from.modelName || from.agentId) : '#888';
+              const fromEvil = from?.alignment === 'evil';
+              const toEvil = to?.alignment === 'evil';
+              return (
+                <div key={w.id || i} style={{
+                  padding: '8px 12px',
+                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  borderLeft: '3px solid rgba(168, 85, 247, 0.4)',
+                  background: 'rgba(168, 85, 247, 0.05)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: fromColor, flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: fromColor }}>{fromName}</span>
+                    {fromRole && <span style={{ fontSize: '0.58rem', fontWeight: 700, color: fromEvil ? '#f87171' : '#93c5fd', background: fromEvil ? 'rgba(248,113,113,0.1)' : 'rgba(147,197,253,0.1)', padding: '1px 4px', borderRadius: 3 }}>{fromRole}</span>}
+                    <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>to</span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{toName}</span>
+                    {toRole && <span style={{ fontSize: '0.58rem', fontWeight: 700, color: toEvil ? '#f87171' : '#93c5fd', background: toEvil ? 'rgba(248,113,113,0.1)' : 'rgba(147,197,253,0.1)', padding: '1px 4px', borderRadius: 3 }}>{toRole}</span>}
+                  </div>
+                  {w.whisperContent && showObserverInfo ? (
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', fontStyle: 'italic', lineHeight: 1.45 }}>
+                      &ldquo;{w.whisperContent}&rdquo;
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+                      Whisper content hidden (observer mode off)
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       ) : (
         <>
           {/* Messages with accordion sections */}
@@ -840,9 +901,7 @@ export function ConversationPanel() {
             style={styles.messages}
           >
             {sections.length === 0 ? (
-              <div style={styles.empty} className="text-muted">
-                {activeTab === 'whispers' ? 'No whispers yet' : 'No messages yet'}
-              </div>
+              <div style={styles.empty} className="text-muted">No messages yet</div>
             ) : (
               sections.map((section) => (
                 <AccordionSection

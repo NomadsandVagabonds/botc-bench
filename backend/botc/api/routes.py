@@ -8,6 +8,7 @@ import os
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from botc.api.persistence import load_all_games, save_game
@@ -80,7 +81,7 @@ class CreateGameRequest(BaseModel):
     seed: int | None = None
     narrator_enabled: bool = False
     max_days: int = 20
-    reveal_models: bool = True
+    reveal_models: str = "true"  # "true" | "false" | "scramble"
 
 
 class SeatModelConfig(BaseModel):
@@ -95,7 +96,8 @@ class ConfiguredGameRequest(BaseModel):
     seat_roles: list[str] | None = None  # optional pre-assigned role IDs per seat
     seed: int | None = None
     max_days: int = 50
-    reveal_models: bool = True
+    reveal_models: str = "true"  # "true" | "false" | "scramble"
+    share_stats: bool = False
 
 
 class GameResponse(BaseModel):
@@ -318,6 +320,7 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
         max_days=request.max_days,
         max_concurrent_llm_calls=3,
         reveal_models=request.reveal_models,
+        share_stats=request.share_stats,
         seat_roles=request.seat_roles,
     )
 
@@ -351,7 +354,7 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
 
 
 @router.post("/api/games/quick", response_model=GameResponse)
-async def quick_game(num_players: int = 7, seed: int = 99, reveal_models: bool = True) -> GameResponse:
+async def quick_game(num_players: int = 7, seed: int = 99, reveal_models: str = "true") -> GameResponse:
     """Start a game using API keys from environment variables.
 
     Round-robins across available providers (Anthropic, OpenAI, Google).
@@ -529,6 +532,61 @@ async def get_game(game_id: str) -> dict:
         }
 
     return {"game_id": game_id, "status": info["status"]}
+
+
+# ---------------------------------------------------------------------------
+# Stats
+# ---------------------------------------------------------------------------
+
+@router.get("/api/stats/models")
+async def model_stats() -> dict:
+    """Return aggregate per-model performance stats from saved games."""
+    from botc.api.stats import compute_model_stats
+    return compute_model_stats()
+
+
+# ---------------------------------------------------------------------------
+# TTS / Audio
+# ---------------------------------------------------------------------------
+
+@router.get("/api/games/{game_id}/audio/manifest")
+async def audio_manifest(game_id: str) -> dict:
+    """Return the TTS audio manifest for a game (clip list with durations and event mapping)."""
+    from botc.tts.generate import GAMES_DIR
+    manifest_path = GAMES_DIR / f"audio_{game_id}" / "manifest.json"
+    if not manifest_path.exists():
+        raise HTTPException(status_code=404, detail="No audio generated for this game")
+    import json
+    return {"game_id": game_id, "clips": json.loads(manifest_path.read_text())}
+
+
+@router.get("/api/games/{game_id}/audio/{filename}")
+async def audio_clip(game_id: str, filename: str) -> FileResponse:
+    """Serve an individual audio clip MP3."""
+    from botc.tts.generate import GAMES_DIR
+    clip_path = GAMES_DIR / f"audio_{game_id}" / filename
+    if not clip_path.exists() or not filename.endswith(".mp3"):
+        raise HTTPException(status_code=404, detail="Audio clip not found")
+    return FileResponse(clip_path, media_type="audio/mpeg")
+
+
+@router.post("/api/games/{game_id}/audio/generate")
+async def generate_audio(game_id: str) -> dict:
+    """Generate TTS audio for a saved game (idempotent — skips existing clips)."""
+    from botc.tts.generate import generate_game_audio, GAMES_DIR
+    game_path = GAMES_DIR / f"game_{game_id}.json"
+    if not game_path.exists():
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Run in thread to avoid blocking the event loop
+    import asyncio
+    loop = asyncio.get_event_loop()
+    out_dir = await loop.run_in_executor(None, lambda: generate_game_audio(game_id))
+
+    import json
+    manifest_path = out_dir / "manifest.json"
+    clips = json.loads(manifest_path.read_text()) if manifest_path.exists() else []
+    return {"game_id": game_id, "clips_generated": len(clips), "audio_dir": str(out_dir)}
 
 
 # ---------------------------------------------------------------------------

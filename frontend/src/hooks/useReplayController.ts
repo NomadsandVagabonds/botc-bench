@@ -1,16 +1,23 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '../stores/gameStore.ts';
+import { getAudioManifest, getAudioClipUrl } from '../api/rest.ts';
+import type { AudioClip } from '../api/rest.ts';
 
 /**
- * Drives replay playback by calling replayNext() on a timer.
+ * Audio-synced replay controller.
  *
- * Event pacing: different event types get different delays to feel natural.
- * Speed multiplier (1x/2x/4x) divides all delays.
- * Pause stops the timer.
+ * Each normalized replay event carries a `_rawIndex` matching its position
+ * in the original events array. The audio manifest maps `event_index` to
+ * audio clips. We use this for direct lookup — no sequential counting.
+ *
+ * Flow:
+ * 1. Apply the next replay event (visual updates immediately)
+ * 2. Check if this event has an audio clip (by _rawIndex)
+ * 3. If yes: play clip, wait for onended + pause, then go to 1
+ * 4. If no: short delay (or instant for data events), then go to 1
  */
 
-// Base delays in ms at 1x speed
-const EVENT_DELAYS: Record<string, number> = {
+const TIMER_DELAYS: Record<string, number> = {
   'phase.change': 2000,
   'message.new': 1200,
   'nomination.start': 1500,
@@ -21,58 +28,212 @@ const EVENT_DELAYS: Record<string, number> = {
   'breakout.formed': 1000,
   'breakout.ended': 500,
   'night.action': 800,
-  'player.reasoning': 200, // Fast — these are observer-only background data
-  'agent.tokens': 50,      // Nearly instant — just data
+  'player.reasoning': 0,
+  'agent.tokens': 0,
   'game.over': 2500,
   'debrief.message': 1500,
   'whisper.notification': 800,
-  'game.state': 100,       // Initial state — fast
+  'game.state': 0,
 };
 
-const DEFAULT_DELAY = 500;
+const DEFAULT_DELAY = 300;
+const INTER_SPEAKER_PAUSE_MS = 1000;
+const SAME_SPEAKER_PAUSE_MS = 400;
 
 export function useReplayController() {
   const replayMode = useGameStore((s) => s.replayMode);
   const paused = useGameStore((s) => s.paused);
   const speed = useGameStore((s) => s.speed);
-  const replayNext = useGameStore((s) => s.replayNext);
-  const replayQueue = useGameStore((s) => s.replayQueue);
-  const replayIndex = useGameStore((s) => s.replayIndex);
+  const gameId = useGameStore((s) => s.gameState?.gameId);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Map from raw event index → audio clip
+  const audioMapRef = useRef<Map<number, AudioClip>>(new Map());
+  const audioReadyRef = useRef(false);
+  const hasAudioRef = useRef(false);
+  const prevSpeakerRef = useRef<string | null>(null);
+  const runningRef = useRef(false);
+  const introClipRef = useRef<AudioClip | null>(null);
+  const introPlayedRef = useRef(false);
 
+  // Load audio manifest when replay starts
   useEffect(() => {
-    if (!replayMode || paused || speed === 0) {
+    if (!replayMode || !gameId) return;
+    audioReadyRef.current = false;
+    hasAudioRef.current = false;
+    audioMapRef.current = new Map();
+    runningRef.current = false;
+    introClipRef.current = null;
+    introPlayedRef.current = false;
+
+    getAudioManifest(gameId)
+      .then((manifest) => {
+        const map = new Map<number, AudioClip>();
+        for (const clip of manifest.clips) {
+          if (clip.file && clip.event_index != null) {
+            if (clip.event_index === -1) {
+              // Intro clip — plays before any events
+              introClipRef.current = clip;
+            } else {
+              map.set(clip.event_index, clip);
+            }
+          }
+        }
+        audioMapRef.current = map;
+        hasAudioRef.current = map.size > 0 || introClipRef.current !== null;
+        audioReadyRef.current = true;
+        console.log(`[replay] Audio loaded: ${map.size} clips + ${introClipRef.current ? 'intro' : 'no intro'}`);
+      })
+      .catch(() => {
+        audioReadyRef.current = true;
+        hasAudioRef.current = false;
+        console.log('[replay] No audio, timer mode');
+      });
+
+    return () => {
+      runningRef.current = false;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
+    };
+  }, [replayMode, gameId]);
+
+  // Pause/resume audio
+  useEffect(() => {
+    if (paused && audioRef.current) {
+      audioRef.current.pause();
+    } else if (!paused && audioRef.current && audioRef.current.paused) {
+      audioRef.current.play().catch(() => {});
+    }
+  }, [paused]);
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  // Play a clip and call onDone when it finishes
+  const playClip = (clip: AudioClip, onDone: () => void) => {
+    const currentGameId = useGameStore.getState().gameState?.gameId;
+    if (!clip.file || !currentGameId) { onDone(); return; }
+
+    const url = getAudioClipUrl(currentGameId, clip.file);
+    const audio = new Audio(url);
+    // Apply volume settings
+    const { masterVolume, voiceVolume } = useGameStore.getState();
+    audio.volume = masterVolume * voiceVolume;
+    audioRef.current = audio;
+
+    audio.onended = () => {
+      audioRef.current = null;
+      const s = useGameStore.getState();
+      if (!s.replayMode || s.paused || s.speed === 0) {
+        runningRef.current = false;
+        return;
+      }
+      const pauseMs = clip.speaker !== prevSpeakerRef.current
+        ? INTER_SPEAKER_PAUSE_MS : SAME_SPEAKER_PAUSE_MS;
+      prevSpeakerRef.current = clip.speaker;
+      timerRef.current = setTimeout(onDone, pauseMs / s.speed);
+    };
+    audio.onerror = () => {
+      audioRef.current = null;
+      prevSpeakerRef.current = clip.speaker;
+      timerRef.current = setTimeout(onDone, 200);
+    };
+    audio.play().catch(() => {
+      audioRef.current = null;
+      const delay = (clip.duration_s || 3) * 1000 / (useGameStore.getState().speed || 1);
+      prevSpeakerRef.current = clip.speaker;
+      timerRef.current = setTimeout(onDone, Math.max(delay, 200));
+    });
+  };
+
+  // Single step: apply one event, then schedule next based on audio
+  const step = () => {
+    const store = useGameStore.getState();
+    if (!store.replayMode || store.paused || store.speed === 0) {
+      runningRef.current = false;
       return;
     }
 
-    const scheduleNext = () => {
-      // Determine delay based on the NEXT event type
-      const nextEvent = replayQueue[replayIndex];
-      if (!nextEvent) return;
+    // Play intro before any events
+    if (!introPlayedRef.current && introClipRef.current) {
+      introPlayedRef.current = true;
+      playClip(introClipRef.current, step);
+      return;
+    }
 
-      const baseDelay = EVENT_DELAYS[nextEvent.type] ?? DEFAULT_DELAY;
-      const actualDelay = Math.max(baseDelay / speed, 30); // Floor at 30ms
+    const queue = store.replayQueue;
+    const idx = store.replayIndex;
+    if (idx >= queue.length) {
+      runningRef.current = false;
+      return;
+    }
 
-      timerRef.current = setTimeout(() => {
-        const hasMore = replayNext();
-        if (hasMore) {
-          scheduleNext();
+    // Get the event we're about to apply
+    const event = queue[idx];
+    const rawIndex = (event as any)._rawIndex as number | undefined;
+
+    // Apply the event (visual updates now)
+    const hasMore = store.replayNext();
+
+    // Check for audio clip
+    const clip = rawIndex != null ? audioMapRef.current.get(rawIndex) : undefined;
+
+    if (clip?.file && hasAudioRef.current) {
+      // Play audio clip, then advance when done
+      playClip(clip, step);
+    } else if (hasMore) {
+      // No audio for this event — use timer delay or instant for data events
+      if (hasAudioRef.current) {
+        // In audio mode: data events advance instantly, visual events get tiny delay
+        const delay = TIMER_DELAYS[event.type] ?? DEFAULT_DELAY;
+        if (delay === 0) {
+          // Instant — call step synchronously (batch data events)
+          step();
+        } else {
+          // Small visual delay so the UI doesn't jump too fast
+          const spd = useGameStore.getState().speed || 1;
+          timerRef.current = setTimeout(step, Math.min(delay / spd, 300));
         }
-      }, actualDelay);
-    };
+      } else {
+        // Timer-only mode: full delays
+        const spd = useGameStore.getState().speed || 1;
+        const baseDelay = TIMER_DELAYS[event.type] ?? DEFAULT_DELAY;
+        timerRef.current = setTimeout(step, Math.max(baseDelay / spd, 30));
+      }
+    } else {
+      runningRef.current = false;
+    }
+  };
 
-    scheduleNext();
+  // Start/stop the chain when play state changes
+  useEffect(() => {
+    if (!replayMode || !audioReadyRef.current) return;
+
+    if (paused || speed === 0) {
+      clearTimer();
+      runningRef.current = false;
+      return;
+    }
+
+    if (!runningRef.current) {
+      runningRef.current = true;
+      step();
+    }
 
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+      clearTimer();
     };
-  }, [replayMode, paused, speed, replayIndex, replayNext, replayQueue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replayMode, paused, speed, clearTimer]);
 }

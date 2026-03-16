@@ -76,6 +76,16 @@ def create_groups(
         for members in overflow:
             floaters.extend(members)
 
+    # Cap each group at ~33% of total players (rounded down) to prevent mega-groups
+    max_per_group = max(config.min_group_size, len(all_seats) // 3)
+    split_buckets: list[list[int]] = []
+    for members in final_buckets:
+        if len(members) > max_per_group:
+            floaters.extend(members[max_per_group:])
+            members = members[:max_per_group]
+        split_buckets.append(members)
+    final_buckets = split_buckets
+
     # Distribute floaters across existing groups, or create new ones
     _distribute_floaters(floaters, final_buckets, config.min_group_size, config.max_groups)
 
@@ -121,23 +131,17 @@ def _distribute_floaters(
 
     # If no buckets yet, seed new ones from the floater pool
     if not buckets:
-        while floaters and len(buckets) < max_groups:
-            new_group = floaters[:min_size]
-            floaters[:min_size] = []
-            if len(new_group) >= min_size:
-                buckets.append(new_group)
-            else:
-                # Not enough to form a group; put them back
-                floaters.extend(new_group)
-                break
+        # Distribute evenly across max_groups
+        n_groups = min(max_groups, max(1, len(floaters) // min_size))
+        for _ in range(n_groups):
+            buckets.append([])
+        for i, seat in enumerate(floaters):
+            buckets[i % len(buckets)].append(seat)
+        floaters.clear()
+        return
 
     # Remaining floaters go into the smallest group, round-robin style
     while floaters:
-        if not buckets:
-            # Edge case: nobody formed a group (fewer players than min_size)
-            buckets.append(floaters[:])
-            floaters.clear()
-            break
         smallest = min(buckets, key=len)
         smallest.append(floaters.pop(0))
 

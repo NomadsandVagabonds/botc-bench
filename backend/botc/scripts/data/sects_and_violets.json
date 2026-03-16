@@ -1,0 +1,223 @@
+{
+  "id": "sects_and_violets",
+  "name": "Sects & Violets",
+  "roles": {
+    "townsfolk": [
+      {
+        "id": "clockmaker",
+        "name": "Clockmaker",
+        "ability": "You start knowing how many steps from the Demon to its nearest Minion.",
+        "first_night_order": 1,
+        "other_nights_order": null
+      },
+      {
+        "id": "dreamer",
+        "name": "Dreamer",
+        "ability": "Each night, choose a player (not yourself or Travellers): you learn 1 good & 1 evil character, 1 of which is correct.",
+        "first_night_order": 2,
+        "other_nights_order": 8
+      },
+      {
+        "id": "snake_charmer",
+        "name": "Snake Charmer",
+        "ability": "Each night, choose an alive player: a chosen Demon swaps characters & alignments with you, then is poisoned.",
+        "first_night_order": 3,
+        "other_nights_order": 9
+      },
+      {
+        "id": "mathematician",
+        "name": "Mathematician",
+        "ability": "Each night, you learn how many players' abilities worked abnormally (since dawn) due to another character's ability.",
+        "first_night_order": 4,
+        "other_nights_order": 10
+      },
+      {
+        "id": "flowergirl",
+        "name": "Flowergirl",
+        "ability": "Each night*, you learn if a Demon voted today.",
+        "first_night_order": 5,
+        "other_nights_order": 11
+      },
+      {
+        "id": "town_crier",
+        "name": "Town Crier",
+        "ability": "Each night*, you learn if a Minion nominated today.",
+        "first_night_order": 6,
+        "other_nights_order": 12
+      },
+      {
+        "id": "oracle",
+        "name": "Oracle",
+        "ability": "Each night*, you learn how many dead players are evil.",
+        "first_night_order": 7,
+        "other_nights_order": 13
+      },
+      {
+        "id": "savant",
+        "name": "Savant",
+        "ability": "Each day, you may visit the Storyteller to learn 2 things in private: 1 is true & 1 is false.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "seamstress",
+        "name": "Seamstress",
+        "ability": "Once per game, at night, choose 2 players (not yourself): you learn if they are the same alignment.",
+        "first_night_order": 8,
+        "other_nights_order": 14
+      },
+      {
+        "id": "philosopher",
+        "name": "Philosopher",
+        "ability": "Once per game, at night, choose a good character: gain that ability. If this character is in play, they are drunk.",
+        "first_night_order": 9,
+        "other_nights_order": 15
+      },
+      {
+        "id": "artist",
+        "name": "Artist",
+        "ability": "Once per game, during the day, privately ask the Storyteller any yes/no question.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "juggler",
+        "name": "Juggler",
+        "ability": "On your first day, publicly guess up to 5 players' characters. That night, you learn how many guesses were correct.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "sage",
+        "name": "Sage",
+        "ability": "If the Demon kills you, you learn that it is 1 of 2 players.",
+        "first_night_order": null,
+        "other_nights_order": null,
+        "acts_on_death": true
+      }
+    ],
+    "outsiders": [
+      {
+        "id": "mutant",
+        "name": "Mutant",
+        "ability": "If you are mad about being an Outsider, you might be executed.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "sweetheart",
+        "name": "Sweetheart",
+        "ability": "When you die, 1 player is drunk from now on.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "barber",
+        "name": "Barber",
+        "ability": "If you died today or tonight, the Demon may choose 2 players (not another Demon) to swap characters.",
+        "first_night_order": null,
+        "other_nights_order": null
+      },
+      {
+        "id": "klutz",
+        "name": "Klutz",
+        "ability": "When you learn that you died, publicly choose 1 alive player: if they are evil, your team loses.",
+        "first_night_order": null,
+        "other_nights_order": null
+      }
+    ],
+    "minions": [
+      {
+        "id": "evil_twin",
+        "name": "Evil Twin",
+        "ability": "You and an opposing player know each other. If the good player is executed, evil wins. Good can't win if you both live.",
+        "first_night_order": 10,
+        "other_nights_order": 16
+      },
+      {
+        "id": "witch",
+        "name": "Witch",
+        "ability": "Each night, choose a player: if they nominate tomorrow, they die. This only applies once, then resets.",
+        "first_night_order": 11,
+        "other_nights_order": 1
+      },
+      {
+        "id": "cerenovus",
+        "name": "Cerenovus",
+        "ability": "Each night, choose a player & a good character: they are mad they are this character tomorrow, or might be executed.",
+        "first_night_order": 12,
+        "other_nights_order": 2
+      },
+      {
+        "id": "pit_hag",
+        "name": "Pit-Hag",
+        "ability": "Each night, choose a player & a character they become (if not in play). If a Demon is made, deaths tonight are arbitrary.",
+        "first_night_order": 13,
+        "other_nights_order": 3
+      }
+    ],
+    "demons": [
+      {
+        "id": "fang_gu",
+        "name": "Fang Gu",
+        "ability": "Each night*, choose a player: they die. The first Outsider this kills becomes an evil Fang Gu and you die.",
+        "first_night_order": null,
+        "other_nights_order": 4
+      },
+      {
+        "id": "vigormortis",
+        "name": "Vigormortis",
+        "ability": "Each night*, choose a player: they die. Minions you kill keep their ability until dead. Outsiders may be added or removed.",
+        "first_night_order": null,
+        "other_nights_order": 5
+      },
+      {
+        "id": "no_dashii",
+        "name": "No Dashii",
+        "ability": "Each night*, choose a player: they die. Your two Townsfolk neighbors are poisoned.",
+        "first_night_order": null,
+        "other_nights_order": 6
+      },
+      {
+        "id": "vortox",
+        "name": "Vortox",
+        "ability": "Each night*, choose a player: they die. Townsfolk abilities yield false info. Each day, if no execution occurs, evil wins.",
+        "first_night_order": null,
+        "other_nights_order": 7
+      }
+    ]
+  },
+  "first_night_order": [
+    "clockmaker",
+    "dreamer",
+    "snake_charmer",
+    "mathematician",
+    "flowergirl",
+    "town_crier",
+    "oracle",
+    "seamstress",
+    "philosopher",
+    "evil_twin",
+    "witch",
+    "cerenovus",
+    "pit_hag"
+  ],
+  "other_nights_order": [
+    "witch",
+    "cerenovus",
+    "pit_hag",
+    "fang_gu",
+    "vigormortis",
+    "no_dashii",
+    "vortox",
+    "dreamer",
+    "snake_charmer",
+    "mathematician",
+    "flowergirl",
+    "town_crier",
+    "oracle",
+    "seamstress",
+    "philosopher",
+    "evil_twin"
+  ]
+}

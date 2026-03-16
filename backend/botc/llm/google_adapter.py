@@ -44,7 +44,7 @@ class GoogleProvider(LLMProvider):
         # large portion of the token budget for internal reasoning before
         # producing visible output. We need a much higher ceiling (8K+) to
         # ensure actual content comes through.
-        is_thinking_model = "2.5-pro" in self.config.model or "2.5-flash" in self.config.model
+        is_thinking_model = "2.5-pro" in self.config.model or "2.5-flash" in self.config.model or "3.1-pro" in self.config.model
         effective_max = max(max_tokens, 8192) if is_thinking_model else max_tokens
 
         config_kwargs: dict = {

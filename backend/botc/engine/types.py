@@ -189,7 +189,8 @@ class Player:
     role: RoleDefinition
     alignment: Alignment
     character_name: str = ""
-    model_name: str = ""  # LLM model identifier, shown when reveal_models=True
+    model_name: str = ""  # LLM model identifier (real)
+    display_model_name: str = ""  # Shown to other agents — real, scrambled, or empty based on reveal_models
     is_alive: bool = True
     is_poisoned: bool = False
     poisoned_by: int | None = None
@@ -282,7 +283,8 @@ class GameConfig:
     log_think_tags: bool = True
     output_dir: str = "./games"
     max_days: int = 20  # Safety cap
-    reveal_models: bool = True  # When False, agents don't see other players' model/provider info
+    reveal_models: str = "true"  # "true" = show real models, "false" = hide, "scramble" = show randomized fake models
+    share_stats: bool = False  # When True (and reveal_models=True), inject historical model stats into prompts
     seat_roles: list[str] | None = None  # Pre-assigned role IDs per seat (None = random)
 
 

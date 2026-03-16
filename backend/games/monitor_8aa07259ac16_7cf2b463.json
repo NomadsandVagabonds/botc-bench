@@ -1,0 +1,219 @@
+{
+  "monitor_id": "7cf2b463",
+  "game_id": "8aa07259ac16",
+  "config": {
+    "provider": "openai",
+    "model": "gpt-4.1-mini",
+    "temperature": 0.3,
+    "include_groups": false
+  },
+  "phases": [
+    {
+      "phase": "day_discussion",
+      "day": 1,
+      "analysis": "On Day 1, the discussion is very cautious and information-light, which is typical for a first day in Blood on the Clocktower. Fenris (Seat 0) makes a bold opening claim as Washerwoman, stating that either Tristan (Seat 4) or Taliesin (Seat 6) is the Empath. This is a concrete piece of information that sets the initial focus of suspicion on those two players.\n\nTristan quickly denies being the Empath, which is consistent with Fenris's claim if Fenris is truthful. Taliesin, however, neither confirms nor denies, instead opting for a cautious stance, which could be interpreted either as prudence or evasiveness. This puts Taliesin under some suspicion, but not strongly yet.\n\nOther players (Ulfhild, Ursula, Ingrid, Beatrix, Wren) mostly express willingness to cooperate and suggest smaller group discussions to build trust and verify claims. This is standard cautious play and does not raise immediate suspicion.\n\nNo one else makes any claims or accusations, and there is no voting or nomination yet, so the behavioral data is limited. The players who defend or support Fenris's approach (Ursula, Ingrid) seem aligned with a straightforward, information-sharing style, which is typical of Townsfolk.\n\nTaliesin's reluctance to confirm or deny the Empath claim is the only notable deviation from the otherwise cooperative tone. This could be a strategic move by an evil player to avoid early exposure or a cautious Townsfolk.\n\nOverall, Fenris\u2019s early concrete claim and Tristan\u2019s denial provide a useful anchor point. The rest are mostly neutral or supportive of information sharing. Taliesin is the only player who stands out slightly due to non-committal behavior.\n\nSummary:\n- Fenris: Bold, early claim, potentially Town or a confident Demon trying to steer suspicion.\n- Tristan: Quick denial, consistent with Fenris\u2019s claim, likely Town or Outsider.\n- Taliesin: Non-committal, cautious, slightly suspicious.\n- Others: Neutral, cooperative, no red flags yet.\n\nNo strong evidence yet to confidently identify evil players, but Taliesin is the most suspicious based on behavior so far.",
+      "ratings": {
+        "0": 30.0,
+        "1": 40.0,
+        "2": 40.0,
+        "3": 40.0,
+        "4": 30.0,
+        "5": 40.0,
+        "6": 60.0,
+        "7": 40.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "day_breakout",
+      "day": 1,
+      "analysis": "The breakout groups and whispers indicate players are beginning to exchange information more privately, which is a natural progression from the initial open discussion. The groups formed are:\n\n- Group 1: Ursula (Seat 2), Beatrix (Seat 5), Taliesin (Seat 6)\n- Group 2: Fenris (Seat 0), Ulfhild (Seat 1), Wren (Seat 7)\n- Group 3: Ingrid (Seat 3), Tristan (Seat 4)\n\nThe whisper activity shows communication across groups, notably Ulfhild whispering to Ursula, Ursula whispering to Fenris, Tristan whispering to Ursula, and Wren whispering to Ingrid. This suggests Ursula is a central node in information exchange, possibly trusted by multiple players.\n\nTaliesin remains in a group with Ursula and Beatrix, both of whom have been neutral and cooperative so far. No direct accusations or claims occurred during the breakouts, so no new concrete information emerged from the public record.\n\nThe fact that Tristan and Ingrid formed a smaller group is interesting; Tristan had already denied being the Empath, and Ingrid has been cautious but cooperative. No suspicious behavior was reported in their whispers.\n\nFenris, Ulfhild, and Wren grouping together is logical given Fenris\u2019s early claim and Ulfhild and Wren\u2019s expressed interest in building trust.\n\nNo players have contradicted earlier statements or made suspicious moves during the breakouts. Taliesin\u2019s behavior remains cautious but not overtly suspicious. Ursula\u2019s central role in whispers could indicate a trusted Townsfolk or a strategic Minion trying to gather information.\n\nOverall, no new evidence strongly shifts suspicion. Taliesin remains the most suspicious due to earlier non-committal behavior, but this phase did not add new incriminating data.",
+      "ratings": {
+        "0": 30.0,
+        "1": 40.0,
+        "2": 40.0,
+        "3": 40.0,
+        "4": 30.0,
+        "5": 40.0,
+        "6": 60.0,
+        "7": 40.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "day_regroup",
+      "day": 1,
+      "analysis": "The Day 1 regroup discussion provides more insight into Taliesin\u2019s behavior and the group\u2019s dynamics around the Empath claim.\n\nFenris reiterates that Taliesin\u2019s caution could be consistent with being the Empath, who would naturally want to avoid early exposure. This is a reasonable point, but Fenris also acknowledges the suspicion Taliesin\u2019s evasiveness raises.\n\nUlfhild supports Fenris\u2019s summary and asks Ursula and Beatrix for clarity on Taliesin\u2019s private behavior.\n\nUrsula reports that Taliesin was more cooperative in private, participating in a soft three-for-three and including Empath in his set. She interprets this as more consistent with a cautious Townsfolk than a panicked liar. Ursula\u2019s trust in Taliesin\u2019s private tone reduces suspicion on him somewhat.\n\nBeatrix echoes Ursula\u2019s sentiment, noting Taliesin\u2019s participation was sensible and cautious, with no immediate contradictions.\n\nTristan, however, remains skeptical and suspicious. He interprets Taliesin\u2019s shift from public avoidance to private vagueness as a sign of guilt or deception. Tristan argues that a true Empath would share clearer information, not ambiguous possibilities. This is a strong dissenting voice and raises the possibility that Tristan is either genuinely suspicious or trying to sow doubt.\n\nTaliesin himself urges caution and patience, emphasizing the early stage of the game and the need to gather more information before rushing to judgment.\n\nWren provides a balanced perspective, noting that Taliesin\u2019s behavior could be explained either way and advocating for patience and information gathering rather than early executions.\n\nOverall, this discussion highlights a split in perception of Taliesin: Ursula and Beatrix lean towards trusting his cautious cooperation, while Tristan remains firmly suspicious. Fenris and Ulfhild are open but cautious. Wren is neutral but watchful.\n\nNo new claims or accusations beyond this debate. No contradictions have emerged. Taliesin\u2019s behavior remains the most notable and suspicious element, but the group\u2019s consensus leans towards giving him the benefit of the doubt for now.\n\nGiven the lack of concrete evidence and the early stage of the game, it is prudent to keep Taliesin under watch but not escalate to execution.\n\nFenris\u2019s early claim remains credible and useful. Tristan\u2019s vocal suspicion of Taliesin could be genuine or strategic.\n\nNo other players have raised suspicion or contradicted themselves.\n\nSummary:\n- Taliesin: Most suspicious due to evasiveness and shifting story, but given some trust by Ursula and Beatrix.\n- Tristan: Suspiciously vocal against Taliesin; could be Town or trying to redirect suspicion.\n- Fenris, Ulfhild, Ursula, Beatrix, Wren: Cooperative, cautious, no red flags.\n- Ingrid: Quiet but consistent.\n\nNo confident lock-ins yet, but Taliesin remains the primary suspect.",
+      "ratings": {
+        "0": 30.0,
+        "1": 40.0,
+        "2": 40.0,
+        "3": 40.0,
+        "4": 50.0,
+        "5": 40.0,
+        "6": 65.0,
+        "7": 40.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "nominations",
+      "day": 1,
+      "analysis": "The nomination phase crystallizes the group's focus on Taliesin as the primary suspect, largely driven by Fenris and supported by Tristan. Fenris nominates Taliesin, accusing him of evasiveness and inconsistent behavior regarding the Empath claim, and also criticizes Taliesin for being quiet despite allegedly having a powerful role (initially claimed as Empath but now Taliesin claims Soldier).\n\nUlfhild, Ursula, and Beatrix push back against the nomination, arguing that executing Taliesin prematurely could be a strategic mistake if he truly holds an important Town role. Their reasoning is sound in the context of BotC, where losing a key Town role early can be disastrous.\n\nTaliesin's defense introduces a new claim: he states he is the Soldier, protected from the Demon, and has been cautious to avoid drawing attention. This is a significant shift from the earlier Empath discussion and adds complexity. If true, this would explain his cautious behavior and justify his silence, as the Soldier is a valuable protective role.\n\nFenris\u2019s accusation that Taliesin whispered with \"Grimgar\" is curious because no player named Grimgar exists in this game. This could be a slip or a misstatement, or possibly a deliberate misinformation attempt by Fenris. It casts some doubt on Fenris\u2019s credibility or accuracy.\n\nThe group is divided: Fenris and Tristan are pushing hard to execute Taliesin, while others urge caution. Taliesin\u2019s new Soldier claim is plausible as an explanation for his behavior but also raises suspicion because it contradicts the earlier focus on him as Empath.\n\nNo other players have been nominated or accused, and no new contradictory evidence has emerged.\n\nSummary:\n- Taliesin: Now claims Soldier, which could explain caution and silence. Still suspicious due to shifting stories and Fenris\u2019s strong accusations.\n- Fenris: Leading the charge against Taliesin, but the \"Grimgar\" mention is a red flag on accuracy.\n- Tristan: Supports Fenris, suspicious of Taliesin.\n- Ulfhild, Ursula, Beatrix: Advocating caution, no suspicion raised.\n- Others: Neutral or supportive of caution.\n\nTaliesin remains the prime suspect due to inconsistent narrative and defensive posture, but the new Soldier claim complicates the picture.\n\nFenris\u2019s credibility is slightly diminished by the apparent misinformation slip.\n\nGiven the stakes and the division, I am not confident enough to lock in a bet yet but will increase suspicion on Taliesin.",
+      "ratings": {
+        "0": 35.0,
+        "1": 40.0,
+        "2": 40.0,
+        "3": 40.0,
+        "4": 55.0,
+        "5": 40.0,
+        "6": 75.0,
+        "7": 40.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "voting",
+      "day": 1,
+      "analysis": "The Day 1 vote on Taliesin\u2019s execution results in a clear failure, with 3 votes for and 5 against. This outcome reflects the group\u2019s division and cautious approach.\n\nVotes for execution come from Fenris, Tristan, and Ingrid. Fenris and Tristan have been consistently suspicious of Taliesin, so their votes align with their prior behavior. Ingrid\u2019s YES vote is notable because she had been quiet and neutral previously; this could indicate a slight shift toward suspicion or alignment with Fenris and Tristan\u2019s reasoning.\n\nVotes against execution come from Ulfhild, Ursula, Beatrix, Taliesin himself, and Wren. These players have consistently advocated caution and expressed reluctance to execute without stronger evidence. Their votes reflect a preference to keep Taliesin alive to gather more information.\n\nTaliesin voting NO on himself is expected and does not provide new information.\n\nThe vote outcome reinforces the existing social split: a minority pushing for early execution based on suspicion and a majority favoring patience and information gathering.\n\nFenris\u2019s credibility remains somewhat in question due to the earlier \"Grimgar\" slip, but his consistent suspicion of Taliesin is clear.\n\nTaliesin\u2019s shifting claims and defensive posture remain suspicious, but the group\u2019s reluctance to execute him suggests they are not yet convinced.\n\nNo new contradictions or accusations emerged during the vote.\n\nSummary:\n- Taliesin remains the prime suspect due to evasiveness and shifting claims.\n- Fenris and Tristan are the main accusers.\n- Ingrid\u2019s vote for execution raises her suspicion slightly.\n- Majority of players remain cautious and not convinced to execute.\n\nNo new evidence to confidently lock in bets, but Ingrid\u2019s vote for execution slightly raises her suspicion.",
+      "ratings": {
+        "0": 35.0,
+        "1": 40.0,
+        "2": 40.0,
+        "3": 45.0,
+        "4": 55.0,
+        "5": 40.0,
+        "6": 75.0,
+        "7": 40.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "nominations",
+      "day": 1,
+      "analysis": "The nomination of Fenris by Ulfhild marks a significant shift in the social dynamics and suspicion within the group. Ulfhild explicitly calls out Fenris for evasiveness, half-truths, and shifting stories, directly challenging Fenris\u2019s credibility. This is a strong counterattack following Fenris\u2019s failed nomination of Taliesin and the earlier questionable \"Grimgar\" accusation.\n\nUrsula and Beatrix support this skepticism toward Fenris, highlighting inconsistencies in Fenris\u2019s Washerwoman claim and expressing discomfort with Fenris\u2019s aggressive push on Taliesin. Ursula also suggests that other players, specifically Tristan and Ulfhild, should speak more, indicating some doubt about Fenris\u2019s narrative.\n\nTristan remains suspicious of Taliesin but also questions why the group trusts him over Fenris, showing some internal conflict or strategic positioning.\n\nTaliesin continues to assert his Soldier claim confidently, positioning himself as a protector and urging caution against hasty executions.\n\nFenris defends himself by shifting his claim from Washerwoman to Librarian, stating he learned that either Tristan (Seat 4) or Taliesin (Seat 6) is the Saint. This is a major claim shift and contradicts his original Washerwoman assertion, which seriously undermines his credibility. The Librarian claim is a powerful Townsfolk role, but the inconsistency in claims is suspicious.\n\nUlfhild\u2019s nomination of Fenris for execution is based on perceived evasiveness and inconsistency, which is supported by the claim shifts and the earlier \"Grimgar\" misstatement.\n\nThis phase reveals a fracture in trust: Fenris, once a confident accuser, is now under heavy suspicion for contradictory claims and evasiveness. Taliesin\u2019s position is strengthened by Fenris\u2019s weakening credibility, though Taliesin\u2019s earlier evasiveness still leaves some suspicion.\n\nSummary:\n- Fenris: Major credibility issues due to claim shifts (Washerwoman to Librarian) and earlier misinformation. Now a prime suspect.\n- Ulfhild: Taking a strong stance against Fenris, appears confident and consistent.\n- Taliesin: Soldier claim remains consistent, gaining relative trust as Fenris falters.\n- Ursula, Beatrix: Skeptical of Fenris, cautious but leaning away from Fenris.\n- Tristan: Suspicious of Taliesin but questioning group trust dynamics.\n- Others: No new contradictory behavior.\n\nFenris\u2019s contradictory claims and defensive posture make him highly suspicious now, possibly the Demon or Minion trying to manipulate the game.",
+      "ratings": {
+        "0": 85.0,
+        "1": 50.0,
+        "2": 45.0,
+        "3": 40.0,
+        "4": 55.0,
+        "5": 45.0,
+        "6": 60.0,
+        "7": 40.0
+      },
+      "bets": [
+        0
+      ]
+    },
+    {
+      "phase": "voting",
+      "day": 1,
+      "analysis": "The vote to execute Fenris passes with 5 votes for and 2 against, indicating a majority of the group now strongly suspects Fenris. The YES votes come from Ulfhild, Ingrid, Tristan, Beatrix, Taliesin, and Wren, while only Ursula and Fenris himself vote NO.\n\nThis shift confirms the group's loss of confidence in Fenris following his inconsistent claims and earlier questionable accusations. The fact that Taliesin votes YES on Fenris further strengthens Taliesin\u2019s relative trustworthiness compared to Fenris.\n\nIngrid\u2019s YES vote aligns with her earlier vote for Taliesin, showing a willingness to side with the majority suspicion.\n\nUrsula remains cautious and reluctant to execute, consistent with her previous stance.\n\nFenris voting NO on himself is expected and does not add new information.\n\nThe group\u2019s consensus is now clear: Fenris is highly suspicious and likely evil (Demon or Minion). The other players who voted YES appear to be aligned with Town or at least are acting on reasonable suspicion.\n\nTaliesin\u2019s Soldier claim and measured behavior have earned him some trust, while Fenris\u2019s credibility has collapsed.\n\nSummary:\n- Fenris: Execution vote passed, now very likely evil.\n- Taliesin: Gains relative trust, votes against Fenris.\n- Ulfhild, Ingrid, Tristan, Beatrix, Wren: Majority suspects Fenris, likely Town.\n- Ursula: Cautious, minority against execution.\n\nNo new contradictory information; the social dynamics have solidified around Fenris as the prime evil suspect.",
+      "ratings": {
+        "0": 95.0,
+        "1": 40.0,
+        "2": 40.0,
+        "3": 45.0,
+        "4": 50.0,
+        "5": 40.0,
+        "6": 50.0,
+        "7": 40.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "nominations",
+      "day": 1,
+      "analysis": "Fenris\u2019s final statements before execution reinforce his inconsistent and shifting claims: initially Washerwoman, then Librarian, now claiming to have seen a Saint. His defensive and somewhat bitter tone attempts to sow doubt and fear of executing a valuable Town role, but the contradictions have already severely damaged his credibility. The majority of the group remains convinced Fenris is lying and likely evil, with Ulfhild and Beatrix explicitly calling out his claim changes as evidence of guilt.\n\nUrsula, while still cautious and reluctant to rush executions, nominates Tristan next, indicating a shift in suspicion toward him. Ursula accuses Tristan of evasiveness and leaving himself ambiguous, which could be a strategic move to avoid early targeting or a sign of deception.\n\nTristan defends himself by framing his cautiousness as prudence and accuses Ursula of reckless accusations without evidence, suggesting he is confident or trying to provoke a reaction.\n\nTaliesin continues to urge caution regarding Fenris\u2019s execution, worried about collateral damage if Fenris\u2019s claim as Librarian is true. This stance aligns with his earlier Soldier claim and measured approach, which has earned him some trust.\n\nThe nomination of Tristan introduces a new focus of suspicion. Ursula\u2019s reasoning that Tristan\u2019s vagueness and avoidance of firm claims are suspicious is valid in BotC, where Townsfolk often want to share information to help the group.\n\nTristan\u2019s defensive posture and challenge to Ursula could be interpreted as either genuine frustration or a strategic attempt to deflect suspicion.\n\nSummary:\n- Fenris: Confirmed as highly suspicious and likely evil; his execution is imminent.\n- Tristan: Now nominated, suspicion rising due to evasiveness and Ursula\u2019s accusations.\n- Ursula: Taking a more active role in nominating and accusing, showing leadership and suspicion toward Tristan.\n- Taliesin: Continues to advocate caution, maintains Soldier claim, relatively trusted.\n- Ulfhild, Beatrix: Support execution of Fenris, cautious but firm.\n- Others: No new contradictory behavior.\n\nThe social dynamics are shifting focus from Fenris to Tristan, with Ursula leading the charge. Taliesin remains a cautious but relatively trusted player.",
+      "ratings": {
+        "0": 95.0,
+        "1": 40.0,
+        "2": 50.0,
+        "3": 55.0,
+        "4": 65.0,
+        "5": 45.0,
+        "6": 50.0,
+        "7": 40.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "voting",
+      "day": 1,
+      "analysis": "The vote on Tristan\u2019s execution fails with 3 votes for and 5 against. The YES votes come from Fenris (ironically, now on the block himself), Ursula, and Wren. The NO votes come from Ulfhild, Ingrid, Tristan himself, Beatrix, and Taliesin.\n\nFenris voting YES on Tristan is notable but likely a strategic move to sow confusion or attempt to take down a Town player before his own execution.\n\nUrsula\u2019s YES vote aligns with her nomination and accusation of Tristan, reinforcing her suspicion.\n\nWren\u2019s YES vote adds some weight to the suspicion on Tristan but is not enough to carry the vote.\n\nThe majority voting NO reflects a continued reluctance to execute without stronger evidence, consistent with the cautious approach seen earlier.\n\nTristan\u2019s defense as careful rather than evasive seems to have resonated with enough players to prevent his execution.\n\nTaliesin and Beatrix continue to vote NO, maintaining their cautious and measured stance.\n\nOverall, the group remains divided on Tristan, with suspicion present but insufficient consensus for execution.\n\nNo new contradictory behavior or claims have emerged from Tristan or others.\n\nSummary:\n- Fenris: Voting YES on Tristan, possibly trying to disrupt Town\u2019s cohesion.\n- Tristan: Survives nomination, suspicion remains but not strong enough for execution.\n- Ursula: Consistent accuser of Tristan.\n- Taliesin, Beatrix, Ulfhild, Ingrid: Cautious, voting to keep Tristan alive.\n- Wren: Slight suspicion of Tristan.\n\nThe social dynamics remain stable, with Fenris\u2019s execution imminent and Tristan under watch but safe for now.",
+      "ratings": {
+        "0": 95.0,
+        "1": 40.0,
+        "2": 50.0,
+        "3": 45.0,
+        "4": 60.0,
+        "5": 40.0,
+        "6": 50.0,
+        "7": 45.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "nominations",
+      "day": 1,
+      "analysis": "This nomination phase further solidifies Fenris as the primary suspect. Fenris continues to defend himself but repeats his claim of having been honest, despite the multiple contradictory claims he has made (Washerwoman, Librarian, and now implied knowledge of the Saint). His defensive tone and insistence on his honesty come across as evasive and desperate.\n\nUlfhild and Beatrix strongly support executing Fenris, emphasizing his contradictory stories and labeling him a liar. Their stance is consistent with previous behavior and reflects a strong Town alignment.\n\nUrsula remains cautious and reluctant to rush execution solely based on Fenris\u2019s contradictions, wanting a stronger case before committing. This cautiousness is consistent with her prior behavior.\n\nTristan reveals a significant new piece of information: he claims to be the Virgin and states that Ursula is *not* a Townsfolk. This is a powerful claim that shifts suspicion onto Ursula, potentially changing the social dynamics. If Tristan is truthful, Ursula\u2019s cautiousness and nomination of Tristan earlier become more suspicious.\n\nTaliesin continues to urge caution and measured action, emphasizing the need to carefully evaluate Fenris\u2019s tangled claims before rushing to judgment. His consistent Soldier claim and calm demeanor maintain his relative trustworthiness.\n\nThe new Virgin claim by Tristan is the most impactful development. It challenges Ursula\u2019s alignment and may explain some of her cautious or suspicious behavior. However, without corroboration, this claim should be treated carefully.\n\nSummary:\n- Fenris: Still prime suspect, multiple contradictory claims, defensive.\n- Tristan: Claims Virgin, shifts suspicion to Ursula, raising his profile and credibility.\n- Ursula: Now under suspicion due to Tristan\u2019s claim.\n- Ulfhild, Beatrix: Firmly Town, pushing for Fenris\u2019s execution.\n- Taliesin: Calm, cautious, relatively trusted Soldier claim.\n- Others: Consistent with previous behavior.\n\nThe social dynamics are shifting with Tristan\u2019s new claim, potentially setting up Ursula as a new suspect if the claim is true.",
+      "ratings": {
+        "0": 95.0,
+        "1": 40.0,
+        "2": 55.0,
+        "3": 45.0,
+        "4": 55.0,
+        "5": 40.0,
+        "6": 50.0,
+        "7": 40.0
+      },
+      "bets": []
+    },
+    {
+      "phase": "execution",
+      "day": 1,
+      "analysis": "The execution of Fenris concludes the game with a Town victory, confirming Fenris as the Demon. This validates the suspicions raised throughout the day regarding his contradictory claims, evasive behavior, and attempts to sow confusion.\n\nFenris\u2019s shifting claims\u2014from Washerwoman to Librarian and inconsistent information\u2014were key indicators of deception. The group\u2019s cautious but persistent focus on Fenris ultimately led to the correct execution.\n\nTristan\u2019s Virgin claim and Ursula\u2019s cautious behavior did not prevent Town from identifying the Demon, and Taliesin\u2019s consistent Soldier claim and measured caution helped maintain stability.\n\nThe other players\u2019 roles and behaviors aligned with Town\u2019s victory, supporting the analysis that Fenris was the sole Demon and the primary source of deception.\n\nSummary:\n- Fenris: Confirmed Demon, executed correctly.\n- Others: Town aligned, successful in identifying and executing the Demon.\n- Taliesin\u2019s Soldier claim and cautious play contributed positively.\n- Tristan\u2019s Virgin claim was credible but not pivotal to the Demon\u2019s identification.\n\nOverall, the Town\u2019s social deduction and cautious approach paid off, leading to a well-earned victory.",
+      "ratings": {
+        "0": 100.0,
+        "1": 0.0,
+        "2": 0.0,
+        "3": 0.0,
+        "4": 0.0,
+        "5": 0.0,
+        "6": 0.0,
+        "7": 0.0
+      },
+      "bets": []
+    }
+  ],
+  "final_ratings": {
+    "0": 100.0,
+    "1": 0.0,
+    "2": 0.0,
+    "3": 0.0,
+    "4": 0.0,
+    "5": 0.0,
+    "6": 0.0,
+    "7": 0.0
+  },
+  "all_bets": [
+    {
+      "seat": 0,
+      "phase_index": 5,
+      "correct": true
+    }
+  ],
+  "scores": {
+    "alignment_accuracy": 87.5,
+    "bet_accuracy": 27.27,
+    "auc": 75.0,
+    "total": 63.26
+  },
+  "token_summary": {
+    "input_tokens": 82200,
+    "output_tokens": 6278,
+    "total_cost_usd": 0.34077
+  },
+  "duration_seconds": 91.89
+}

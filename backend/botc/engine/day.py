@@ -88,16 +88,18 @@ def process_vote(
     if not voter.is_alive:
         if voter.ghost_vote_used:
             return  # Can't vote again
-        if vote_yes:
-            voter.ghost_vote_used = True
+        if not vote_yes:
+            return  # Dead players abstain rather than voting NO
 
-    # Butler restriction: can only vote if master is voting
+    # Butler restriction: can only vote if master has voted YES
+    # (checked before consuming ghost vote so a blocked vote doesn't waste it)
     if voter.butler_master is not None and vote_yes:
-        master = state.player_at(voter.butler_master)
-        # Check if master voted yes on this nomination
         if voter.butler_master not in nomination.votes_for:
-            # Butler can't vote - master hasn't voted yes
             return
+
+    # Consume ghost vote after all restriction checks pass
+    if not voter.is_alive and vote_yes:
+        voter.ghost_vote_used = True
 
     if vote_yes:
         nomination.votes_for.append(voter_seat)
@@ -242,8 +244,15 @@ def can_vote(state: GameState, voter_seat: int) -> bool:
 
 
 def _apply_minstrel_effect(state: GameState, executed: Player) -> None:
-    """If a Minion dies by execution, others are drunk until next dusk."""
+    """If a Minion dies by execution and a Minstrel is alive, others are drunk until next dusk."""
     if executed.role.role_type != RoleType.MINION:
+        return
+    # Only applies if an alive, non-poisoned Minstrel is in the game
+    minstrel = next(
+        (p for p in state.alive_players if p.role.id == "minstrel" and not p.is_poisoned),
+        None,
+    )
+    if minstrel is None:
         return
     for player in state.players:
         if player.seat == executed.seat or player.role.id == "minstrel":

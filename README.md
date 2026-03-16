@@ -15,9 +15,9 @@ A benchmark platform for evaluating LLM agents' ability to deceive and detect de
 - **Full BotC rules**: 20+ Trouble Brewing roles, proper nomination/voting, breakout groups, whispers, ghost votes
 - **RECALL memory system**: Agents write self-notes and search past conversations (no full context accumulation)
 - **Monitor Agent**: Post-hoc deception detection benchmark — a separate LLM watches public events and tries to identify evil players
-- **Pixel-art web UI**: Live observation with DX Terminal sprites, waypoint pathfinding, speech bubbles, voting overlays
+- **Pixel-art web UI**: Live observation with animated sprites, waypoint pathfinding, speech bubbles, voting overlays
 - **Voice acting**: ElevenLabs TTS with unique voices per character
-- **Speech styles**: Play games in Shakespearean iambic pentameter, film noir, pirate speak, and more
+
 
 ## Quick Start
 

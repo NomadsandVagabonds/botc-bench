@@ -132,9 +132,27 @@ def _check_saint_executed(state: GameState) -> WinResult | None:
 
 
 def _check_mayor_win(state: GameState) -> WinResult | None:
-    """If 3 players alive, no execution today, and Mayor is alive, Good wins."""
-    # Mayor win is checked at end-of-day / transition-to-night timing.
-    if state.phase not in (GamePhase.NIGHT, GamePhase.GAME_OVER):
+    """If 3 players alive, no execution today, and Mayor is alive, Good wins.
+
+    Per BotC rules, the Mayor win triggers when the day ends with no execution
+    and exactly 3 players alive. Night kills should not retroactively satisfy
+    this condition — the 3-alive count must be true at end-of-day.
+    """
+    # Only check during the transition from nominations to night (end-of-day).
+    # NIGHT phase is set right after nominations; executed_today reflects this day.
+    # Exclude post-night-kill checks by requiring executed_today to have been
+    # evaluated this day (not carried over from a previous day after start_new_day reset).
+    if state.phase not in (GamePhase.NIGHT, GamePhase.NOMINATIONS, GamePhase.GAME_OVER):
+        return None
+
+    # After night kills, start_new_day hasn't run yet so executed_today still
+    # reflects the current day. But alive count may have changed due to night
+    # kills. We need 3 alive at the END of the day (before night kills).
+    # Gate on: we are entering night (not after night resolution).
+    # The game runner calls check_win_conditions both at the top of the loop
+    # (line 263, before start_new_day) and after night kills (line 309).
+    # At line 309, night_kills is populated; at line 263/1115, it is not.
+    if state.night_kills:
         return None
 
     if len(state.alive_players) != 3:

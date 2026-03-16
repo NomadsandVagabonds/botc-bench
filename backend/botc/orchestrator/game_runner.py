@@ -225,6 +225,10 @@ class GameRunner:
             ],
         })
 
+        # Emit initial observer snapshot so event_history is self-contained for replay
+        from botc.engine.state import snapshot_observer
+        self._emit("game.state", snapshot_observer(state))
+
         # First night
         await self._run_first_night(state)
         self._validate_roles_match_script(state)
@@ -414,13 +418,14 @@ class GameRunner:
                 temperature=0.9,
                 max_tokens=150,
             )
-            self.token_tracker.record(
+            self._record_tokens(
                 agent_id=agent.agent_id,
                 model=response.model,
                 phase_id=state.phase_id,
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
                 latency_ms=response.latency_ms,
+                seat=agent.seat,
             )
             return response.content.strip()
 
@@ -1088,13 +1093,14 @@ class GameRunner:
                         temperature=a.llm_config.temperature,
                         max_tokens=mt,
                     )
-                    self.token_tracker.record(
+                    self._record_tokens(
                         agent_id=a.agent_id,
                         model=response.model,
                         phase_id=state.phase_id,
                         input_tokens=response.input_tokens,
                         output_tokens=response.output_tokens,
                         latency_ms=response.latency_ms,
+                        seat=a.seat,
                     )
                     return response.content.strip()
 
@@ -1201,7 +1207,7 @@ class GameRunner:
                 max_tokens=100,
             )
             narration = response.content.strip().strip('"')
-            self.token_tracker.record(
+            self._record_tokens(
                 agent_id="storyteller",
                 model=response.model,
                 phase_id=state.phase_id,
@@ -1254,13 +1260,14 @@ class GameRunner:
             )
             speech_text, internal_content = _sanitize_speech(response.content.strip())
 
-            self.token_tracker.record(
+            self._record_tokens(
                 agent_id=agent.agent_id,
                 model=response.model,
                 phase_id=state.phase_id,
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
                 latency_ms=response.latency_ms,
+                seat=agent.seat,
             )
         except Exception as e:
             logger.warning(
@@ -1819,6 +1826,35 @@ class GameRunner:
             self.on_event(event_type, data)
         except Exception:
             logger.exception("Event callback error for %s", event_type)
+
+    def _record_tokens(
+        self,
+        agent_id: str,
+        model: str,
+        phase_id: str,
+        input_tokens: int,
+        output_tokens: int,
+        latency_ms: float,
+        seat: int | None = None,
+    ) -> None:
+        """Record token usage and emit an agent.tokens event."""
+        rec = self.token_tracker.record(
+            agent_id=agent_id,
+            model=model,
+            phase_id=phase_id,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            latency_ms=latency_ms,
+        )
+        self._emit("agent.tokens", {
+            "seat": seat,
+            "agent_id": agent_id,
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cost_usd": rec.cost_usd,
+            "total_cost_usd": self.token_tracker.total_cost_usd,
+        })
 
     # -------------------------------------------------------------------
     # Result compilation

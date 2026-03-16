@@ -53,6 +53,16 @@ export interface ConfiguredGameRequest {
   reveal_models?: boolean;
 }
 
+export interface GameStatusResponse {
+  game_id: string;
+  status: string; // "running" | "completed" | "failed" | "stopped"
+  state?: GameState;
+  error?: string | null;
+  winner?: string | null;
+  win_condition?: string | null;
+  total_days?: number | null;
+}
+
 // ── API functions ───────────────────────────────────────────────────
 
 export async function createGame(config: GameConfig): Promise<GameState> {
@@ -90,6 +100,10 @@ export async function listGames(): Promise<GameListItem[]> {
 
 export async function getGame(id: string): Promise<GameState> {
   return request<GameState>(`/api/games/${id}`);
+}
+
+export async function getGameStatus(id: string): Promise<GameStatusResponse> {
+  return request<GameStatusResponse>(`/api/games/${id}`);
 }
 
 /** Stop a running game immediately. */

@@ -47,11 +47,22 @@ export interface GameStore {
   // Debrief messages (post-game reactions from agents)
   debriefMessages: DebriefMessage[];
 
+  // All nominations across all days (never cleared — for stats)
+  allNominations: import('../types/game.ts').NominationRecord[];
+
+  // Replay system
+  replayMode: boolean;
+  replayQueue: ServerEvent[];
+  replayIndex: number;
+  replayTotal: number;
+
   // Actions
   setConnected: (connected: boolean) => void;
   setGameId: (gameId: string | null) => void;
   setGameState: (state: GameState) => void;
   applyEvent: (event: ServerEvent) => void;
+  startReplay: (initialState: ServerEvent, events: ServerEvent[]) => void;
+  replayNext: () => boolean; // returns false when done
   selectPlayer: (seat: number | null) => void;
   selectGroup: (groupId: string | null) => void;
   toggleObserverInfo: () => void;
@@ -82,6 +93,11 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   tokenUsage: {},
   nightActions: [],
   debriefMessages: [],
+  allNominations: [],
+  replayMode: false,
+  replayQueue: [],
+  replayIndex: 0,
+  replayTotal: 0,
 
   // ── Connection ──────────────────────────────────────────────────
   setConnected: (connected) => set({ connected }),
@@ -232,6 +248,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
             nominations: [...gameState.nominations, pending],
             messages: [...gameState.messages, nomMsg],
           },
+          allNominations: [...get().allNominations, { ...pending }],
         });
         break;
       }
@@ -266,7 +283,19 @@ export const useGameStore = create<GameStore>()((set, get) => ({
           phase: gameState.phase,
           dayNumber: gameState.dayNumber,
         };
-        set({ gameState: { ...gameState, nominations: noms, messages: [...gameState.messages, voteMsg] } });
+        // Also update allNominations
+        const allNoms = [...get().allNominations];
+        const allCurrent = allNoms.findLast(
+          (n) => n.nomineeSeat === event.nomineeSeat && n.nominatorSeat === current?.nominatorSeat,
+        );
+        if (allCurrent) {
+          if (event.vote) {
+            allCurrent.votesFor = [...allCurrent.votesFor, event.voterSeat];
+          } else {
+            allCurrent.votesAgainst = [...allCurrent.votesAgainst, event.voterSeat];
+          }
+        }
+        set({ gameState: { ...gameState, nominations: noms, messages: [...gameState.messages, voteMsg] }, allNominations: allNoms });
         break;
       }
 
@@ -341,6 +370,27 @@ export const useGameStore = create<GameStore>()((set, get) => ({
             ...gameState,
             players: afterDeath,
             nightKills: [...gameState.nightKills, event.seat],
+          },
+        });
+        break;
+      }
+
+      case 'resurrection': {
+        if (!gameState) break;
+        const afterResurrection = gameState.players.map((p) =>
+          p.seat === event.seat ? {
+            ...p,
+            isAlive: true,
+            deathCause: null,
+            deathDay: null,
+            deathPhase: null,
+          } : p,
+        );
+        set({
+          gameState: {
+            ...gameState,
+            players: afterResurrection,
+            nightKills: gameState.nightKills.filter((seat) => seat !== event.seat),
           },
         });
         break;
@@ -474,23 +524,36 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       case 'event.history': {
         // Batch-replay all historical events in a single state update to
         // avoid triggering N re-renders when a client connects mid-game.
-        if (!gameState) break;
         const historyEvents = (event as import('../types/events.ts').EventHistoryEvent).events;
         if (!historyEvents || historyEvents.length === 0) break;
 
+        // If we don't have gameState yet, look for a game.state event in history
+        // (saved games loaded from disk may not have a separate game.state message)
+        let baseState = gameState;
+        if (!baseState) {
+          const stateEvt = historyEvents.find((e: any) => e.type === 'game.state');
+          if (stateEvt) {
+            baseState = (stateEvt as any).state;
+            // Also set it immediately so subsequent logic works
+            set({ gameState: baseState });
+          }
+        }
+        if (!baseState) break;
+
         // Mutable accumulators — build up state, then commit once.
-        const msgs: typeof gameState.messages = [...gameState.messages];
-        let hPlayers = [...gameState.players];
-        let hNominations = [...gameState.nominations];
-        let hOnTheBlock: import('../types/game.ts').OnTheBlock | null = gameState.onTheBlock;
-        const hGroups = [...gameState.breakoutGroups];
-        const hWhispers = [...gameState.whispers];
-        const hNightKills = [...gameState.nightKills];
-        let hPhase = gameState.phase;
-        let hDay = gameState.dayNumber;
-        let hExecuted = gameState.executedToday;
-        let hWinner = gameState.winner;
-        let hWinCondition = gameState.winCondition;
+        const msgs: typeof baseState.messages = [...baseState.messages];
+        let hPlayers = [...baseState.players];
+        let hNominations = [...baseState.nominations];
+        const hAllNominations: import('../types/game.ts').NominationRecord[] = [...get().allNominations];
+        let hOnTheBlock: import('../types/game.ts').OnTheBlock | null = baseState.onTheBlock;
+        const hGroups = [...baseState.breakoutGroups];
+        const hWhispers = [...baseState.whispers];
+        const hNightKills = [...baseState.nightKills];
+        let hPhase = baseState.phase;
+        let hDay = baseState.dayNumber;
+        let hExecuted = baseState.executedToday;
+        let hWinner = baseState.winner;
+        let hWinCondition = baseState.winCondition;
         const hReasoning: Record<number, ReasoningEntry[]> = { ...get().playerReasoning };
         const hTokens: Record<number, { prompt: number; completion: number; cost: number }> = { ...get().tokenUsage };
         const hNightActions: NightActionEntry[] = [...get().nightActions];
@@ -514,6 +577,9 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
         for (const evt of historyEvents) {
           switch (evt.type) {
+            case 'game.state':
+              // Already extracted as baseState above — skip during replay
+              break;
             case 'phase.change': {
               const pc = evt as import('../types/events.ts').PhaseChangeEvent;
               hPhase = pc.phase;
@@ -569,15 +635,16 @@ export const useGameStore = create<GameStore>()((set, get) => ({
               const exists = hNominations.some(
                 n => n.nominatorSeat === ns.nominatorSeat && n.nomineeSeat === ns.nomineeSeat
               );
+              const newNom = {
+                nominatorSeat: ns.nominatorSeat,
+                nomineeSeat: ns.nomineeSeat,
+                votesFor: [] as number[],
+                votesAgainst: [] as number[],
+                passed: false,
+                outcome: null as string | null,
+              };
               if (!exists) {
-                hNominations.push({
-                  nominatorSeat: ns.nominatorSeat,
-                  nomineeSeat: ns.nomineeSeat,
-                  votesFor: [],
-                  votesAgainst: [],
-                  passed: false,
-                  outcome: null,
-                });
+                hNominations.push(newNom);
                 msgs.push({
                   id: crypto.randomUUID(),
                   type: 'system' as const,
@@ -590,6 +657,8 @@ export const useGameStore = create<GameStore>()((set, get) => ({
                   dayNumber: hDay,
                 } as any);
               }
+              // Always add to allNominations (never cleared between days)
+              hAllNominations.push({ ...newNom });
               break;
             }
             case 'vote.cast': {
@@ -600,6 +669,15 @@ export const useGameStore = create<GameStore>()((set, get) => ({
                   nom.votesFor = [...nom.votesFor, vc.voterSeat];
                 } else {
                   nom.votesAgainst = [...nom.votesAgainst, vc.voterSeat];
+                }
+              }
+              // Also update allNominations
+              const allNom = [...hAllNominations].reverse().find(n => n.nomineeSeat === vc.nomineeSeat);
+              if (allNom) {
+                if (vc.vote) {
+                  allNom.votesFor = [...allNom.votesFor, vc.voterSeat];
+                } else {
+                  allNom.votesAgainst = [...allNom.votesAgainst, vc.voterSeat];
                 }
               }
               msgs.push({
@@ -662,6 +740,19 @@ export const useGameStore = create<GameStore>()((set, get) => ({
               hNightKills.push(de.seat);
               // Don't push a death message — the backend already sends a
               // narration via message.new, so adding one here causes duplicates.
+              break;
+            }
+            case 'resurrection': {
+              const rs = evt as import('../types/events.ts').ResurrectionEvent;
+              hPlayers = hPlayers.map(p => p.seat === rs.seat ? {
+                ...p,
+                isAlive: true,
+                deathCause: null,
+                deathDay: null,
+                deathPhase: null,
+              } : p);
+              const idx = hNightKills.lastIndexOf(rs.seat);
+              if (idx >= 0) hNightKills.splice(idx, 1);
               break;
             }
             case 'breakout.formed': {
@@ -750,7 +841,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
         // Single batched state update — one re-render for the entire history.
         set({
           gameState: {
-            ...gameState,
+            ...baseState,
             phase: hPhase,
             dayNumber: hDay,
             players: hPlayers,
@@ -768,6 +859,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
           tokenUsage: hTokens,
           nightActions: hNightActions,
           debriefMessages: hDebrief,
+          allNominations: hAllNominations,
         });
         console.log(`[ws] Replayed ${historyEvents.length} historical events`);
         break;
@@ -791,6 +883,32 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       speed: s.paused ? (s.speed === 0 ? 1 : s.speed) : 0,
     })),
 
+  // ── Replay ──────────────────────────────────────────────────────
+  startReplay: (initialState, events) => {
+    // Apply the initial game.state, then queue the rest for timed playback
+    get().applyEvent(initialState);
+    set({
+      replayMode: true,
+      replayQueue: events,
+      replayIndex: 0,
+      replayTotal: events.length,
+      paused: true, // Start paused so user can hit play
+      speed: 1,
+    });
+  },
+
+  replayNext: () => {
+    const { replayQueue, replayIndex } = get();
+    if (replayIndex >= replayQueue.length) {
+      set({ replayMode: false });
+      return false;
+    }
+    const event = replayQueue[replayIndex];
+    get().applyEvent(event);
+    set({ replayIndex: replayIndex + 1 });
+    return replayIndex + 1 < replayQueue.length;
+  },
+
   // ── Reset ───────────────────────────────────────────────────────
   reset: () =>
     set({
@@ -807,5 +925,10 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       tokenUsage: {},
       nightActions: [],
       debriefMessages: [],
+      allNominations: [],
+      replayMode: false,
+      replayQueue: [],
+      replayIndex: 0,
+      replayTotal: 0,
     }),
 }));

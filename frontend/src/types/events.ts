@@ -61,6 +61,12 @@ export interface DeathEvent {
   deathPhase?: string;   // "day" | "night"
 }
 
+export interface ResurrectionEvent {
+  type: 'resurrection';
+  seat: number;
+  cause?: string;
+}
+
 export interface NightActionEvent {
   type: 'night.action';
   seat: number;
@@ -133,6 +139,7 @@ export type ServerEvent =
   | NominationResultEvent
   | ExecutionEvent
   | DeathEvent
+  | ResurrectionEvent
   | NightActionEvent
   | BreakoutFormedEvent
   | BreakoutEndedEvent

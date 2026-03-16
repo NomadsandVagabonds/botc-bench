@@ -1,0 +1,24 @@
+# API keys
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+
+# Game logs (but keep saved game JSON files for replay)
+backend/games/*.jsonl
+backend/games/*.log
+
+# Node
+node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

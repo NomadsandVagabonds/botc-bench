@@ -433,12 +433,11 @@ export function TownMap() {
       const idx = aliveSeats.indexOf(seat);
       if (idx >= 0) {
         const total = aliveSeats.length;
-        // Arc from ~27° to ~153° (bottom-facing semicircle, all in front of tower)
-        const angle = Math.PI * 0.15 + (idx / (total - 1 || 1)) * Math.PI * 0.7;
-        return [
-          CIRCLE_CENTER[0] + Math.cos(angle) * CIRCLE_RADIUS,
-          CIRCLE_CENTER[1] + Math.sin(angle) * CIRCLE_RADIUS * 0.5,
-        ];
+        // Horizontal arc below the clocktower — spread left to right in the plaza
+        const t = total > 1 ? idx / (total - 1) : 0.5;
+        const x = 20 + t * 60;  // 20% to 80% horizontally
+        const y = 68 + Math.sin(t * Math.PI) * 14;  // curved arc, 68% to 82%
+        return [x, y];
       }
     }
 

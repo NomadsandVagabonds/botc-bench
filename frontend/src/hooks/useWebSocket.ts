@@ -135,7 +135,7 @@ function normalizeEvent(raw: { type: string; data: any }): ServerEvent | null {
     case 'player.reasoning':
       return { type: 'player.reasoning', seat: data?.seat, reasoning: data?.reasoning, phase: data?.phase ?? '' } as any;
     case 'agent.tokens':
-      return { type: 'agent.tokens', seat: data?.seat, promptTokens: data?.input_tokens, completionTokens: data?.output_tokens, totalCost: data?.cost } as any;
+      return { type: 'agent.tokens', seat: data?.seat, promptTokens: data?.input_tokens ?? 0, completionTokens: data?.output_tokens ?? 0, totalCost: data?.cost_usd ?? data?.total_cost_usd ?? 0 } as any;
     case 'game.over':
       return { type: 'game.over', winner: data?.winner, winCondition: data?.reason } as any;
     case 'whisper.notification':
@@ -186,6 +186,7 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
   const intentionalClose = useRef(false);
 
   const applyEvent = useGameStore((s) => s.applyEvent);
+  const startReplay = useGameStore((s) => s.startReplay);
   const storeSetConnected = useGameStore((s) => s.setConnected);
 
   const connect = useCallback(() => {
@@ -208,15 +209,54 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
       reconnectDelay.current = INITIAL_RECONNECT_DELAY;
     };
 
+    // Track whether this is a replay (saved game, not live)
+    let receivedInitialState: import('../types/events.ts').ServerEvent | null = null;
+    let isLiveGame = false;
+
     ws.onmessage = (ev) => {
       try {
         const raw = JSON.parse(ev.data as string);
-        // Backend sends {"type": "...", "data": {...}}
-        // Normalize to the ServerEvent shape the store expects
         const event = normalizeEvent(raw);
-        if (event) {
-          applyEvent(event);
+        if (!event) return;
+
+        // First message is always game.state — save it to detect replay vs live
+        if (event.type === 'game.state' && !receivedInitialState) {
+          receivedInitialState = event;
+          // Don't apply yet — wait to see if event.history follows (replay)
+          // or if live events follow (live game)
+          return;
         }
+
+        // If we get event.history right after game.state, check if it's a completed game
+        if (event.type === 'event.history' && receivedInitialState) {
+          const historyEvents = (event as any).events ?? [];
+          const hasGameOver = historyEvents.some((e: any) => e.type === 'game.over');
+
+          if (hasGameOver) {
+            // Completed game — enter replay mode
+            console.log(`[ws] Entering replay mode (${historyEvents.length} events)`);
+            startReplay(receivedInitialState, historyEvents);
+            receivedInitialState = null;
+            return;
+          }
+
+          // Live game catching up — apply initial state then history normally
+          applyEvent(receivedInitialState);
+          applyEvent(event);
+          receivedInitialState = null;
+          isLiveGame = true;
+          return;
+        }
+
+        // If we get any other event after game.state without event.history,
+        // this is a live game — apply the saved initial state and continue
+        if (receivedInitialState) {
+          applyEvent(receivedInitialState);
+          receivedInitialState = null;
+          isLiveGame = true;
+        }
+
+        applyEvent(event);
       } catch {
         console.warn('[ws] Failed to parse event:', ev.data);
       }

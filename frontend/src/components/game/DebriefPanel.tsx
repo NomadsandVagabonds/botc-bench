@@ -102,11 +102,12 @@ export function DebriefPanel() {
   const navigate = useNavigate();
   const gameState = useGameStore((s) => s.gameState);
   const debriefMessages = useGameStore((s) => s.debriefMessages);
+  const allNominations = useGameStore((s) => s.allNominations);
 
   const playerStats = useMemo(() => {
     if (!gameState) return [];
-    return computePlayerStats(gameState.players, gameState.nominations);
-  }, [gameState]);
+    return computePlayerStats(gameState.players, allNominations);
+  }, [gameState, allNominations]);
 
   if (!gameState) return null;
 

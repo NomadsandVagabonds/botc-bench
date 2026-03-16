@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
+from botc.api.persistence import load_all_games, save_game
 from botc.api.websocket import ws_manager
 from botc.engine.roles import load_script
 from botc.engine.types import BreakoutConfig, GameConfig, ROLE_DISTRIBUTION, RoleType
@@ -19,9 +20,35 @@ from botc.orchestrator.game_runner import GameResult, GameRunner
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# In-memory game registry
+# In-memory game registry — populated from disk on import
 _games: dict[str, dict[str, Any]] = {}
 _runners: dict[str, GameRunner] = {}
+
+
+def _load_saved_games() -> None:
+    """Load previously saved games from disk into the in-memory registry."""
+    saved = load_all_games()
+    for game_id, data in saved.items():
+        status = data.get("status", "unknown")
+        info: dict[str, Any] = {"status": status, "saved": True}
+        if data.get("error"):
+            info["error"] = data["error"]
+        if data.get("result_data"):
+            info["result_data"] = data["result_data"]
+        elif data.get("result"):
+            # New format: result is already a dict
+            info["result_data"] = data["result"]
+        if data.get("events"):
+            info["events"] = data["events"]
+        if data.get("initial_state"):
+            info["initial_state"] = data["initial_state"]
+        _games[game_id] = info
+    if saved:
+        logger.info("Loaded %d saved games from disk", len(saved))
+
+
+# Load on module import (server startup)
+_load_saved_games()
 
 
 # ---------------------------------------------------------------------------
@@ -86,6 +113,57 @@ _PROVIDER_ENV_KEYS: dict[str, str] = {
 }
 
 
+def _mark_game_failed(runner: GameRunner, exc: Exception) -> None:
+    """Persist failure status so clients can show useful errors."""
+    game_id = runner.state.game_id if runner.state else "pending"
+    error_msg = str(exc) or exc.__class__.__name__
+    _games[game_id] = {
+        "status": "failed",
+        "error": error_msg,
+    }
+    # Save to disk so failed games survive restarts
+    try:
+        save_game(
+            game_id,
+            "failed",
+            events=runner.event_history if runner.event_history else None,
+            error=error_msg,
+        )
+    except Exception:
+        logger.exception("Failed to save game %s to disk", game_id)
+
+
+def _save_completed_game(runner: GameRunner, result: GameResult) -> None:
+    """Save a completed game's result and full event history to disk."""
+    from botc.engine.state import snapshot_observer
+
+    game_id = result.game_id
+    result_data = {
+        "game_id": result.game_id,
+        "winner": result.winner,
+        "win_condition": result.win_condition,
+        "total_days": result.total_days,
+        "players": result.players,
+        "token_summary": result.token_summary,
+        "duration_seconds": result.duration_seconds,
+    }
+    # Include the observer snapshot as initial state for replay
+    initial_state = None
+    if runner.state:
+        initial_state = snapshot_observer(runner.state)
+
+    try:
+        save_game(
+            game_id,
+            "completed",
+            result=result_data,
+            events=runner.event_history,
+            initial_state=initial_state,
+        )
+    except Exception:
+        logger.exception("Failed to save game %s to disk", game_id)
+
+
 # ---------------------------------------------------------------------------
 # REST endpoints
 # ---------------------------------------------------------------------------
@@ -141,9 +219,11 @@ async def create_game(request: CreateGameRequest) -> GameResponse:
                 "status": "completed",
                 "result": result,
             }
+            _save_completed_game(runner, result)
             logger.info("Game %s completed: %s wins", game_id, result.winner)
-        except Exception:
+        except Exception as e:
             logger.exception("Game failed")
+            _mark_game_failed(runner, e)
 
     task = asyncio.create_task(run_game())
 
@@ -254,11 +334,11 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
             result = await runner.run()
             game_id = result.game_id
             _games[game_id] = {"status": "completed", "result": result}
+            _save_completed_game(runner, result)
             logger.info("Game %s completed: %s wins", game_id, result.winner)
-        except Exception:
+        except Exception as e:
             logger.exception("Game failed")
-            if runner.state:
-                _games[runner.state.game_id] = {"status": "failed"}
+            _mark_game_failed(runner, e)
 
     task = asyncio.create_task(run_game())
 
@@ -337,11 +417,11 @@ async def quick_game(num_players: int = 7, seed: int = 99, reveal_models: bool =
             result = await runner.run()
             game_id = result.game_id
             _games[game_id] = {"status": "completed", "result": result}
+            _save_completed_game(runner, result)
             logger.info("Game %s completed: %s wins", game_id, result.winner)
-        except Exception:
+        except Exception as e:
             logger.exception("Game failed")
-            if runner.state:
-                _games[runner.state.game_id] = {"status": "failed"}
+            _mark_game_failed(runner, e)
 
     task = asyncio.create_task(run_game())
 
@@ -383,9 +463,15 @@ async def list_games() -> list[GameResponse]:
     for game_id, info in _games.items():
         resp = GameResponse(game_id=game_id, status=info["status"])
         if "result" in info:
+            # Live game — GameResult dataclass
             result: GameResult = info["result"]
             resp.winner = result.winner
             resp.total_days = result.total_days
+        elif "result_data" in info:
+            # Loaded from disk — plain dict
+            rd = info["result_data"]
+            resp.winner = rd.get("winner")
+            resp.total_days = rd.get("total_days")
         results.append(resp)
     return results
 
@@ -397,6 +483,8 @@ async def get_game(game_id: str) -> dict:
         return {"error": "Game not found"}
 
     info = _games[game_id]
+
+    # Live completed game (GameResult dataclass in memory)
     if info["status"] == "completed" and "result" in info:
         result: GameResult = info["result"]
         return {
@@ -408,6 +496,27 @@ async def get_game(game_id: str) -> dict:
             "players": result.players,
             "token_summary": result.token_summary,
             "duration_seconds": result.duration_seconds,
+        }
+
+    # Loaded from disk (plain dict)
+    if info["status"] == "completed" and "result_data" in info:
+        rd = info["result_data"]
+        return {
+            "game_id": rd.get("game_id", game_id),
+            "status": "completed",
+            "winner": rd.get("winner"),
+            "win_condition": rd.get("win_condition"),
+            "total_days": rd.get("total_days"),
+            "players": rd.get("players", []),
+            "token_summary": rd.get("token_summary", {}),
+            "duration_seconds": rd.get("duration_seconds"),
+        }
+
+    if info["status"] != "running":
+        return {
+            "game_id": game_id,
+            "status": info["status"],
+            "error": info.get("error"),
         }
 
     runner = _runners.get(game_id)
@@ -431,7 +540,7 @@ async def game_websocket(websocket: WebSocket, game_id: str):
     """WebSocket endpoint for live game observation."""
     await ws_manager.connect(websocket, game_id)
 
-    # Send current state if game is running
+    # Send current state if game is running (live runner in memory)
     runner = _runners.get(game_id)
     if runner and runner.state:
         from botc.engine.state import snapshot_observer
@@ -441,12 +550,80 @@ async def game_websocket(websocket: WebSocket, game_id: str):
         })
 
         # Replay historical events so late-joining clients can catch up.
-        # Events are sent as a single batch to avoid flooding with individual frames.
         if runner.event_history:
             await websocket.send_json({
                 "type": "event.history",
                 "data": {
                     "events": runner.event_history,
+                },
+            })
+
+    elif game_id in _games:
+        # Completed or saved game — try to serve from disk or in-memory save data
+        info = _games[game_id]
+
+        # If not already loaded from disk, try loading the saved JSON file
+        if not info.get("saved") and not info.get("events"):
+            from botc.api.persistence import _GAMES_DIR
+            saved_path = _GAMES_DIR / f"game_{game_id}.json"
+            if saved_path.exists():
+                import json
+                try:
+                    saved_data = json.loads(saved_path.read_text())
+                    info["events"] = saved_data.get("events")
+                    info["initial_state"] = saved_data.get("initial_state")
+                    info["result_data"] = saved_data.get("result", saved_data.get("result_data"))
+                    info["saved"] = True
+                except Exception:
+                    logger.exception("Failed to load game %s for WebSocket", game_id)
+        initial = info.get("initial_state")
+
+        # Legacy games may not have initial_state — synthesize from result_data
+        if not initial and info.get("result_data"):
+            rd = info["result_data"]
+            initial = {
+                "game_id": rd.get("game_id", game_id),
+                "phase": "game_over",
+                "day_number": rd.get("total_days", 0),
+                "players": [
+                    {
+                        "seat": p.get("seat", i),
+                        "agent_id": p.get("agent_id", f"seat-{i}"),
+                        "character_name": p.get("character_name", p.get("agent_id", f"Player {i}")),
+                        "model_name": p.get("model", ""),
+                        "role": p.get("role", ""),
+                        "role_id": p.get("role", "").lower().replace(" ", "_"),
+                        "role_type": "",
+                        "alignment": p.get("alignment", "good"),
+                        "is_alive": p.get("survived", True),
+                        "is_poisoned": False,
+                        "is_drunk": False,
+                        "is_protected": False,
+                        "ghost_vote_used": False,
+                        "perceived_role": None,
+                        "butler_master": None,
+                    }
+                    for i, p in enumerate(rd.get("players", []))
+                ],
+                "breakout_groups": [],
+                "nominations": [],
+                "executed_today": None,
+                "winner": rd.get("winner"),
+                "night_kills": [],
+                "demon_bluffs": [],
+                "rng_seed": None,
+            }
+
+        if initial:
+            await websocket.send_json({
+                "type": "game.state",
+                "data": initial,
+            })
+        if info.get("events"):
+            await websocket.send_json({
+                "type": "event.history",
+                "data": {
+                    "events": info["events"],
                 },
             })
 

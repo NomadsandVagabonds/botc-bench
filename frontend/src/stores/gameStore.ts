@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { DebriefMessage, GameState, MessageType, NightActionEntry, Phase } from '../types/game.ts';
 import type { ServerEvent } from '../types/events.ts';
+import type { MonitorPhaseAssessment, MonitorResult } from '../types/monitor.ts';
 
 // ── Reasoning entry ─────────────────────────────────────────────────
 
@@ -61,6 +62,17 @@ export interface GameStore {
   replayQueue: ServerEvent[];
   replayIndex: number;
   replayTotal: number;
+  replayInitialState: ServerEvent | null;
+
+  // Live monitor streaming
+  liveMonitor: {
+    monitorId: string;
+    model: string;
+    totalPhases: number;
+    phases: MonitorPhaseAssessment[];
+    complete: boolean;
+    result: MonitorResult | null;
+  } | null;
 
   // Actions
   setConnected: (connected: boolean) => void;
@@ -69,6 +81,7 @@ export interface GameStore {
   applyEvent: (event: ServerEvent) => void;
   startReplay: (initialState: ServerEvent, events: ServerEvent[]) => void;
   replayNext: () => boolean; // returns false when done
+  replaySeekTo: (targetIndex: number) => void;
   selectPlayer: (seat: number | null) => void;
   selectGroup: (groupId: string | null) => void;
   toggleObserverInfo: () => void;
@@ -108,6 +121,8 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   replayQueue: [],
   replayIndex: 0,
   replayTotal: 0,
+  replayInitialState: null,
+  liveMonitor: null,
 
   // ── Connection ──────────────────────────────────────────────────
   setConnected: (connected) => set({ connected }),
@@ -556,6 +571,55 @@ export const useGameStore = create<GameStore>()((set, get) => ({
         break;
       }
 
+      case 'monitor.started': {
+        const e = event as any;
+        set({
+          liveMonitor: {
+            monitorId: e.monitor_id ?? '',
+            model: e.model ?? '',
+            totalPhases: e.total_phases ?? 0,
+            phases: [],
+            complete: false,
+            result: null,
+          },
+        });
+        break;
+      }
+
+      case 'monitor.phase': {
+        const e = event as any;
+        const prev = get().liveMonitor;
+        if (!prev) break;
+        const phase: MonitorPhaseAssessment = {
+          phase: e.phase ?? '',
+          day: e.day ?? 0,
+          analysis: e.analysis ?? '',
+          ratings: e.ratings ?? {},
+          bets: e.bets ?? [],
+        };
+        set({
+          liveMonitor: {
+            ...prev,
+            phases: [...prev.phases, phase],
+          },
+        });
+        break;
+      }
+
+      case 'monitor.complete': {
+        const e = event as any;
+        const prev = get().liveMonitor;
+        if (!prev) break;
+        set({
+          liveMonitor: {
+            ...prev,
+            complete: true,
+            result: e as MonitorResult,
+          },
+        });
+        break;
+      }
+
       case 'event.history': {
         // Batch-replay all historical events in a single state update to
         // avoid triggering N re-renders when a client connects mid-game.
@@ -956,6 +1020,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       replayQueue: events,
       replayIndex: 0,
       replayTotal: events.length,
+      replayInitialState: cleanState,
       paused: true, // Start paused so user can hit play
       speed: 1,
     });
@@ -971,6 +1036,30 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     get().applyEvent(event);
     set({ replayIndex: replayIndex + 1 });
     return replayIndex + 1 < replayQueue.length;
+  },
+
+  replaySeekTo: (targetIndex: number) => {
+    const { replayQueue, replayInitialState } = get();
+    if (!replayInitialState || !replayQueue.length) return;
+
+    const clamped = Math.max(0, Math.min(targetIndex, replayQueue.length));
+
+    // Reset to initial state
+    get().applyEvent(replayInitialState);
+    // Clear accumulated state
+    set({
+      playerReasoning: {},
+      tokenUsage: {},
+      nightActions: [],
+      debriefMessages: [],
+      allNominations: [],
+    });
+
+    // Re-apply events up to target
+    for (let i = 0; i < clamped; i++) {
+      get().applyEvent(replayQueue[i]);
+    }
+    set({ replayIndex: clamped, paused: true });
   },
 
   // ── Reset ───────────────────────────────────────────────────────
@@ -994,5 +1083,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       replayQueue: [],
       replayIndex: 0,
       replayTotal: 0,
+      replayInitialState: null,
+      liveMonitor: null,
     }),
 }));

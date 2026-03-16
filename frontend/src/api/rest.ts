@@ -1,4 +1,5 @@
 import type { GameConfig, GameState } from '../types/game.ts';
+import type { MonitorResult } from '../types/monitor.ts';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
@@ -52,6 +53,7 @@ export interface ConfiguredGameRequest {
   max_days?: number;
   reveal_models?: string; // "true" | "false" | "scramble"
   share_stats?: boolean;
+  speech_style?: string | null;
 }
 
 // ── Model stats types ────────────────────────────────────────────────
@@ -175,4 +177,37 @@ export function getAudioClipUrl(gameId: string, filename: string): string {
 /** Trigger TTS generation for a game (idempotent). */
 export async function generateGameAudio(gameId: string): Promise<{ clips_generated: number }> {
   return request(`/api/games/${gameId}/audio/generate`, { method: 'POST' });
+}
+
+// ── Monitor ──────────────────────────────────────────────────────────
+
+export interface StartMonitorRequest {
+  provider: string;
+  model: string;
+  temperature?: number;
+  include_groups?: boolean;
+}
+
+/** Start a monitor analysis on a completed game. */
+export async function startMonitor(
+  gameId: string,
+  config: StartMonitorRequest,
+): Promise<{ status: string; game_id: string }> {
+  return request(`/api/games/${gameId}/monitors`, {
+    method: 'POST',
+    body: JSON.stringify(config),
+  });
+}
+
+/** List all monitor results for a game. */
+export async function listMonitors(gameId: string): Promise<MonitorResult[]> {
+  return request<MonitorResult[]>(`/api/games/${gameId}/monitors`);
+}
+
+/** Get a specific monitor result. */
+export async function getMonitorResult(
+  gameId: string,
+  monitorId: string,
+): Promise<MonitorResult> {
+  return request<MonitorResult>(`/api/games/${gameId}/monitors/${monitorId}`);
 }

@@ -98,6 +98,7 @@ class ConfiguredGameRequest(BaseModel):
     max_days: int = 50
     reveal_models: str = "true"  # "true" | "false" | "scramble"
     share_stats: bool = False
+    speech_style: str | None = None  # Optional speech style directive
 
 
 class GameResponse(BaseModel):
@@ -322,6 +323,7 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
         reveal_models=request.reveal_models,
         share_stats=request.share_stats,
         seat_roles=request.seat_roles,
+        speech_style=request.speech_style,
     )
 
     def on_event(event_type: str, data: dict) -> None:
@@ -587,6 +589,78 @@ async def generate_audio(game_id: str) -> dict:
     manifest_path = out_dir / "manifest.json"
     clips = json.loads(manifest_path.read_text()) if manifest_path.exists() else []
     return {"game_id": game_id, "clips_generated": len(clips), "audio_dir": str(out_dir)}
+
+
+# ---------------------------------------------------------------------------
+# Monitor
+# ---------------------------------------------------------------------------
+
+class MonitorRequest(BaseModel):
+    provider: str
+    model: str
+    temperature: float = 0.3
+    include_groups: bool = False
+
+
+@router.post("/api/games/{game_id}/monitors")
+async def start_monitor(game_id: str, request: MonitorRequest) -> dict:
+    """Start a monitor analysis on a completed game."""
+    if game_id not in _games:
+        raise HTTPException(status_code=404, detail="Game not found")
+    info = _games[game_id]
+    if info.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Can only monitor completed games")
+
+    # Get API key from environment
+    env_var = _PROVIDER_ENV_KEYS.get(request.provider)
+    if not env_var:
+        raise HTTPException(status_code=422, detail=f"Unknown provider: {request.provider}")
+    api_key = os.environ.get(env_var, "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail=f"Missing {env_var} in server .env")
+
+    from botc.monitor.runner import MonitorRunner
+
+    def on_monitor_event(event_type: str, data: dict) -> None:
+        asyncio.create_task(ws_manager.broadcast(game_id, event_type, data))
+
+    runner = MonitorRunner(
+        game_id=game_id,
+        provider=request.provider,
+        model=request.model,
+        api_key=api_key,
+        temperature=request.temperature,
+        include_groups=request.include_groups,
+        on_event=on_monitor_event,
+    )
+
+    async def run_monitor():
+        try:
+            result = await runner.run()
+            logger.info("Monitor %s completed for game %s (score: %.1f)",
+                       result["monitor_id"], game_id, result["scores"]["total"])
+        except Exception:
+            logger.exception("Monitor failed for game %s", game_id)
+
+    asyncio.create_task(run_monitor())
+    return {"status": "started", "game_id": game_id, "monitor_id": runner.monitor_id}
+
+
+@router.get("/api/games/{game_id}/monitors")
+async def list_monitors(game_id: str) -> list[dict]:
+    """List all monitor results for a game."""
+    from botc.monitor.persistence import load_monitor_results
+    return load_monitor_results(game_id)
+
+
+@router.get("/api/games/{game_id}/monitors/{monitor_id}")
+async def get_monitor(game_id: str, monitor_id: str) -> dict:
+    """Get a specific monitor result."""
+    from botc.monitor.persistence import load_monitor_result
+    result = load_monitor_result(game_id, monitor_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Monitor result not found")
+    return result
 
 
 # ---------------------------------------------------------------------------

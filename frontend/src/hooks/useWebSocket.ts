@@ -170,6 +170,11 @@ function normalizeEvent(raw: { type: string; data: any }): ServerEvent | null {
       // Not a state event — just log
       console.log('[ws] Game created:', data);
       return null;
+    case 'monitor.started':
+    case 'monitor.phase':
+    case 'monitor.complete':
+      // Pass through as-is for monitor UI handling
+      return { type, ...data } as any;
     default:
       console.log('[ws] Unknown event:', type, data);
       return null;

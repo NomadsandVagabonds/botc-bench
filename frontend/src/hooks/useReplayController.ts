@@ -104,14 +104,16 @@ export function useReplayController() {
     };
   }, [replayMode, gameId]);
 
-  // Pause/resume audio
+  // Pause/stop audio when paused or seeking
+  const replayIndex = useGameStore((s) => s.replayIndex);
   useEffect(() => {
     if (paused && audioRef.current) {
       audioRef.current.pause();
-    } else if (!paused && audioRef.current && audioRef.current.paused) {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.onended = null;
+      audioRef.current = null;
+      runningRef.current = false;
     }
-  }, [paused]);
+  }, [paused, replayIndex]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {

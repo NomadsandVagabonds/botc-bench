@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { listGames, createConfiguredGame, getModelStats, getAudioManifest, generateGameAudio } from '../api/rest.ts';
+import { listGames, createConfiguredGame, getModelStats, getAudioManifest, generateGameAudio, startMonitor, listMonitors } from '../api/rest.ts';
 import type { GameListItem, SeatModelConfig, ModelStatsResponse } from '../api/rest.ts';
+import type { MonitorResult } from '../types/monitor.ts';
 import { useGameStore } from '../stores/gameStore.ts';
 import { SplashScreen } from './SplashScreen.tsx';
 import { PageTransition } from './PageTransition.tsx';
@@ -213,17 +214,53 @@ function DistributionSummary({ playerCount, seatRoles, roleMode, scriptId }: {
 
 // ── Options tabs ─────────────────────────────────────────────────────
 
-type OptionsTab = 'rules' | 'conversation' | 'agents' | 'audio' | 'probabilities' | 'api' | 'voice' | 'stats';
+type OptionsTab = 'rules' | 'conversation' | 'agents' | 'audio' | 'fun' | 'monitor' | 'probabilities' | 'api' | 'voice' | 'stats';
 
 const OPTIONS_TABS: { id: OptionsTab; label: string; stub?: boolean }[] = [
   { id: 'rules', label: 'Game Rules' },
   { id: 'conversation', label: 'Conversation' },
   { id: 'agents', label: 'Agent Tuning' },
   { id: 'audio', label: 'Audio' },
+  { id: 'fun', label: 'Fun' },
+  { id: 'monitor', label: 'Monitor' },
   { id: 'probabilities', label: 'Probabilities', stub: true },
   { id: 'api', label: 'API Keys', stub: true },
   { id: 'voice', label: 'Voice' },
   { id: 'stats', label: 'Stats' },
+];
+
+const SPEECH_STYLE_PRESETS: { id: string; label: string; description: string; prompt: string }[] = [
+  { id: '', label: 'Normal', description: 'Default medieval villager speech', prompt: '' },
+  {
+    id: 'macbeth',
+    label: 'Macbeth',
+    description: 'Shakespearean iambic pentameter in the style of Macbeth',
+    prompt: `You MUST speak exclusively in Shakespearean iambic pentameter, in the style of Macbeth. Every line of dialogue in your <SAY> tags must be written as blank verse — ten syllables per line, alternating unstressed and stressed syllables. Use "thee", "thou", "hath", "doth", "ere", "whence", "forsooth", "'tis", and other Early Modern English vocabulary. Reference blood, daggers, prophecy, ambition, guilt, and darkness. Deliver accusations as if condemning a traitor before the throne. Deliver defenses as tortured soliloquies. This is mandatory for ALL speech.`,
+  },
+  {
+    id: 'noir',
+    label: 'Film Noir',
+    description: 'Hard-boiled 1940s detective narration',
+    prompt: `You MUST speak in the style of a 1940s film noir detective. Use hard-boiled, cynical narration. Short, punchy sentences. Refer to other players as "dames", "mugs", "palookas", or "wise guys". Describe everything in rain-soaked metaphors. Talk about "this rotten town" and how "nobody's clean". Smoke metaphorical cigarettes. Every accusation should sound like you're cracking a case. Every defense like a suspect in an interrogation room.`,
+  },
+  {
+    id: 'pirate',
+    label: 'Pirate',
+    description: 'Swashbuckling pirate crew on a cursed ship',
+    prompt: `You MUST speak as a swashbuckling pirate. Use "arr", "ye", "matey", "scallywag", "bilge rat", "landlubber", "shiver me timbers", "walk the plank", "Davy Jones' locker", and other pirate vocabulary. Refer to the town as "the ship" or "this cursed vessel". Accusations are demands to "keelhaul" or "maroon" the accused. Everything is about treasure, mutiny, the sea, rum, and the pirate code.`,
+  },
+  {
+    id: 'reality_tv',
+    label: 'Reality TV',
+    description: 'Over-dramatic reality show confessionals',
+    prompt: `You MUST speak as a contestant on a trashy reality TV show. Use dramatic confessional-style monologues. Say things like "I'm not here to make friends", "that's sus", "receipts don't lie", and "the tea is SCALDING". Be petty, dramatic, and shade-throwing. Reference alliances, blindsides, and "playing the game". Accusations should sound like reunion show callouts. Every speech should feel like it ends with a dramatic music sting.`,
+  },
+  {
+    id: 'custom',
+    label: 'Custom',
+    description: 'Write your own speech style prompt',
+    prompt: '',
+  },
 ];
 
 function OptionField({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {
@@ -454,6 +491,280 @@ function StatsPanel({ shareStats, revealModels, onToggleShare }: {
   );
 }
 
+// ── Monitor panel ────────────────────────────────────────────────────
+
+type MonitorSubTab = 'run' | 'batch' | 'compare' | 'settings';
+
+const MONITOR_SUB_TABS: { id: MonitorSubTab; label: string; stub?: boolean }[] = [
+  { id: 'run', label: 'Run Monitor' },
+  { id: 'batch', label: 'Batch Run', stub: true },
+  { id: 'compare', label: 'Compare Models', stub: true },
+  { id: 'settings', label: 'Settings', stub: true },
+];
+
+const MONITOR_MODELS = [
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', provider: 'anthropic', cost: '$' },
+  { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4.6', provider: 'anthropic', cost: '$$' },
+  { id: 'claude-opus-4-20250514', label: 'Claude Opus 4.6', provider: 'anthropic', cost: '$$$' },
+  { id: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai', cost: '$' },
+  { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai', cost: '$$' },
+  { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai', cost: '$' },
+  { id: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai', cost: '$$' },
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'google', cost: '$' },
+  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google', cost: '$$' },
+];
+
+function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
+  const [subTab, setSubTab] = useState<MonitorSubTab>('run');
+  const [selectedModel, setSelectedModel] = useState(MONITOR_MODELS[0].id);
+  const [includeGroups, setIncludeGroups] = useState(false);
+  const [monitorStatus, setMonitorStatus] = useState<Record<string, 'idle' | 'running' | 'done' | 'error'>>({});
+  const [monitorResults, setMonitorResults] = useState<Record<string, MonitorResult[]>>({});
+  const [monitorErrors, setMonitorErrors] = useState<Record<string, string>>({});
+
+  const completedGames = games.filter(g => g.status === 'completed');
+
+  // Load existing monitor results on mount
+  useEffect(() => {
+    for (const g of completedGames) {
+      listMonitors(g.game_id)
+        .then((results) => {
+          if (results.length > 0) {
+            setMonitorResults(prev => ({ ...prev, [g.game_id]: results }));
+            setMonitorStatus(prev => ({ ...prev, [g.game_id]: 'done' }));
+          }
+        })
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completedGames.length]);
+
+  const handleRunMonitor = async (gameId: string) => {
+    const model = MONITOR_MODELS.find(m => m.id === selectedModel);
+    if (!model) return;
+
+    setMonitorStatus(prev => ({ ...prev, [gameId]: 'running' }));
+    setMonitorErrors(prev => { const n = { ...prev }; delete n[gameId]; return n; });
+
+    try {
+      await startMonitor(gameId, {
+        provider: model.provider,
+        model: model.id,
+        temperature: 0.3,
+        include_groups: includeGroups,
+      });
+      // Poll for completion
+      const poll = setInterval(async () => {
+        try {
+          const results = await listMonitors(gameId);
+          const latest = results[results.length - 1];
+          if (latest && latest.config.model === model.id) {
+            clearInterval(poll);
+            setMonitorResults(prev => ({ ...prev, [gameId]: results }));
+            setMonitorStatus(prev => ({ ...prev, [gameId]: 'done' }));
+          }
+        } catch { /* keep polling */ }
+      }, 3000);
+      // Safety timeout
+      setTimeout(() => clearInterval(poll), 300_000);
+    } catch (err) {
+      setMonitorStatus(prev => ({ ...prev, [gameId]: 'error' }));
+      setMonitorErrors(prev => ({
+        ...prev,
+        [gameId]: err instanceof Error ? err.message : 'Failed to start monitor',
+      }));
+    }
+  };
+
+  const modelInfo = MONITOR_MODELS.find(m => m.id === selectedModel);
+
+  const subTabBarStyle: React.CSSProperties = {
+    display: 'flex', gap: 0, marginBottom: 12, borderRadius: 3,
+    overflow: 'hidden', border: '1px solid rgba(92, 61, 26, 0.2)', width: 'fit-content',
+  };
+  const subTabStyle: React.CSSProperties = {
+    padding: '4px 10px', fontSize: '0.62rem', fontWeight: 500, cursor: 'pointer',
+    background: 'transparent', border: 'none', color: '#5c3d1a',
+    borderRight: '1px solid rgba(92, 61, 26, 0.15)',
+  };
+  const subTabActiveStyle: React.CSSProperties = {
+    background: 'rgba(124, 58, 237, 0.12)', fontWeight: 700, color: '#5b21b6',
+  };
+
+  if (subTab === 'batch') {
+    return (
+      <div>
+        <div style={subTabBarStyle}>
+          {MONITOR_SUB_TABS.map(t => (
+            <button key={t.id} style={{ ...subTabStyle, ...(subTab === t.id ? subTabActiveStyle : {}), ...(t.id === MONITOR_SUB_TABS[MONITOR_SUB_TABS.length - 1].id ? { borderRight: 'none' } : {}) }}
+              onClick={() => setSubTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+        <StubPanel title="Batch Monitor Runs" description="Queue monitor runs across multiple games at once. Select games, choose one or more models, and let them run in parallel. Useful for benchmarking a model's deception detection across your full game library." />
+      </div>
+    );
+  }
+
+  if (subTab === 'compare') {
+    return (
+      <div>
+        <div style={subTabBarStyle}>
+          {MONITOR_SUB_TABS.map(t => (
+            <button key={t.id} style={{ ...subTabStyle, ...(subTab === t.id ? subTabActiveStyle : {}), ...(t.id === MONITOR_SUB_TABS[MONITOR_SUB_TABS.length - 1].id ? { borderRight: 'none' } : {}) }}
+              onClick={() => setSubTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+        <StubPanel title="Multi-Model Comparison" description="Run the same game through 2-5 different monitor models side-by-side. Compare deception detection scores, analysis quality, cost efficiency, and where each model's suspicions diverge. Export comparison tables." />
+      </div>
+    );
+  }
+
+  if (subTab === 'settings') {
+    return (
+      <div>
+        <div style={subTabBarStyle}>
+          {MONITOR_SUB_TABS.map(t => (
+            <button key={t.id} style={{ ...subTabStyle, ...(subTab === t.id ? subTabActiveStyle : {}), ...(t.id === MONITOR_SUB_TABS[MONITOR_SUB_TABS.length - 1].id ? { borderRight: 'none' } : {}) }}
+              onClick={() => setSubTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+        <StubPanel title="Monitor Settings" description="Configure default model, temperature, token limits, custom system prompt additions, scoring weights (alignment vs bet vs AUC), and auto-run preferences (e.g. automatically monitor every completed game)." />
+      </div>
+    );
+  }
+
+  // ── Run Monitor sub-tab ──
+  return (
+    <div>
+      <div style={subTabBarStyle}>
+        {MONITOR_SUB_TABS.map(t => (
+          <button key={t.id} style={{ ...subTabStyle, ...(subTab === t.id ? subTabActiveStyle : {}), ...(t.id === MONITOR_SUB_TABS[MONITOR_SUB_TABS.length - 1].id ? { borderRight: 'none' } : {}) }}
+            onClick={() => setSubTab(t.id)}>{t.label}</button>
+        ))}
+      </div>
+
+      <div style={{ fontSize: '0.72rem', color: '#8b7355', marginBottom: 10, lineHeight: 1.5 }}>
+        Run a monitor agent on a completed game. The monitor watches public events and tries to identify evil players
+        using behavioral analysis. Scores measure detection accuracy, bet timing, and classifier quality.
+      </div>
+
+      {/* Model selector */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#3d2812', marginBottom: 4 }}>Monitor Model</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {MONITOR_MODELS.map(m => (
+            <button key={m.id} onClick={() => setSelectedModel(m.id)} style={{
+              padding: '3px 8px', borderRadius: 3, fontSize: '0.6rem', fontWeight: selectedModel === m.id ? 700 : 400,
+              cursor: 'pointer', border: selectedModel === m.id ? `1px solid ${PROVIDER_COLORS[m.provider]}` : '1px solid rgba(92, 61, 26, 0.2)',
+              background: selectedModel === m.id ? `${PROVIDER_COLORS[m.provider]}18` : 'transparent',
+              color: selectedModel === m.id ? PROVIDER_COLORS[m.provider] : '#5c3d1a',
+            }}>
+              {m.label} <span style={{ opacity: 0.5 }}>{m.cost}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Include groups toggle */}
+      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: '0.68rem', color: '#3d2812' }}>
+          <input type="checkbox" checked={includeGroups} onChange={(e) => setIncludeGroups(e.target.checked)}
+            style={{ accentColor: '#7c3aed' }} />
+          Include group conversations
+        </label>
+        <span style={{ fontSize: '0.58rem', color: '#8b7355' }}>
+          {includeGroups ? '(Easy mode — evil may reveal themselves in groups)' : '(Hard mode — public info only)'}
+        </span>
+      </div>
+
+      {/* Game list */}
+      {completedGames.length === 0 ? (
+        <div style={{ padding: '20px 0', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d2812', marginBottom: 6 }}>No Completed Games</div>
+          <div style={{ fontSize: '0.72rem', color: '#8b7355' }}>Play a game first, then run the monitor here.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {completedGames.map((g) => {
+            const status = monitorStatus[g.game_id] ?? 'idle';
+            const results = monitorResults[g.game_id] ?? [];
+            const error = monitorErrors[g.game_id];
+            const latestResult = results.length > 0 ? results[results.length - 1] : null;
+
+            return (
+              <div key={g.game_id} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 10px', borderRadius: 4,
+                background: 'rgba(92, 61, 26, 0.05)',
+                border: '1px solid rgba(92, 61, 26, 0.12)',
+              }}>
+                {/* Game info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>
+                      {g.game_id.slice(0, 8)}
+                    </span>
+                    <span style={{
+                      fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8,
+                      background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
+                      color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
+                    }}>
+                      {g.winner} wins
+                    </span>
+                    {g.total_days != null && (
+                      <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days}d</span>
+                    )}
+                  </div>
+
+                  {/* Show existing results */}
+                  {latestResult && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                      <span style={{
+                        fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8,
+                        background: 'rgba(124, 58, 237, 0.1)', color: '#5b21b6',
+                      }}>
+                        Score: {latestResult.scores.total.toFixed(1)}
+                      </span>
+                      <span style={{ fontSize: '0.52rem', color: '#8b7355' }}>
+                        {MONITOR_MODELS.find(m => m.id === latestResult.config.model)?.label ?? latestResult.config.model}
+                      </span>
+                      {results.length > 1 && (
+                        <span style={{ fontSize: '0.5rem', color: '#b89b6a' }}>
+                          +{results.length - 1} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {error && (
+                    <div style={{ fontSize: '0.6rem', color: '#991B1B', marginTop: 2 }}>{error}</div>
+                  )}
+                </div>
+
+                {/* Action */}
+                {status === 'running' ? (
+                  <span style={{ fontSize: '0.65rem', color: '#92400E', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    Analyzing...
+                  </span>
+                ) : (
+                  <button onClick={(e) => { e.stopPropagation(); handleRunMonitor(g.game_id); }} style={{
+                    padding: '4px 10px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700,
+                    cursor: 'pointer', whiteSpace: 'nowrap',
+                    background: latestResult ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.12)',
+                    border: '1px solid rgba(124, 58, 237, 0.3)',
+                    color: '#5b21b6',
+                  }}>
+                    {latestResult ? `Re-run (${modelInfo?.label ?? 'model'})` : `Run ${modelInfo?.label ?? 'Monitor'}`}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Voice panel ──────────────────────────────────────────────────────
 
 function VoicePanel({ games }: { games: GameListItem[] }) {
@@ -627,6 +938,8 @@ interface GameOptions {
   masterVolume: number; // 0-100
   musicVolume: number;  // 0-100
   voiceVolume: number;  // 0-100
+  // Fun
+  speechStyle: string; // empty = normal
 }
 
 const DEFAULT_OPTIONS: GameOptions = {
@@ -647,6 +960,7 @@ const DEFAULT_OPTIONS: GameOptions = {
   masterVolume: 80,
   musicVolume: 50,
   voiceVolume: 100,
+  speechStyle: '',
 };
 
 // ── Main component ──────────────────────────────────────────────────
@@ -805,6 +1119,7 @@ export function GameLobby() {
         max_days: options.maxDays,
         reveal_models: options.revealModels,
         share_stats: options.shareStats && options.revealModels === 'true',
+        speech_style: options.speechStyle || null,
       });
       navigateWithTransition(`/game/${result.game_id}`);
     } catch (err) {
@@ -1011,6 +1326,52 @@ export function GameLobby() {
           </>
         )}
 
+        {optionsTab === 'fun' && (
+          <>
+            <OptionField label="Speech Style" help="Force all agents to speak in a specific style. Affects ALL dialogue in the game — accusations, defenses, breakout groups, everything.">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                {SPEECH_STYLE_PRESETS.map(preset => {
+                  const isActive = preset.id === '' ? !options.speechStyle : options.speechStyle === preset.prompt || (preset.id === 'custom' && options.speechStyle && !SPEECH_STYLE_PRESETS.some(p => p.id !== 'custom' && p.id !== '' && p.prompt === options.speechStyle));
+                  return (
+                    <button key={preset.id} onClick={() => updateOption('speechStyle', preset.prompt)} style={{
+                      padding: '5px 10px', borderRadius: 4, fontSize: '0.65rem', fontWeight: isActive ? 700 : 400,
+                      cursor: 'pointer',
+                      border: isActive ? '1px solid #7c3aed' : '1px solid rgba(92, 61, 26, 0.2)',
+                      background: isActive ? 'rgba(124, 58, 237, 0.12)' : 'transparent',
+                      color: isActive ? '#5b21b6' : '#5c3d1a',
+                    }}>
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {options.speechStyle && (
+                <div style={{ fontSize: '0.62rem', color: '#8b7355', lineHeight: 1.5, padding: '6px 8px', background: 'rgba(92, 61, 26, 0.05)', borderRadius: 4, border: '1px solid rgba(92, 61, 26, 0.1)' }}>
+                  {SPEECH_STYLE_PRESETS.find(p => p.prompt === options.speechStyle)?.description ?? 'Custom style active'}
+                </div>
+              )}
+              {(options.speechStyle && !SPEECH_STYLE_PRESETS.some(p => p.id !== 'custom' && p.id !== '' && p.prompt === options.speechStyle)) || SPEECH_STYLE_PRESETS.find(p => p.id === 'custom' && p.prompt === options.speechStyle) !== undefined ? null : null}
+            </OptionField>
+            {/* Custom prompt editor — show when a preset is active or for custom */}
+            {options.speechStyle !== '' && (
+              <OptionField label="Style Prompt" help="The exact instruction injected into every agent's system prompt. Edit to customize.">
+                <textarea
+                  value={options.speechStyle}
+                  onChange={(e) => updateOption('speechStyle', e.target.value)}
+                  rows={5}
+                  style={{
+                    width: '100%', padding: 8, borderRadius: 4, fontSize: '0.65rem', fontFamily: 'monospace',
+                    background: 'rgba(92, 61, 26, 0.04)', border: '1px solid rgba(92, 61, 26, 0.2)',
+                    color: '#3d2812', resize: 'vertical', lineHeight: 1.5,
+                  }}
+                />
+              </OptionField>
+            )}
+          </>
+        )}
+        {optionsTab === 'monitor' && (
+          <MonitorOptionsPanel games={games} />
+        )}
         {optionsTab === 'probabilities' && (
           <StubPanel title="Probability Tweaks" description="Fine-tune game mechanics: drunk information accuracy, poison effects, whisper overhear chance, Spy registration probabilities, and other programmatic percentages." />
         )}

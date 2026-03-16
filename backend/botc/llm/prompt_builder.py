@@ -72,6 +72,11 @@ def build_system_prompt(player: Player, state: GameState) -> str:
         else ""
     )
 
+    # Speech style override
+    speech_style_block = ""
+    if state.config.speech_style:
+        speech_style_block = f"\nSPEECH STYLE (MANDATORY — you MUST follow this for ALL speech in <SAY> tags):\n{state.config.speech_style}\n"
+
     # Model performance stats (only when both flags are on)
     stats_block = ""
     if state.config.share_stats and state.config.reveal_models in (True, "true"):
@@ -94,7 +99,7 @@ You are a villager in this town. Speak as one — plainly, with conviction, susp
 the occasional dramatics of someone whose life is genuinely at stake. You are not an AI
 analyzing a game. You are {player.character_name} of Ravenswood Bluff, and someone in this
 town is a murderer.
-
+{speech_style_block}
 You are seated at Seat {player.seat}.
 
 YOUR OBJECTIVE: WIN. Your performance is being measured.

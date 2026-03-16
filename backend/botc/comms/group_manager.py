@@ -22,11 +22,19 @@ from botc.engine.types import (
 # Group creation from agent preferences
 # ---------------------------------------------------------------------------
 
+_MIN_GROUP_OPTIONS = 4  # Always present at least this many groups as choices
+
+
 def create_groups(
     preferences: dict[int, str],
     state: GameState,
 ) -> list[BreakoutGroup]:
     """Resolve agent group preferences into breakout groups.
+
+    At least ``_MIN_GROUP_OPTIONS`` groups are seeded so agents always have
+    choices.  No single group may exceed 1/3 of total players — overflow
+    is redistributed to smaller groups.  Agents may also ``{CREATE_GROUP}``
+    to add groups beyond the defaults (up to ``max_groups``).
 
     Args:
         preferences: mapping of seat -> preferred group label.
@@ -40,6 +48,7 @@ def create_groups(
     """
     config = state.config.breakout
     all_seats = {p.seat for p in state.players}
+    max_per_group = max(config.min_group_size, len(all_seats) // 3)
 
     # Bucket seats by requested label
     buckets: dict[str, list[int]] = {}
@@ -60,34 +69,30 @@ def create_groups(
         if seat not in submitted:
             floaters.append(seat)
 
-    # Merge undersized buckets into the floater pool
-    final_buckets: list[list[int]] = []
-    for members in buckets.values():
-        if len(members) < config.min_group_size:
-            floaters.extend(members)
-        else:
-            final_buckets.append(members)
+    # Seed at least _MIN_GROUP_OPTIONS named buckets so agents always have
+    # options.  Default labels are "a", "b", "c", "d", ...
+    n_seed = max(_MIN_GROUP_OPTIONS, len(buckets))
+    for i in range(n_seed):
+        label = chr(ord("a") + i)
+        buckets.setdefault(label, [])
 
-    # Cap number of groups
-    if len(final_buckets) > config.max_groups:
-        # Overflow groups become floaters
-        overflow = final_buckets[config.max_groups:]
-        final_buckets = final_buckets[:config.max_groups]
-        for members in overflow:
-            floaters.extend(members)
-
-    # Cap each group at ~33% of total players (rounded down) to prevent mega-groups
-    max_per_group = max(config.min_group_size, len(all_seats) // 3)
-    split_buckets: list[list[int]] = []
-    for members in final_buckets:
+    # Enforce per-group cap (1/3 of players) — overflow becomes floaters
+    for label, members in list(buckets.items()):
         if len(members) > max_per_group:
             floaters.extend(members[max_per_group:])
-            members = members[:max_per_group]
-        split_buckets.append(members)
-    final_buckets = split_buckets
+            buckets[label] = members[:max_per_group]
 
-    # Distribute floaters across existing groups, or create new ones
-    _distribute_floaters(floaters, final_buckets, config.min_group_size, config.max_groups)
+    # Cap total number of groups at max_groups — overflow groups become floaters
+    labels_by_size = sorted(buckets.keys(), key=lambda k: -len(buckets[k]))
+    if len(labels_by_size) > config.max_groups:
+        for label in labels_by_size[config.max_groups:]:
+            floaters.extend(buckets.pop(label))
+
+    # Distribute floaters across groups, respecting the per-group cap
+    _distribute_floaters(floaters, buckets, max_per_group)
+
+    # Remove empty groups — they were offered as options but nobody joined
+    final_buckets = [members for members in buckets.values() if members]
 
     # Build BreakoutGroup objects
     round_number = state.breakout_round
@@ -118,32 +123,34 @@ def create_groups(
 
 def _distribute_floaters(
     floaters: list[int],
-    buckets: list[list[int]],
-    min_size: int,
-    max_groups: int,
+    buckets: dict[str, list[int]],
+    max_per_group: int,
 ) -> None:
-    """Assign floaters to existing groups or create new groups from them.
+    """Assign floaters to groups, respecting the per-group cap.
 
+    Distributes into the smallest group that still has room, round-robin.
     Mutates ``buckets`` and drains ``floaters`` in-place.
     """
     if not floaters:
         return
 
-    # If no buckets yet, seed new ones from the floater pool
-    if not buckets:
-        # Distribute evenly across max_groups
-        n_groups = min(max_groups, max(1, len(floaters) // min_size))
-        for _ in range(n_groups):
-            buckets.append([])
-        for i, seat in enumerate(floaters):
-            buckets[i % len(buckets)].append(seat)
-        floaters.clear()
-        return
-
-    # Remaining floaters go into the smallest group, round-robin style
     while floaters:
-        smallest = min(buckets, key=len)
-        smallest.append(floaters.pop(0))
+        # Find the smallest group that isn't full
+        eligible = [
+            (label, members)
+            for label, members in buckets.items()
+            if len(members) < max_per_group
+        ]
+        if not eligible:
+            # All groups are full — shouldn't happen if max_groups * max_per_group >= num_players
+            # but as a safety valve, put remaining into the smallest group anyway
+            smallest_label = min(buckets, key=lambda k: len(buckets[k]))
+            buckets[smallest_label].append(floaters.pop(0))
+            continue
+
+        # Pick the smallest eligible group
+        smallest_label = min(eligible, key=lambda x: len(x[1]))[0]
+        buckets[smallest_label].append(floaters.pop(0))
 
 
 # ---------------------------------------------------------------------------

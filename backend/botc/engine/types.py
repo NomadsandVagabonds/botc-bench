@@ -286,6 +286,7 @@ class GameConfig:
     reveal_models: str = "true"  # "true" = show real models, "false" = hide, "scramble" = show randomized fake models
     share_stats: bool = False  # When True (and reveal_models=True), inject historical model stats into prompts
     seat_roles: list[str] | None = None  # Pre-assigned role IDs per seat (None = random)
+    speech_style: str | None = None  # Optional speech style directive injected into agent prompts
 
 
 # ---------------------------------------------------------------------------

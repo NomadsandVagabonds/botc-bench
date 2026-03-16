@@ -94,14 +94,23 @@ def _sanitize_speech(raw_text: str) -> tuple[str, str]:
 
     # Strip remaining XML tags (SAY, ACTION, MEMORY, THINK wrappers)
     text = re.sub(r"</?(?:SAY|ACTION|MEMORY|THINK)[^>]*>", "", text, flags=re.IGNORECASE)
+    # Strip truncated XML tags at end of response (e.g. "<S", "<SAY" without closing ">")
+    text = re.sub(r"</?(?:SAY|ACTION|MEMORY|THINK)\s*$", "", text, flags=re.IGNORECASE)
+    # Strip truncated partial tag starts (e.g. "<S" at end of text)
+    text = re.sub(r"<[A-Z]{1,6}\s*$", "", text.rstrip())
 
     # Strip command patterns from the text, collecting them as internal
+    # (patterns handle both closed {TYPE: ...} and truncated {TYPE: ... without closing brace)
     command_patterns = [
         r"\{PASS\}",
-        r"\{NOMINATE:\s*[^}]*\}",
-        r"\{RECALL:\s*[^}]*\}",
-        r"\{VOTE:\s*[^}]*\}",
-        r"\{SLAYER_SHOT:\s*[^}]*\}",
+        r"\{NOMINATE:\s*[^}]*\}?",
+        r"\{RECALL:\s*[^}]*\}?",
+        r"\{VOTE:\s*[^}]*\}?",
+        r"\{SLAYER_SHOT:\s*[^}]*\}?",
+        r"\{WHISPER:\s*[^}]*\}?",
+        r"\{JOIN:\s*[^}]*\}?",
+        r"\{NIGHT_TARGET[^}]*\}?",
+        r"\{CREATE_GROUP\}?",
     ]
     for pat in command_patterns:
         def _collect_cmd(m: re.Match, _pat=pat) -> str:

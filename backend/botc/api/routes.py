@@ -112,6 +112,7 @@ _PROVIDER_ENV_KEYS: dict[str, str] = {
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",
     "google": "GOOGLE_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
 }
 
 
@@ -358,6 +359,7 @@ async def quick_game(num_players: int = 7, seed: int = 99, reveal_models: str = 
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
     openai_key = os.environ.get("OPENAI_API_KEY", "")
     google_key = os.environ.get("GOOGLE_API_KEY", "")
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
 
     providers: list[tuple[str, str, str, str]] = []
     if anthropic_key:
@@ -366,6 +368,8 @@ async def quick_game(num_players: int = 7, seed: int = 99, reveal_models: str = 
         providers.append(("openai", "gpt-4o-mini", openai_key, "GPT"))
     if google_key:
         providers.append(("google", "gemini-2.5-flash", google_key, "Gemini"))
+    if openrouter_key:
+        providers.append(("openrouter", "openai/gpt-4o-mini", openrouter_key, "OR"))
 
     if not providers:
         raise HTTPException(

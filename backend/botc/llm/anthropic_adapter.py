@@ -16,26 +16,51 @@ class AnthropicProvider(LLMProvider):
         super().__init__(config)
         self._client = anthropic.AsyncAnthropic(api_key=config.api_key)
 
+    # Map our unified effort levels to Anthropic thinking budget tokens.
+    # Anthropic extended thinking uses budget_tokens (0 = disabled).
+    _EFFORT_TO_BUDGET = {
+        "low": 1024,
+        "medium": 4096,
+        "high": 10240,
+    }
+
     async def complete(
         self,
         system_prompt: str,
         messages: list[dict],
         temperature: float = 0.7,
         max_tokens: int = 1024,
+        reasoning_effort: str | None = None,
     ) -> LLMResponse:
         start = time.perf_counter()
 
-        response = await self._client.messages.create(
-            model=self.config.model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=[{
+        kwargs: dict = {
+            "model": self.config.model,
+            "max_tokens": max_tokens,
+            "system": [{
                 "type": "text",
                 "text": system_prompt,
                 "cache_control": {"type": "ephemeral"},
             }],
-            messages=messages,
+            "messages": messages,
+        }
+
+        # Extended thinking models (Sonnet 4+, Opus 4+) support a thinking budget.
+        # Non-thinking models just get temperature.
+        is_thinking = any(
+            k in self.config.model.lower()
+            for k in ("sonnet-4", "opus-4")
         )
+        if is_thinking and reasoning_effort:
+            budget = self._EFFORT_TO_BUDGET.get(reasoning_effort)
+            if budget:
+                kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+                # Thinking models need higher max_tokens to fit thinking + output
+                kwargs["max_tokens"] = max(max_tokens, budget + 2048)
+        else:
+            kwargs["temperature"] = temperature
+
+        response = await self._client.messages.create(**kwargs)
 
         latency_ms = (time.perf_counter() - start) * 1000
 

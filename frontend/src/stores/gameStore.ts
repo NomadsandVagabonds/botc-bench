@@ -670,8 +670,20 @@ export const useGameStore = create<GameStore>()((set, get) => ({
               break;
             }
             case 'whisper.notification': {
-              const wn = evt as import('../types/events.ts').WhisperNotificationEvent;
-              hWhispers.push(wn.message);
+              const wn = evt as any;
+              const fromP = hPlayers.find(p => p.seat === wn.fromSeat);
+              const toP = hPlayers.find(p => p.seat === wn.toSeat);
+              const fName = fromP ? (fromP.characterName || `Seat ${fromP.seat}`) : `Seat ${wn.fromSeat}`;
+              const tName = toP ? (toP.characterName || `Seat ${toP.seat}`) : `Seat ${wn.toSeat}`;
+              hWhispers.push({
+                ...wn.message,
+                content: `${fName} whispered to ${tName}`,
+                whisperContent: wn.whisperContent || '',
+                fromSeat: wn.fromSeat,
+                toSeat: wn.toSeat,
+                fromName: fName,
+                toName: tName,
+              });
               break;
             }
             case 'nomination.start': {

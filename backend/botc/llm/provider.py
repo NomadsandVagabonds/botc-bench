@@ -59,6 +59,7 @@ class LLMProvider(ABC):
         messages: list[dict],
         temperature: float = 0.7,
         max_tokens: int = 1024,
+        reasoning_effort: str | None = None,
     ) -> LLMResponse:
         """Send a chat completion request and return a normalized response.
 
@@ -72,6 +73,9 @@ class LLMProvider(ABC):
             Sampling temperature (0.0 - 1.0).
         max_tokens:
             Maximum tokens in the completion.
+        reasoning_effort:
+            Thinking depth for reasoning models: "low", "medium", "high".
+            None uses provider default. Ignored by non-thinking models.
         """
 
     async def complete_with_retry(
@@ -80,6 +84,7 @@ class LLMProvider(ABC):
         messages: list[dict],
         temperature: float = 0.7,
         max_tokens: int = 1024,
+        reasoning_effort: str | None = None,
         max_retries: int = 8,
     ) -> LLMResponse:
         """Wrapper around :meth:`complete` with exponential-backoff retries.
@@ -95,6 +100,7 @@ class LLMProvider(ABC):
                     messages=messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    reasoning_effort=reasoning_effort,
                 )
             except Exception as exc:
                 last_exc = exc
@@ -142,6 +148,10 @@ class ProviderFactory:
                 from botc.llm.openai_adapter import OpenAIProvider
 
                 return OpenAIProvider(config)
+            case "openrouter":
+                from botc.llm.openai_adapter import OpenAIProvider
+
+                return OpenAIProvider(config, base_url="https://openrouter.ai/api/v1")
             case "google":
                 from botc.llm.google_adapter import GoogleProvider
 
@@ -149,5 +159,5 @@ class ProviderFactory:
             case _:
                 raise ValueError(
                     f"Unknown provider {config.provider!r}. "
-                    "Must be 'anthropic', 'openai', or 'google'."
+                    "Must be 'anthropic', 'openai', 'openrouter', or 'google'."
                 )

@@ -47,6 +47,7 @@ class MockProvider(LLMProvider):
         messages: list[dict],
         temperature: float = 0.7,
         max_tokens: int = 1024,
+        reasoning_effort: str | None = None,
     ) -> LLMResponse:
         self.call_count += 1
         content = messages[0]["content"] if messages else ""

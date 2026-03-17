@@ -520,6 +520,10 @@ def _nomination_turn_instructions(player: Player, state: GameState) -> str:
         "Talking about suspicions is NOT enough — if you want someone executed, "
         "you MUST nominate them now."
     )
+    lines.append(
+        "Consider whether your nomination has a realistic chance of getting enough votes "
+        "to execute. If not, PASS — nominations that go nowhere waste everyone's time."
+    )
 
     return "\n".join(lines)
 

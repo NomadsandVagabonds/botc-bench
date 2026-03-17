@@ -94,14 +94,23 @@ def _sanitize_speech(raw_text: str) -> tuple[str, str]:
 
     # Strip remaining XML tags (SAY, ACTION, MEMORY, THINK wrappers)
     text = re.sub(r"</?(?:SAY|ACTION|MEMORY|THINK)[^>]*>", "", text, flags=re.IGNORECASE)
+    # Strip truncated XML tags at end of response (e.g. "<S", "<SAY" without closing ">")
+    text = re.sub(r"</?(?:SAY|ACTION|MEMORY|THINK)\s*$", "", text, flags=re.IGNORECASE)
+    # Strip truncated partial tag starts (e.g. "<S" at end of text)
+    text = re.sub(r"<[A-Z]{1,6}\s*$", "", text.rstrip())
 
     # Strip command patterns from the text, collecting them as internal
+    # (patterns handle both closed {TYPE: ...} and truncated {TYPE: ... without closing brace)
     command_patterns = [
         r"\{PASS\}",
-        r"\{NOMINATE:\s*[^}]*\}",
-        r"\{RECALL:\s*[^}]*\}",
-        r"\{VOTE:\s*[^}]*\}",
-        r"\{SLAYER_SHOT:\s*[^}]*\}",
+        r"\{NOMINATE:\s*[^}]*\}?",
+        r"\{RECALL:\s*[^}]*\}?",
+        r"\{VOTE:\s*[^}]*\}?",
+        r"\{SLAYER_SHOT:\s*[^}]*\}?",
+        r"\{WHISPER:\s*[^}]*\}?",
+        r"\{JOIN:\s*[^}]*\}?",
+        r"\{NIGHT_TARGET[^}]*\}?",
+        r"\{CREATE_GROUP\}?",
     ]
     for pat in command_patterns:
         def _collect_cmd(m: re.Match, _pat=pat) -> str:
@@ -190,6 +199,10 @@ class GameRunner:
         # Chronological log of all broadcast events for late-joining clients
         self.event_history: list[dict[str, Any]] = []
 
+        # Captured at game start for accurate replay and result enrichment
+        self._initial_snapshot: dict[str, Any] | None = None
+        self._initial_roles: dict[int, str] = {}
+
         # Per-provider semaphores: allow N concurrent calls per provider,
         # but different providers fire in parallel (independent rate limits)
         self._provider_semaphores: dict[str, asyncio.Semaphore] = {}
@@ -208,6 +221,11 @@ class GameRunner:
         self.state = create_game(self.game_config, agent_ids)
         state = self.state
         self._validate_roles_match_script(state)
+
+        # Capture initial state before any mutations (for replay and result enrichment)
+        from botc.engine.state import snapshot_observer
+        self._initial_snapshot = snapshot_observer(state)
+        self._initial_roles = {p.seat: p.role.name for p in state.players}
 
         # Create agents and store model info on players
         all_model_ids = [c.model for c in self.agent_configs]
@@ -542,7 +560,7 @@ class GameRunner:
                 continue
 
             tasks[player.seat] = asyncio.create_task(
-                self._agent_act(agent, state),
+                self._agent_act(agent, state, max_tokens=self._phase_tokens("night")),
                 name=f"night_{player.seat}",
             )
 
@@ -572,7 +590,7 @@ class GameRunner:
         """Round-robin opening statements from all players (alive + dead)."""
         for player in state.players:
             agent = self.agents[player.seat]
-            parsed = await self._agent_act(agent, state)
+            parsed = await self._agent_act(agent, state, max_tokens=self._phase_tokens("discussion"))
             parsed = await self._handle_recall_if_needed(agent, state, parsed)
 
             self._handle_day_special_actions(agent, state, parsed)
@@ -614,7 +632,7 @@ class GameRunner:
 
         for player in state.players:
             preference_tasks[player.seat] = asyncio.create_task(
-                self.agents[player.seat].act(state)
+                self._agent_act(self.agents[player.seat], state, max_tokens=self._phase_tokens("breakout"))
             )
 
         results = await asyncio.gather(
@@ -654,7 +672,7 @@ class GameRunner:
         for turn in range(state.config.breakout.messages_per_agent):
             for seat in sorted(group.members):
                 agent = self.agents[seat]
-                parsed = await self._agent_act(agent, state)
+                parsed = await self._agent_act(agent, state, max_tokens=self._phase_tokens("breakout"))
                 parsed = await self._handle_recall_if_needed(agent, state, parsed)
 
                 self._handle_day_special_actions(agent, state, parsed)
@@ -678,24 +696,40 @@ class GameRunner:
                     })
 
     async def _run_whisper_round(self, state: GameState) -> None:
-        """Let each agent send whispers if they want to (alive + dead)."""
-        for player in state.players:
-            agent = self.agents[player.seat]
-            parsed = await self._agent_act(agent, state)
-            parsed = await self._handle_recall_if_needed(agent, state, parsed)
+        """Let each agent send whispers if they want to (alive + dead).
 
-            self._handle_day_special_actions(agent, state, parsed)
+        All agents are prompted in parallel (gated by per-provider semaphores).
+        Whisper decisions are independent — no agent sees another's whisper
+        before deciding their own.
+        """
+        whisper_tasks: dict[int, asyncio.Task] = {}
+        for player in state.players:
+            whisper_tasks[player.seat] = asyncio.create_task(
+                self._agent_act(self.agents[player.seat], state, max_tokens=self._phase_tokens("whisper"))
+            )
+
+        results = await asyncio.gather(*whisper_tasks.values(), return_exceptions=True)
+
+        for seat, result in zip(whisper_tasks.keys(), results):
+            if isinstance(result, Exception):
+                logger.error("Whisper prompt failed for seat %d: %s", seat, result)
+                continue
+
+            parsed: ParsedResponse = result
+            parsed = await self._handle_recall_if_needed(self.agents[seat], state, parsed)
+
+            self._handle_day_special_actions(self.agents[seat], state, parsed)
             for action in parsed.actions:
                 if action.action_type == "WHISPER" and action.target is not None:
                     try:
                         send_whisper(
-                            player.seat,
+                            seat,
                             action.target,
                             action.value or "",
                             state,
                         )
                         self._emit("whisper.notification", {
-                            "from": player.seat,
+                            "from": seat,
                             "to": action.target,
                             "content": action.value or "",
                         })
@@ -703,14 +737,30 @@ class GameRunner:
                         logger.warning("Whisper failed: %s", e)
 
     async def _run_regroup(self, state: GameState) -> None:
-        """Brief public statements after breakout rounds (alive + dead)."""
-        for player in state.players:
-            agent = self.agents[player.seat]
-            parsed = await self._agent_act(agent, state)
-            parsed = await self._handle_recall_if_needed(agent, state, parsed)
+        """Brief public statements after breakout rounds (alive + dead).
 
-            self._handle_day_special_actions(agent, state, parsed)
-            self._check_slayer_shot(agent, state, parsed)
+        All agents are prompted in parallel (gated by per-provider semaphores).
+        Each gives a summary of what they learned — they don't react to each
+        other's regroup statements, so ordering doesn't matter.
+        """
+        regroup_tasks: dict[int, asyncio.Task] = {}
+        for player in state.players:
+            regroup_tasks[player.seat] = asyncio.create_task(
+                self._agent_act(self.agents[player.seat], state, max_tokens=self._phase_tokens("regroup"))
+            )
+
+        results = await asyncio.gather(*regroup_tasks.values(), return_exceptions=True)
+
+        for seat, result in zip(regroup_tasks.keys(), results):
+            if isinstance(result, Exception):
+                logger.error("Regroup prompt failed for seat %d: %s", seat, result)
+                continue
+
+            parsed: ParsedResponse = result
+            parsed = await self._handle_recall_if_needed(self.agents[seat], state, parsed)
+
+            self._handle_day_special_actions(self.agents[seat], state, parsed)
+            self._check_slayer_shot(self.agents[seat], state, parsed)
 
             if parsed.say:
                 clean_say, internal_say = _sanitize_speech(parsed.say)
@@ -719,12 +769,12 @@ class GameRunner:
                         id=uuid.uuid4().hex,
                         type=MessageType.PUBLIC_SPEECH,
                         phase_id=state.phase_id,
-                        sender_seat=player.seat,
+                        sender_seat=seat,
                         content=clean_say,
                     )
                     state.add_message(msg)
                     emit_data: dict[str, Any] = {
-                        "seat": player.seat,
+                        "seat": seat,
                         "content": clean_say,
                         "type": "public",
                         "phase": state.phase.value,
@@ -802,7 +852,7 @@ class GameRunner:
                 continue
 
             agent = self.agents[seat]
-            parsed = await self._agent_act(agent, state)
+            parsed = await self._agent_act(agent, state, max_tokens=self._phase_tokens("nomination"))
             parsed = await self._handle_recall_if_needed(agent, state, parsed)
 
             self._handle_day_special_actions(agent, state, parsed)
@@ -911,7 +961,7 @@ class GameRunner:
                 if voter.seat in nomination.votes_for or voter.seat in nomination.votes_against:
                     continue
                 vote_tasks[voter.seat] = asyncio.create_task(
-                    self._agent_act(self.agents[voter.seat], state)
+                    self._agent_act(self.agents[voter.seat], state, max_tokens=self._phase_tokens("vote"))
                 )
 
             results = await asyncio.gather(
@@ -930,11 +980,16 @@ class GameRunner:
                 vote_yes = self._extract_vote(vote_parsed)
                 process_vote(state, nomination, voter_seat, vote_yes)
 
-                self._emit("vote.cast", {
-                    "seat": voter_seat,
-                    "nominee": nomination.nominee_seat,
-                    "vote": vote_yes,
-                })
+                # Emit the actual outcome (vote may have been blocked by Butler
+                # restriction, ghost vote rules, or dedup)
+                actually_voted_yes = voter_seat in nomination.votes_for
+                actually_voted_no = voter_seat in nomination.votes_against
+                if actually_voted_yes or actually_voted_no:
+                    self._emit("vote.cast", {
+                        "seat": voter_seat,
+                        "nominee": nomination.nominee_seat,
+                        "vote": actually_voted_yes,
+                    })
 
             # --- Evaluate vote result against threshold and current block ---
             vote_count = len(nomination.votes_for)
@@ -1507,7 +1562,14 @@ class GameRunner:
     # Rate-limited agent call
     # -------------------------------------------------------------------
 
-    async def _agent_act(self, agent: Agent, state: GameState) -> ParsedResponse:
+    def _phase_tokens(self, phase_key: str) -> int:
+        """Look up the max_tokens budget for a given phase key."""
+        m = self.state.config.phase_max_tokens
+        return m.get(phase_key, m.get("default", 4096))
+
+    async def _agent_act(
+        self, agent: Agent, state: GameState, max_tokens: int = 4096
+    ) -> ParsedResponse:
         """Call agent.act() with per-provider rate limiting.
 
         Different providers fire in parallel (independent rate limits),
@@ -1517,8 +1579,8 @@ class GameRunner:
         sem = self._provider_semaphores.get(provider)
         if sem:
             async with sem:
-                return await agent.act(state)
-        return await agent.act(state)
+                return await agent.act(state, max_tokens=max_tokens)
+        return await agent.act(state, max_tokens=max_tokens)
 
     # -------------------------------------------------------------------
     # Slayer ability helper
@@ -1902,8 +1964,10 @@ class GameRunner:
                     "agent_id": p.agent_id,
                     "character_name": p.character_name,
                     "role": p.role.name,
+                    "initial_role": self._initial_roles.get(p.seat, p.role.name),
                     "alignment": p.alignment.value,
                     "survived": p.is_alive,
+                    "model": self.agent_configs[p.seat].model,
                 }
                 for p in state.players
             ],

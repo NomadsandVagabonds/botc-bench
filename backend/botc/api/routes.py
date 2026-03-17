@@ -66,7 +66,7 @@ class AgentConfigRequest(BaseModel):
 
 class BreakoutConfigRequest(BaseModel):
     num_rounds: int = 2
-    messages_per_agent: int = 3
+    messages_per_agent: int = 2
     max_groups: int = 4
     min_group_size: int = 2
     whispers_per_round: int = 1
@@ -138,8 +138,6 @@ def _mark_game_failed(runner: GameRunner, exc: Exception) -> None:
 
 def _save_completed_game(runner: GameRunner, result: GameResult) -> None:
     """Save a completed game's result and full event history to disk."""
-    from botc.engine.state import snapshot_observer
-
     game_id = result.game_id
     result_data = {
         "game_id": result.game_id,
@@ -150,10 +148,8 @@ def _save_completed_game(runner: GameRunner, result: GameResult) -> None:
         "token_summary": result.token_summary,
         "duration_seconds": result.duration_seconds,
     }
-    # Include the observer snapshot as initial state for replay
-    initial_state = None
-    if runner.state:
-        initial_state = snapshot_observer(runner.state)
+    # Use the snapshot captured at game start (not the mutated final state)
+    initial_state = runner._initial_snapshot
 
     try:
         save_game(

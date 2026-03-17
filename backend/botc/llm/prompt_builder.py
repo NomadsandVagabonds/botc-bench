@@ -18,7 +18,8 @@ Analyze the situation, consider who might be lying, plan your strategy.
 </THINK>
 
 <SAY>
-What you say out loud to other players. Keep it concise and natural.
+What you say out loud to other players IN CHARACTER. Keep it concise and natural.
+Do NOT include meta-commentary like "I need to analyze..." — only in-character speech.
 </SAY>
 
 <ACTION>
@@ -40,6 +41,8 @@ Your game action for this phase. Use one of these formats:
 Your running notes. This is your PRIMARY memory between turns — you will NOT see
 the full conversation history, only your notes + the last few messages.
 Write a concise summary of key facts, claims, suspicions, and plans.
+IMPORTANT: Always record YOUR OWN public claims (what role you claimed, what info
+you shared). If you change your story later, you WILL be caught in a contradiction.
 Update this every turn. If you skip it, you lose that information.
 </MEMORY>
 
@@ -126,6 +129,8 @@ KEY RULES (READ CAREFULLY — these differ from Mafia/Werewolf):
 - Dead players may still participate in discussions (briefly) but cannot nominate.
 - Each dead player gets exactly 1 ghost vote for the rest of the game. Once they use
   their ghost vote on any nomination, it is permanently spent — they cannot vote again.
+- ONLY refer to players who actually exist in this game. The player roster is shown in
+  your game state each turn — do not invent or reference names that are not listed there.
 
 GAME PHASES:
 1. Night: Certain roles wake to use abilities. The Demon kills a player each night.

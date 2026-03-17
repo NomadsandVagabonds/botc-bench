@@ -194,6 +194,13 @@ def on_player_death(state: GameState, player: Player) -> None:
                 f"The Klutz, in final confusion, points at {_player_label(state, choice.seat)}.",
             ))
 
+    # Poisoner death: immediately clear their poison (BotC rules: poison ends when Poisoner dies)
+    if player.role.id == "poisoner":
+        for p in state.players:
+            if p.poisoned_by == player.seat:
+                p.is_poisoned = False
+                p.poisoned_by = None
+
     if player.role.id == "moonchild" and not player.hidden_state.get("moonchild_triggered"):
         player.hidden_state["moonchild_triggered"] = True
         candidates = [p for p in state.alive_players if p.seat != player.seat]
@@ -308,10 +315,11 @@ def resolve_poisoner(state: GameState, action: NightAction) -> str | None:
     return None  # Poisoner gets no info
 
 
-def _resolve_standard_demon_kill(state: GameState, target_seat: int) -> list[int]:
+def _resolve_standard_demon_kill(state: GameState, target_seat: int, *, _bounced: bool = False) -> list[int]:
     """Resolve a standard single-target Demon kill.
 
     Shared by Imp and S&V demons. Handles Soldier, Monk, and Mayor bounce.
+    When _bounced=True, skip Mayor bounce to prevent infinite recursion.
     """
     target = state.player_at(target_seat)
 
@@ -331,8 +339,8 @@ def _resolve_standard_demon_kill(state: GameState, target_seat: int) -> list[int
     if target.is_protected:
         return []
 
-    # Mayor: death might bounce
-    if target.role.id == "mayor" and not target.is_poisoned:
+    # Mayor: death might bounce (only on first attempt, not after a bounce)
+    if target.role.id == "mayor" and not target.is_poisoned and not _bounced:
         # For benchmark consistency, bounce to a random non-Demon alive player
         bounceable = [
             p for p in state.alive_players
@@ -340,12 +348,7 @@ def _resolve_standard_demon_kill(state: GameState, target_seat: int) -> list[int
         ]
         if bounceable:
             bounce_target = state.rng.choice(bounceable)
-            bounce_target.is_alive = False
-            bounce_target.death_cause = "demon_kill"
-            bounce_target.death_day = state.day_number
-            bounce_target.death_phase = "night"
-            on_player_death(state, bounce_target)
-            return [bounce_target.seat]
+            return _resolve_standard_demon_kill(state, bounce_target.seat, _bounced=True)
 
     # Fool survives the first death.
     if target.role.id == "fool" and not target.hidden_state.get("fool_survived_once"):
@@ -483,7 +486,11 @@ def resolve_chef(state: GameState, player: Player) -> str:
     if _info_malfunctions(state, player):
         pairs = wrong_number(pairs, len(evil_seats), state.rng)
 
-    return f"You learn that there {'is' if pairs == 1 else 'are'} {pairs} pair{'s' if pairs != 1 else ''} of evil players sitting adjacent."
+    return (
+        f"You learn that there {'is' if pairs == 1 else 'are'} {pairs} pair{'s' if pairs != 1 else ''} "
+        f"of evil players sitting adjacent to each other anywhere in the seating circle "
+        f"(this is about the whole circle, not just your neighbours)."
+    )
 
 
 def resolve_empath(state: GameState, player: Player) -> str:

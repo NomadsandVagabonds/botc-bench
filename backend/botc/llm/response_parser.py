@@ -60,12 +60,26 @@ _TAG_RE = re.compile(
 
 
 def _extract_tag(text: str, tag: str) -> str:
-    """Return the content of the *first* occurrence of ``<tag>...</tag>``."""
+    """Return the content of the *first* occurrence of ``<tag>...</tag>``.
+
+    Falls back to unclosed tags (truncated responses) by extracting
+    everything after ``<tag>`` up to the next opening tag or end of text.
+    """
+    # Try closed tag first
     pattern = re.compile(
         rf"<{tag}>\s*(?P<body>.*?)\s*</{tag}>",
         re.DOTALL,
     )
     m = pattern.search(text)
+    if m:
+        return m.group("body").strip()
+
+    # Fallback: unclosed tag (response truncated before closing tag)
+    fallback = re.compile(
+        rf"<{tag}>\s*(?P<body>.*?)(?=<(?:THINK|SAY|ACTION|MEMORY)>|\Z)",
+        re.DOTALL,
+    )
+    m = fallback.search(text)
     return m.group("body").strip() if m else ""
 
 

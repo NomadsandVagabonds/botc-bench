@@ -262,7 +262,7 @@ class NightAction:
 @dataclass
 class BreakoutConfig:
     num_rounds: int = 2
-    messages_per_agent: int = 3
+    messages_per_agent: int = 2
     max_groups: int = 4
     min_group_size: int = 2
     whispers_per_round: int = 1
@@ -286,6 +286,16 @@ class GameConfig:
     reveal_models: str = "true"  # "true" = show real models, "false" = hide, "scramble" = show randomized fake models
     share_stats: bool = False  # When True (and reveal_models=True), inject historical model stats into prompts
     seat_roles: list[str] | None = None  # Pre-assigned role IDs per seat (None = random)
+    phase_max_tokens: dict[str, int] = field(default_factory=lambda: {
+        "discussion": 4096,
+        "breakout": 4096,
+        "regroup": 2048,
+        "nomination": 2048,
+        "vote": 512,
+        "night": 2048,
+        "whisper": 768,
+        "default": 4096,
+    })
 
 
 # ---------------------------------------------------------------------------

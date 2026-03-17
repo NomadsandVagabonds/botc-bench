@@ -55,7 +55,7 @@ class Agent:
         self._system_prompt = build_system_prompt(self.player, state)
         self._prompt_alive_state = self.player.is_alive
 
-    async def act(self, state: GameState) -> ParsedResponse:
+    async def act(self, state: GameState, max_tokens: int = 4096) -> ParsedResponse:
         """Prompt the agent and parse their response.
 
         Builds the context from the current game state and sends it as
@@ -70,12 +70,12 @@ class Agent:
         # Single-message conversation: just the current context
         messages = [{"role": "user", "content": context}]
 
-        # Call LLM — 4096 tokens to avoid truncating verbose models
+        # Call LLM with phase-appropriate token budget
         response: LLMResponse = await self.provider.complete_with_retry(
             system_prompt=self._system_prompt,
             messages=messages,
             temperature=self.llm_config.temperature,
-            max_tokens=4096,
+            max_tokens=max_tokens,
         )
 
         # Track tokens

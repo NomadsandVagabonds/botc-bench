@@ -29,7 +29,11 @@ class AnthropicProvider(LLMProvider):
             model=self.config.model,
             max_tokens=max_tokens,
             temperature=temperature,
-            system=system_prompt,
+            system=[{
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }],
             messages=messages,
         )
 

@@ -312,7 +312,7 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
             max_whisper_chars=150,
         ),
         opening_statements=True,
-        regroup_messages=1,
+        breakout_min_players=6,
         seed=request.seed,
         max_days=request.max_days,
         max_concurrent_llm_calls=3,
@@ -351,7 +351,12 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
 
 
 @router.post("/api/games/quick", response_model=GameResponse)
-async def quick_game(num_players: int = 7, seed: int = 99, reveal_models: str = "true") -> GameResponse:
+async def quick_game(
+    num_players: int = 7,
+    seed: int = 99,
+    reveal_models: str = "true",
+    post_vote_discussion: bool = True,
+) -> GameResponse:
     """Start a game using API keys from environment variables.
 
     Round-robins across available providers (Anthropic, OpenAI, Google).
@@ -400,7 +405,8 @@ async def quick_game(num_players: int = 7, seed: int = 99, reveal_models: str = 
             max_whisper_chars=150,
         ),
         opening_statements=True,
-        regroup_messages=1,
+        post_vote_discussion=post_vote_discussion,
+        breakout_min_players=6,
         seed=seed,
         max_days=50,  # Safety only — real BotC has no day limit
         max_concurrent_llm_calls=3,

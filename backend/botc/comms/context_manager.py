@@ -343,7 +343,8 @@ def build_phase_instructions(player: Player, state: GameState) -> str:
             )
         return (
             f"It is the open discussion phase (Day {state.day_number}).\n"
-            "Speak publicly to share information, make accusations, or defend yourself."
+            "Share new information, reveal role claims, or make accusations. "
+            "If you have nothing new to add, use {PASS} — silence is strategic."
         )
 
     if phase == GamePhase.DAY_BREAKOUT:
@@ -366,12 +367,6 @@ def build_phase_instructions(player: Player, state: GameState) -> str:
             f"It is breakout round {state.breakout_round}. "
             "You are in a small group. Speak to your group members.\n"
             f"You may send up to {state.config.breakout.whispers_per_round} whisper(s) this round."
-        )
-
-    if phase == GamePhase.DAY_REGROUP:
-        return (
-            "The group has regrouped. You may make a brief statement to all players\n"
-            "summarising what you discussed or learned."
         )
 
     if phase == GamePhase.NOMINATIONS:
@@ -572,7 +567,6 @@ def build_agent_context(player: Player, state: GameState) -> str:
 _PHASE_LABELS: dict[GamePhase, str] = {
     GamePhase.DAY_DISCUSSION: "Open Discussion",
     GamePhase.DAY_BREAKOUT: "Breakout Groups",
-    GamePhase.DAY_REGROUP: "Regroup",
     GamePhase.NOMINATIONS: "Nominations",
     GamePhase.VOTING: "Voting",
     GamePhase.EXECUTION: "Execution",

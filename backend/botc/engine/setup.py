@@ -98,8 +98,13 @@ def create_game(config: GameConfig, agent_ids: list[str]) -> GameState:
 
         players.append(player)
 
-    # Generate demon bluffs: 3 good roles not in play
-    demon_bluffs = _pick_demon_bluffs(script, roles, rng)
+    # Generate demon bluffs: 3 good roles not in play (and not the Drunk's perceived role,
+    # since the Drunk will claim that role and it would create an immediate conflict)
+    drunk_perceived_ids = {
+        p.perceived_role.id for p in players
+        if p.role.id == "drunk" and p.perceived_role
+    }
+    demon_bluffs = _pick_demon_bluffs(script, roles, rng, exclude_ids=drunk_perceived_ids)
 
     # Fortune Teller red herring: a good player that registers as Demon
     _assign_fortune_teller_red_herring(players, rng)
@@ -316,12 +321,18 @@ def _pick_demon_bluffs(
     script: ScriptData,
     assigned_roles: list[RoleDefinition],
     rng: random.Random,
+    exclude_ids: set[str] | None = None,
 ) -> list[RoleDefinition]:
-    """Pick 3 good roles not in play for the Demon to bluff as."""
+    """Pick 3 good roles not in play for the Demon to bluff as.
+
+    Also excludes any IDs in *exclude_ids* (e.g. the Drunk's perceived role)
+    to avoid giving the Demon a bluff that conflicts with another player's claim.
+    """
     in_play_ids = {r.id for r in assigned_roles}
+    excluded = in_play_ids | (exclude_ids or set())
     good_not_in_play = [
         r for r in script.all_roles
-        if r.alignment == Alignment.GOOD and r.id not in in_play_ids
+        if r.alignment == Alignment.GOOD and r.id not in excluded
     ]
     rng.shuffle(good_not_in_play)
     return good_not_in_play[:3]

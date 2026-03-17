@@ -56,34 +56,21 @@ def build_game_state_summary(player: Player, state: GameState) -> str:
     dead = state.dead_players
     lines.append(f"{len(alive)} alive, {len(dead)} dead")
 
+    # Player roster (no per-player markers — those go in the per-player section
+    # so this block is identical across all agents for better prompt caching)
+    lines.append("")
+    lines.append("PLAYERS:")
     reveal = state.config.reveal_models
-
-    def _model_tag(p: "Player", is_self: bool) -> str:
-        """Build model tag based on reveal mode."""
-        if is_self:
-            return f" [{p.model_name}]" if p.model_name else ""
+    def _model_tag(p: "Player") -> str:
         if reveal in (True, "true", "scramble"):
             name = p.display_model_name or p.model_name
             return f" [{name}]" if name else ""
         return ""
-
-    # Alive players
-    lines.append("")
-    lines.append("ALIVE PLAYERS:")
     for p in alive:
-        you = " ← YOU" if p.seat == player.seat else ""
-        tag = _model_tag(p, p.seat == player.seat)
-        lines.append(f"  Seat {p.seat}: {p.character_name}{tag}{you}")
-
-    # Dead players
-    if dead:
-        lines.append("")
-        lines.append("DEAD PLAYERS:")
-        for p in dead:
-            ghost = "ghost vote available" if not p.ghost_vote_used else "ghost vote USED"
-            you = " ← YOU" if p.seat == player.seat else ""
-            tag = _model_tag(p, p.seat == player.seat)
-            lines.append(f"  Seat {p.seat}: {p.character_name}{tag} ({ghost}){you}")
+        lines.append(f"  Seat {p.seat}: {p.character_name}{_model_tag(p)} (alive)")
+    for p in dead:
+        ghost = "ghost vote available" if not p.ghost_vote_used else "ghost vote USED"
+        lines.append(f"  Seat {p.seat}: {p.character_name}{_model_tag(p)} (dead, {ghost})")
 
     # Recent deaths/executions summary
     if state.executed_today is not None:
@@ -397,12 +384,15 @@ def build_phase_instructions(player: Player, state: GameState) -> str:
     if phase == GamePhase.VOTING:
         if not player.is_alive and player.ghost_vote_used:
             return "You are dead and have used your ghost vote. You cannot vote."
+        ghost_note = ""
         if not player.is_alive:
-            return (
-                "You are dead. You have one ghost vote you may use on any nomination.\n"
-                "Vote YES or NO."
-            )
-        return "A nomination is being voted on. Vote YES or NO."
+            ghost_note = "You are dead. This will use your ONE ghost vote. Choose carefully.\n"
+        return (
+            f"{ghost_note}"
+            "A nomination is being voted on. Vote YES or NO.\n"
+            "Respond with <THINK> and <ACTION> only — no <SAY> needed for votes.\n"
+            "Use <MEMORY> to update your notes."
+        )
 
     if phase == GamePhase.EXECUTION:
         return "An execution is being carried out. Await the result."
@@ -530,6 +520,10 @@ def _nomination_turn_instructions(player: Player, state: GameState) -> str:
         "Talking about suspicions is NOT enough — if you want someone executed, "
         "you MUST nominate them now."
     )
+    lines.append(
+        "Consider whether your nomination has a realistic chance of getting enough votes "
+        "to execute. If not, PASS — nominations that go nowhere waste everyone's time."
+    )
 
     return "\n".join(lines)
 
@@ -541,19 +535,14 @@ def _nomination_turn_instructions(player: Player, state: GameState) -> str:
 def build_agent_context(player: Player, state: GameState) -> str:
     """Assemble the complete context block sent to an agent's LLM call.
 
-    Uses the RECALL memory system: agents get their own notes + the last
-    few messages instead of the full conversation history. They can use
-    {RECALL: query} to search past conversations on demand.
+    Structured for optimal prompt caching: shared context first (identical
+    across all agents in the same phase), then per-player content last.
+    Anthropic's prefix-based caching reuses the shared prefix across agents.
     """
     sections = [
+        # Shared context (cacheable prefix across all agents in same phase)
         "=== GAME STATE ===",
         build_game_state_summary(player, state),
-        "",
-        "=== YOUR PRIVATE INFORMATION ===",
-        build_private_knowledge(player),
-        "",
-        "=== YOUR NOTES ===",
-        build_self_notes(player),
         "",
         "=== RECENT MESSAGES ===",
         build_recent_messages(player, state),
@@ -561,7 +550,15 @@ def build_agent_context(player: Player, state: GameState) -> str:
         "=== CURRENT PHASE INSTRUCTIONS ===",
         build_phase_instructions(player, state),
         "",
+        # Per-player context (varies per agent — breaks cache prefix here)
+        "=== YOUR PRIVATE INFORMATION ===",
+        build_private_knowledge(player),
+        "",
+        "=== YOUR NOTES ===",
+        build_self_notes(player),
+        "",
         "---",
+        f"You are Seat {player.seat} ({player.character_name}).",
         "Your notes above are your running summary. Update them each turn via <MEMORY>.",
         "Use {RECALL: query} in your ACTION to search past conversations you witnessed.",
     ]

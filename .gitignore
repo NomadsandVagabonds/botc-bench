@@ -8,9 +8,14 @@ __pycache__/
 *.egg-info/
 dist/
 
-# Game logs (but keep saved game JSON files for replay)
+# Game data — JSON files (game results, monitors) ARE tracked.
+# Audio files are too large for git — store locally/cloud only.
+# IMPORTANT: git pull will never delete untracked/ignored files,
+# so local audio is safe regardless of what's on GitHub.
 backend/games/*.jsonl
 backend/games/*.log
+backend/games/audio_*/
+backend/games/wager.db
 
 # Node
 node_modules/

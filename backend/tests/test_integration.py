@@ -308,103 +308,15 @@ class TestFullGameIntegration:
 
         runner = GameRunner(config, agent_configs)
 
-        # Monkey-patch: intercept agent creation to replace providers
-        original_run = runner.run
+        # Monkey-patch ProviderFactory so runner.run() creates MockProviders
+        # instead of real Anthropic clients (which would need API keys).
+        from unittest.mock import patch
+        from botc.llm.provider import ProviderFactory
 
-        async def patched_run():
-            # Let run() set up state and agents normally
-            from botc.engine.setup import create_game
-            from botc.orchestrator.agent import Agent
-            from botc.llm.token_tracker import TokenTracker
+        original_create = ProviderFactory.create
 
-            runner._start_time = __import__("time").time()
-            agent_ids = [c.agent_id for c in runner.agent_configs]
-            runner.state = create_game(runner.game_config, agent_ids)
-            state = runner.state
-            runner._validate_roles_match_script(state)
+        def mock_create(cfg):
+            return MockProvider(cfg, seed=(config.seed or 42) + hash(cfg.agent_id))
 
-            from botc.engine.state import snapshot_observer
-            runner._initial_snapshot = snapshot_observer(state)
-            runner._initial_roles = {p.seat: p.role.name for p in state.players}
-
-            # Create agents with mock providers
-            all_model_ids = [c.model for c in runner.agent_configs]
-            for i, ac in enumerate(runner.agent_configs):
-                player = state.players[i]
-                player.model_name = ac.model
-                player.display_model_name = ac.model
-                agent = Agent(player, ac, runner.token_tracker)
-                agent.initialize(state)
-                agent.provider = MockProvider(ac, seed=config.seed + i)
-                runner.agents[i] = agent
-
-            runner._emit("game.created", {
-                "game_id": state.game_id,
-                "players": [
-                    {"seat": p.seat, "agent_id": p.agent_id, "character_name": p.character_name, "model": ac.model}
-                    for p, ac in zip(state.players, runner.agent_configs)
-                ],
-            })
-            runner._emit("game.state", snapshot_observer(state))
-
-            # Run the game loop (everything after agent creation in the original run())
-            from botc.engine.night import resolve_first_night, resolve_night
-            from botc.engine.win_conditions import check_win_conditions
-            from botc.engine.phase_machine import transition
-
-            # First night
-            await runner._run_first_night(state)
-            runner._validate_roles_match_script(state)
-
-            # Main game loop
-            while state.phase != GamePhase.GAME_OVER:
-                result = check_win_conditions(state)
-                if result:
-                    state.winner = result.alignment
-                    state.win_condition = result.reason
-                    transition(state, GamePhase.GAME_OVER)
-                    break
-
-                transition(state, GamePhase.DAY_DISCUSSION)
-                if state.config.opening_statements:
-                    await runner._run_discussion(state)
-
-                from botc.engine.phase_machine import should_skip_breakout
-                if not should_skip_breakout(state):
-                    for _ in range(state.config.breakout.num_rounds):
-                        transition(state, GamePhase.DAY_BREAKOUT)
-                        await runner._run_breakout_round(state)
-                        transition(state, GamePhase.DAY_REGROUP)
-                        await runner._run_regroup(state)
-
-                transition(state, GamePhase.NOMINATIONS)
-                game_over = await runner._run_nomination_phase(state)
-                if game_over:
-                    break
-
-                transition(state, GamePhase.NIGHT)
-                await runner._run_night(state)
-                runner._validate_roles_match_script(state)
-
-                result = check_win_conditions(state)
-                if result:
-                    state.winner = result.alignment
-                    state.win_condition = result.reason
-                    transition(state, GamePhase.GAME_OVER)
-                    break
-
-                if state.day_number >= state.config.max_days:
-                    result = check_win_conditions(state)
-                    if result:
-                        state.winner = result.alignment
-                        state.win_condition = result.reason
-                    else:
-                        from botc.engine.types import Alignment
-                        state.winner = Alignment.EVIL
-                        state.win_condition = "Maximum days reached."
-                    transition(state, GamePhase.GAME_OVER)
-                    break
-
-            return runner._compile_result(state)
-
-        return await patched_run()
+        with patch.object(ProviderFactory, "create", side_effect=mock_create):
+            return await runner.run()

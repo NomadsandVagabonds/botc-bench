@@ -76,6 +76,9 @@ def snapshot_observer(state: GameState) -> dict[str, Any]:
             "ghost_vote_used": p.ghost_vote_used,
             "perceived_role": p.perceived_role.name if p.perceived_role else None,
             "butler_master": p.butler_master,
+            "death_cause": p.death_cause,
+            "death_day": p.death_day,
+            "death_phase": p.death_phase,
         }
         for p in state.players
     ]

@@ -193,7 +193,9 @@ def resolve_night(
                         _deliver_info(state, player, info)
                 continue
 
-            # Info abilities
+            # Info abilities — only for living players
+            if not player.is_alive:
+                continue
             effective_role_id = player.effective_role.id if player.is_drunk else actual_role_id
             if effective_role_id in OTHER_NIGHT_INFO_ABILITIES:
                 info = OTHER_NIGHT_INFO_ABILITIES[effective_role_id](state, player)

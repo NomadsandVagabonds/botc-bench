@@ -1847,11 +1847,33 @@ class GameRunner:
     # Response extraction helpers
     # -------------------------------------------------------------------
 
+    def _validate_night_target(self, target_seat: int, actor_seat: int) -> bool:
+        """Check that a night action target is a valid, alive player (not self)."""
+        if not self.state:
+            return True
+        try:
+            target = self.state.player_at(target_seat)
+        except (IndexError, ValueError):
+            logger.warning("Night target seat %d is invalid", target_seat)
+            return False
+        if not target.is_alive:
+            logger.warning(
+                "Seat %d targeted dead player %s (seat %d) — ignoring",
+                actor_seat, target.character_name, target_seat,
+            )
+            return False
+        if target_seat == actor_seat:
+            logger.warning("Seat %d targeted self — ignoring", actor_seat)
+            return False
+        return True
+
     def _extract_night_action(
         self, parsed: ParsedResponse, *, seat: int, role_id: str
     ) -> NightAction | None:
         for action in parsed.actions:
             if action.action_type == "NIGHT_TARGET" and action.target is not None:
+                if not self._validate_night_target(action.target, seat):
+                    continue
                 return NightAction(
                     actor_seat=seat,
                     role_id=role_id,
@@ -1860,25 +1882,31 @@ class GameRunner:
             if action.action_type == "NIGHT_TARGET_TWO" and action.value:
                 try:
                     parts = action.value.split(",")
-                    return NightAction(
-                        actor_seat=seat,
-                        role_id=role_id,
-                        targets=[int(p.strip()) for p in parts[:2]],
-                    )
+                    targets = [int(p.strip()) for p in parts[:2]]
+                    if all(self._validate_night_target(t, seat) for t in targets):
+                        return NightAction(
+                            actor_seat=seat,
+                            role_id=role_id,
+                            targets=targets,
+                        )
                 except ValueError:
                     continue
             if action.action_type == "NIGHT_TARGET_THREE" and action.value:
                 try:
                     parts = action.value.split(",")
-                    return NightAction(
-                        actor_seat=seat,
-                        role_id=role_id,
-                        targets=[int(p.strip()) for p in parts[:3]],
-                    )
+                    targets = [int(p.strip()) for p in parts[:3]]
+                    if all(self._validate_night_target(t, seat) for t in targets):
+                        return NightAction(
+                            actor_seat=seat,
+                            role_id=role_id,
+                            targets=targets,
+                        )
                 except ValueError:
                     continue
             if action.action_type == "NIGHT_TARGET_ROLE":
                 if action.target is None:
+                    continue
+                if not self._validate_night_target(action.target, seat):
                     continue
                 role_choice = (action.value or "").strip()
                 return NightAction(

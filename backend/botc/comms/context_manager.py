@@ -333,6 +333,18 @@ def build_phase_instructions(player: Player, state: GameState) -> str:
         return _night_instructions(player, state, first_night=False)
 
     if phase == GamePhase.DAY_DISCUSSION:
+        dead_reminder = ""
+        if not player.is_alive:
+            ghost_status = (
+                "You still have your ghost vote — save it for the VOTING phase when prompted."
+                if not player.ghost_vote_used
+                else "You have already used your ghost vote."
+            )
+            dead_reminder = (
+                f"\n(You are dead but may still speak briefly. {ghost_status} "
+                "Declaring 'I use my ghost vote' in discussion has no mechanical effect — "
+                "you must wait for the voting prompt.)"
+            )
         if state.day_number <= 1:
             return (
                 "It is the open discussion phase (Day 1).\n"
@@ -340,11 +352,13 @@ def build_phase_instructions(player: Player, state: GameState) -> str:
                 "or false information you think it is strategic to share at the beginning, share it "
                 "in 2-3 sentences. If you have nothing to share, use {PASS} to stay silent — "
                 "padding with 'I'm listening' adds nothing. Save discussion for breakout groups."
+                + dead_reminder
             )
         return (
             f"It is the open discussion phase (Day {state.day_number}).\n"
             "Share new information, reveal role claims, or make accusations. "
             "If you have nothing new to add, use {PASS} — silence is strategic."
+            + dead_reminder
         )
 
     if phase == GamePhase.DAY_BREAKOUT:

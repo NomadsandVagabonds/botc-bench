@@ -798,4 +798,7 @@ def _build_dead_status(player: Player) -> str:
         "- You CANNOT nominate other players\n"
         "- You do NOT receive night ability information\n"
         "- Your role remains hidden from other players\n"
+        "- GHOST VOTE TIMING: Your ghost vote can ONLY be used during the VOTING phase when "
+        "you are prompted to vote. Declaring 'I use my ghost vote' in discussion has no effect "
+        "— you must wait for the voting prompt and respond with {VOTE: YES} or {VOTE: NO}.\n"
     )

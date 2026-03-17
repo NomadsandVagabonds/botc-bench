@@ -106,6 +106,11 @@ def _info_malfunctions(state: GameState, player: Player) -> bool:
 def refresh_script_poisoning(state: GameState) -> None:
     """Recompute script-level poisoning (No Dashii + persistent drunk effects)."""
     for p in state.players:
+        # Dead players are no longer affected by poison
+        if not p.is_alive:
+            p.is_poisoned = False
+            continue
+
         # Remove previous dynamic No Dashii marker each recompute.
         p.hidden_state.pop("no_dashii_poisoned", None)
 
@@ -141,6 +146,10 @@ def refresh_script_poisoning(state: GameState) -> None:
 
 def on_player_death(state: GameState, player: Player) -> None:
     """Apply role death triggers (Sweetheart, Barber, Klutz)."""
+    # Dead players are no longer affected by poison
+    player.is_poisoned = False
+    player.poisoned_by = None
+
     # Sage: if killed by Demon, learn 1 of 2 players, one of whom is the Demon.
     if (
         player.role.id == "sage"
@@ -391,6 +400,11 @@ def resolve_washerwoman(state: GameState, player: Player) -> str:
         # Always change the role name so the combo is never accidentally correct
         all_townsfolk_names = [p.role.name for p in state.players if p.role.role_type == RoleType.TOWNSFOLK]
         role_name = wrong_role(role_name, all_townsfolk_names, state.rng)
+        # Ensure combo is genuinely wrong — no player in the pair actually has this role
+        for _ in range(10):
+            if not any(state.player_at(s).role.name == role_name for s in pair):
+                break
+            role_name = wrong_role(role_name, all_townsfolk_names, state.rng)
 
     return (
         f"You learn that either {_player_label(state, pair[0])} or {_player_label(state, pair[1])} "
@@ -432,6 +446,13 @@ def resolve_librarian(state: GameState, player: Player) -> str:
     if _info_malfunctions(state, player):
         all_seats = [p.seat for p in state.players if p.seat != player.seat]
         pair = wrong_player_pair(target.seat, other.seat, all_seats, state.rng)
+        all_outsider_names = [p.role.name for p in state.players if p.role.role_type == RoleType.OUTSIDER]
+        role_name = wrong_role(role_name, all_outsider_names, state.rng)
+        # Ensure combo is genuinely wrong — no player in the pair actually has this role
+        for _ in range(10):
+            if not any(state.player_at(s).role.name == role_name for s in pair):
+                break
+            role_name = wrong_role(role_name, all_outsider_names, state.rng)
 
     return (
         f"You learn that either {_player_label(state, pair[0])} or {_player_label(state, pair[1])} "
@@ -462,6 +483,13 @@ def resolve_investigator(state: GameState, player: Player) -> str:
     if _info_malfunctions(state, player):
         all_seats = [p.seat for p in state.players if p.seat != player.seat]
         pair = wrong_player_pair(target.seat, other.seat, all_seats, state.rng)
+        all_minion_names = [p.role.name for p in state.players if p.role.role_type == RoleType.MINION]
+        role_name = wrong_role(role_name, all_minion_names, state.rng)
+        # Ensure combo is genuinely wrong — no player in the pair actually has this role
+        for _ in range(10):
+            if not any(state.player_at(s).role.name == role_name for s in pair):
+                break
+            role_name = wrong_role(role_name, all_minion_names, state.rng)
 
     return (
         f"You learn that either {_player_label(state, pair[0])} or {_player_label(state, pair[1])} "

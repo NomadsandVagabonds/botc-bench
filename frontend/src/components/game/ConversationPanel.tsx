@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore.ts';
 import { getProviderColor, shortModelName, getPhaseLabel, getPhaseColor, getRoleTypeColor } from '../../utils/models.ts';
-import type { Message, Player, Phase } from '../../types/game.ts';
+import type { Message, Player, Phase, NightActionEntry } from '../../types/game.ts';
 import { MessageType } from '../../types/game.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -374,13 +374,17 @@ function AccordionSection({
   onToggle,
   players,
   showObserverInfo,
+  nightActionsForSection,
 }: {
   section: PhaseSection;
   isExpanded: boolean;
   onToggle: () => void;
   players: Player[];
   showObserverInfo: boolean;
+  nightActionsForSection?: NightActionEntry[];
 }) {
+  const showNightActions = showObserverInfo && section.isNight && nightActionsForSection && nightActionsForSection.length > 0;
+
   return (
     <div>
       <SectionHeader
@@ -407,6 +411,9 @@ function AccordionSection({
                     : undefined,
               }}
             >
+              {showNightActions && nightActionsForSection.map((entry, i) => (
+                <NightActionRow key={`na-${entry.seat}-${entry.day}-${i}`} entry={entry} />
+              ))}
               {section.messages.map((msg) => (
                 <MessageRow key={msg.id} message={msg} players={players} showObserverInfo={showObserverInfo} />
               ))}
@@ -672,12 +679,38 @@ function PlayersTab({ players }: { players: Player[] }) {
   );
 }
 
+// ── Night action row (observer only) ─────────────────────────────────
+
+function NightActionRow({ entry }: { entry: NightActionEntry }) {
+  const targetText = entry.targetName ? ` ${entry.targetName}` : '';
+  const label = `\uD83C\uDF19 [${entry.role}] ${entry.name} ${entry.action}${targetText}`;
+
+  return (
+    <div
+      style={{
+        padding: '5px 12px',
+        background: 'rgba(99, 102, 241, 0.10)',
+        borderLeft: '3px solid rgba(139, 92, 246, 0.5)',
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        fontFamily: 'monospace',
+        fontSize: '0.78rem',
+        color: 'rgba(192, 132, 252, 0.9)',
+        lineHeight: 1.45,
+        whiteSpace: 'pre-wrap',
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────
 
 export function ConversationPanel() {
   const gameState = useGameStore((s) => s.gameState);
   const selectGroup = useGameStore((s) => s.selectGroup);
   const showObserverInfo = useGameStore((s) => s.showObserverInfo);
+  const nightActions = useGameStore((s) => s.nightActions);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -727,6 +760,16 @@ export function ConversationPanel() {
     () => groupMessagesIntoSections(filteredMessages, groupLabels),
     [filteredMessages, groupLabels],
   );
+
+  // Build lookup of night actions by day number for rendering in night sections
+  const nightActionsByDay = useMemo(() => {
+    const map: Record<number, NightActionEntry[]> = {};
+    for (const entry of nightActions) {
+      if (!map[entry.day]) map[entry.day] = [];
+      map[entry.day].push(entry);
+    }
+    return map;
+  }, [nightActions]);
 
   // Track the latest section key for auto-expand
   const latestSectionKey = sections.length > 0 ? sections[sections.length - 1].key : null;
@@ -911,6 +954,7 @@ export function ConversationPanel() {
                   onToggle={() => toggleSection(section.key)}
                   players={players}
                   showObserverInfo={showObserverInfo}
+                  nightActionsForSection={section.isNight ? nightActionsByDay[section.dayNumber] : undefined}
                 />
               ))
             )}

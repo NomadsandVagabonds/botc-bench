@@ -154,7 +154,7 @@ STRATEGY NOTES:
 {_build_strategy_tips(player, state)}
 - You may claim to be any role. Lying is part of the game.
 - Pay attention to who is talking to whom in breakout groups.
-- Whispers are private, but everyone sees that you whispered.
+- Whispers are private, but everyone sees that you whispered. Whispers are one-way — use them to transmit info, not ask questions (you won't get a reply). Keep them short.
 
 SOCIAL TACTICS (optional — use what feels natural):
 - Opening statements: At the start of each day, you may briefly address the whole group before breakouts — claim a role, share info, accuse someone, or stay quiet. It's up to you.
@@ -661,9 +661,8 @@ def build_pre_nomination_prompt(player: Player, state: GameState) -> str:
     return (
         f"{context}\n\n"
         f"--- NOMINATION DISCUSSION ---\n"
-        f"Nominations are about to begin.{dead_note} Share your thoughts on who "
-        f"should be nominated and why. What have you observed? Who is suspicious? "
-        f"Who should we trust?\n\n"
+        f"Nominations are about to begin.{dead_note} If you learned anything important "
+        f"in breakout groups, share it now. Who should be nominated and why?\n\n"
         f"Speak in character as {player.character_name}. Be concise (2-3 sentences). "
         f"Do NOT use XML tags — just speak aloud to the town.\n\n"
         f"Tip: Use {{RECALL: who accused whom}} to catch contradictions before nominating."
@@ -775,7 +774,7 @@ def _build_dead_status(player: Player) -> str:
     ghost_votes = 0 if player.ghost_vote_used else 1
     return (
         "\n*** YOU ARE DEAD — but still active in the game ***\n"
-        "- You can speak freely in ALL discussions, breakout groups, and regroup phases\n"
+        "- You can speak freely in ALL discussions and breakout groups\n"
         f"- You have {ghost_votes} ghost vote(s) remaining"
         + (" — once you use it, you cannot vote again" if ghost_votes else " — you have already used your ghost vote") + "\n"
         "- You CANNOT nominate other players\n"

@@ -275,7 +275,8 @@ class GameConfig:
     num_players: int = 10
     breakout: BreakoutConfig = field(default_factory=BreakoutConfig)
     opening_statements: bool = True
-    regroup_messages: int = 1
+    post_vote_discussion: bool = True  # Discussion after each vote result
+    breakout_min_players: int = 6  # Skip breakout when fewer alive
     seed: int | None = None
     narrator_enabled: bool = False
     max_concurrent_llm_calls: int = 8
@@ -290,12 +291,29 @@ class GameConfig:
     phase_max_tokens: dict[str, int] = field(default_factory=lambda: {
         "discussion": 4096,
         "breakout": 4096,
-        "regroup": 2048,
+        "group_preference": 256,
         "nomination": 2048,
+        "accusation": 2048,
+        "defense": 2048,
         "vote": 512,
         "night": 2048,
-        "whisper": 768,
+        "whisper": 256,
         "default": 4096,
+    })
+    # Per-phase reasoning effort for thinking models (Anthropic, OpenAI, Google).
+    # Values: "low", "medium", "high". None = provider default.
+    # Non-thinking models ignore this parameter.
+    phase_reasoning_effort: dict[str, str] = field(default_factory=lambda: {
+        "night": "high",
+        "discussion": "medium",
+        "group_preference": "low",
+        "breakout": "medium",
+        "nomination": "high",
+        "accusation": "high",
+        "defense": "high",
+        "vote": "high",
+        "whisper": "medium",
+        "default": "medium",
     })
 
 

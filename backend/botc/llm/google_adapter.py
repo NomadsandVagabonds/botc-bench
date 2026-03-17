@@ -26,6 +26,7 @@ class GoogleProvider(LLMProvider):
         messages: list[dict],
         temperature: float = 0.7,
         max_tokens: int = 1024,
+        reasoning_effort: str | None = None,
     ) -> LLMResponse:
         start = time.perf_counter()
 
@@ -40,11 +41,12 @@ class GoogleProvider(LLMProvider):
                 )
             )
 
-        # Gemini 2.5 models (Pro and Flash) are thinking models — they use a
-        # large portion of the token budget for internal reasoning before
-        # producing visible output. We need a much higher ceiling (8K+) to
-        # ensure actual content comes through.
-        is_thinking_model = "2.5-pro" in self.config.model or "2.5-flash" in self.config.model or "3.1-pro" in self.config.model
+        # Gemini 2.5+ and 3.x models are thinking models — they use a
+        # large portion of the token budget for internal reasoning.
+        model_lower = self.config.model.lower()
+        is_thinking_model = any(
+            k in model_lower for k in ("2.5-pro", "2.5-flash", "3.0", "3.1")
+        )
         effective_max = max(max_tokens, 8192) if is_thinking_model else max_tokens
 
         config_kwargs: dict = {
@@ -53,6 +55,26 @@ class GoogleProvider(LLMProvider):
         }
         if not is_thinking_model:
             config_kwargs["temperature"] = temperature
+
+        # Map reasoning effort to Gemini thinking config
+        if is_thinking_model and reasoning_effort:
+            # Gemini 3.x uses thinking_level; 2.5 uses thinking_budget
+            is_gemini3 = any(k in model_lower for k in ("3.0", "3.1"))
+            if is_gemini3:
+                level_map = {"low": "LOW", "medium": "MEDIUM", "high": "HIGH"}
+                level = level_map.get(reasoning_effort)
+                if level:
+                    config_kwargs["thinking_config"] = types.ThinkingConfig(
+                        thinking_level=level,
+                    )
+            else:
+                # Gemini 2.5: thinking_budget in tokens
+                budget_map = {"low": 1024, "medium": 4096, "high": 16384}
+                budget = budget_map.get(reasoning_effort)
+                if budget:
+                    config_kwargs["thinking_config"] = types.ThinkingConfig(
+                        thinking_budget=budget,
+                    )
 
         response = await self._client.aio.models.generate_content(
             model=self.config.model,

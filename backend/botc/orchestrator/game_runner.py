@@ -37,8 +37,6 @@ from botc.engine.day import (
 from botc.engine.night import resolve_first_night, resolve_night
 from botc.engine.roles import load_script
 from botc.engine.phase_machine import (
-    next_phase_after_breakout,
-    next_phase_after_regroup,
     should_skip_breakout,
     transition,
 )
@@ -289,17 +287,12 @@ class GameRunner:
             if state.config.opening_statements:
                 await self._run_discussion(state)
 
-            # Breakout rounds
+            # Breakout rounds (no regroup — agents retain context via RECALL/self-notes)
             if not should_skip_breakout(state):
                 for round_num in range(state.config.breakout.num_rounds):
                     transition(state, GamePhase.DAY_BREAKOUT)
                     self._emit("phase.change", {"phase": state.phase.value, "day": state.day_number, "round": state.breakout_round})
                     await self._run_breakout_round(state)
-
-                    # Regroup after every breakout round (required before nominations)
-                    transition(state, GamePhase.DAY_REGROUP)
-                    self._emit("phase.change", {"phase": state.phase.value, "day": state.day_number})
-                    await self._run_regroup(state)
 
             # Nominations + voting (sequential, one at a time)
             transition(state, GamePhase.NOMINATIONS)
@@ -560,7 +553,7 @@ class GameRunner:
                 continue
 
             tasks[player.seat] = asyncio.create_task(
-                self._agent_act(agent, state, max_tokens=self._phase_tokens("night")),
+                self._agent_act(agent, state, max_tokens=self._phase_tokens("night"), phase_key="night"),
                 name=f"night_{player.seat}",
             )
 
@@ -587,14 +580,27 @@ class GameRunner:
         return actions
 
     async def _run_discussion(self, state: GameState) -> None:
-        """Round-robin opening statements from all players (alive + dead)."""
+        """Parallel opening statements — agents reveal info or pass."""
+        discussion_tasks: dict[int, asyncio.Task] = {}
         for player in state.players:
-            agent = self.agents[player.seat]
-            parsed = await self._agent_act(agent, state, max_tokens=self._phase_tokens("discussion"))
-            parsed = await self._handle_recall_if_needed(agent, state, parsed)
+            discussion_tasks[player.seat] = asyncio.create_task(
+                self._agent_act(self.agents[player.seat], state,
+                                max_tokens=self._phase_tokens("discussion"),
+                                phase_key="discussion")
+            )
 
-            self._handle_day_special_actions(agent, state, parsed)
-            self._check_slayer_shot(agent, state, parsed)
+        results = await asyncio.gather(*discussion_tasks.values(), return_exceptions=True)
+
+        for seat, result in zip(discussion_tasks.keys(), results):
+            if isinstance(result, Exception):
+                logger.error("Discussion failed for seat %d: %s", seat, result)
+                continue
+
+            parsed: ParsedResponse = result
+            parsed = await self._handle_recall_if_needed(self.agents[seat], state, parsed)
+
+            self._handle_day_special_actions(self.agents[seat], state, parsed)
+            self._check_slayer_shot(self.agents[seat], state, parsed)
 
             if parsed.say:
                 clean_say, internal_say = _sanitize_speech(parsed.say)
@@ -603,12 +609,12 @@ class GameRunner:
                         id=uuid.uuid4().hex,
                         type=MessageType.PUBLIC_SPEECH,
                         phase_id=state.phase_id,
-                        sender_seat=player.seat,
+                        sender_seat=seat,
                         content=clean_say,
                     )
                     state.add_message(msg)
                     emit_data: dict[str, Any] = {
-                        "seat": player.seat,
+                        "seat": seat,
                         "content": clean_say,
                         "type": "public",
                         "phase": state.phase.value,
@@ -620,7 +626,7 @@ class GameRunner:
 
             if parsed.think:
                 self._emit("player.reasoning", {
-                    "seat": player.seat,
+                    "seat": seat,
                     "reasoning": parsed.think,
                 })
 
@@ -632,7 +638,7 @@ class GameRunner:
 
         for player in state.players:
             preference_tasks[player.seat] = asyncio.create_task(
-                self._agent_act(self.agents[player.seat], state, max_tokens=self._phase_tokens("breakout"))
+                self._agent_act(self.agents[player.seat], state, max_tokens=self._phase_tokens("group_preference"), phase_key="group_preference")
             )
 
         results = await asyncio.gather(
@@ -663,7 +669,9 @@ class GameRunner:
         await asyncio.gather(*conversation_tasks)
 
         # Step 4: Whisper window
+        self._emit("whisper.started", {"day": state.day_number})
         await self._run_whisper_round(state)
+        self._emit("whisper.ended", {"day": state.day_number})
 
         self._emit("breakout.ended", {})
 
@@ -672,7 +680,7 @@ class GameRunner:
         for turn in range(state.config.breakout.messages_per_agent):
             for seat in sorted(group.members):
                 agent = self.agents[seat]
-                parsed = await self._agent_act(agent, state, max_tokens=self._phase_tokens("breakout"))
+                parsed = await self._agent_act(agent, state, max_tokens=self._phase_tokens("breakout"), phase_key="breakout")
                 parsed = await self._handle_recall_if_needed(agent, state, parsed)
 
                 self._handle_day_special_actions(agent, state, parsed)
@@ -705,7 +713,7 @@ class GameRunner:
         whisper_tasks: dict[int, asyncio.Task] = {}
         for player in state.players:
             whisper_tasks[player.seat] = asyncio.create_task(
-                self._agent_act(self.agents[player.seat], state, max_tokens=self._phase_tokens("whisper"))
+                self._agent_act(self.agents[player.seat], state, max_tokens=self._phase_tokens("whisper"), phase_key="whisper")
             )
 
         results = await asyncio.gather(*whisper_tasks.values(), return_exceptions=True)
@@ -735,54 +743,6 @@ class GameRunner:
                         })
                     except ValueError as e:
                         logger.warning("Whisper failed: %s", e)
-
-    async def _run_regroup(self, state: GameState) -> None:
-        """Brief public statements after breakout rounds (alive + dead).
-
-        All agents are prompted in parallel (gated by per-provider semaphores).
-        Each gives a summary of what they learned — they don't react to each
-        other's regroup statements, so ordering doesn't matter.
-        """
-        regroup_tasks: dict[int, asyncio.Task] = {}
-        for player in state.players:
-            regroup_tasks[player.seat] = asyncio.create_task(
-                self._agent_act(self.agents[player.seat], state, max_tokens=self._phase_tokens("regroup"))
-            )
-
-        results = await asyncio.gather(*regroup_tasks.values(), return_exceptions=True)
-
-        for seat, result in zip(regroup_tasks.keys(), results):
-            if isinstance(result, Exception):
-                logger.error("Regroup prompt failed for seat %d: %s", seat, result)
-                continue
-
-            parsed: ParsedResponse = result
-            parsed = await self._handle_recall_if_needed(self.agents[seat], state, parsed)
-
-            self._handle_day_special_actions(self.agents[seat], state, parsed)
-            self._check_slayer_shot(self.agents[seat], state, parsed)
-
-            if parsed.say:
-                clean_say, internal_say = _sanitize_speech(parsed.say)
-                if clean_say:
-                    msg = Message(
-                        id=uuid.uuid4().hex,
-                        type=MessageType.PUBLIC_SPEECH,
-                        phase_id=state.phase_id,
-                        sender_seat=seat,
-                        content=clean_say,
-                    )
-                    state.add_message(msg)
-                    emit_data: dict[str, Any] = {
-                        "seat": seat,
-                        "content": clean_say,
-                        "type": "public",
-                        "phase": state.phase.value,
-                        "day": state.day_number,
-                    }
-                    if internal_say:
-                        emit_data["internal"] = internal_say
-                    self._emit("message.new", emit_data)
 
     async def _run_nomination_phase(self, state: GameState) -> bool:
         """Full BotC nomination flow with pre-nomination discussion,
@@ -852,7 +812,7 @@ class GameRunner:
                 continue
 
             agent = self.agents[seat]
-            parsed = await self._agent_act(agent, state, max_tokens=self._phase_tokens("nomination"))
+            parsed = await self._agent_act(agent, state, max_tokens=self._phase_tokens("nomination"), phase_key="nomination")
             parsed = await self._handle_recall_if_needed(agent, state, parsed)
 
             self._handle_day_special_actions(agent, state, parsed)
@@ -961,7 +921,7 @@ class GameRunner:
                 if voter.seat in nomination.votes_for or voter.seat in nomination.votes_against:
                     continue
                 vote_tasks[voter.seat] = asyncio.create_task(
-                    self._agent_act(self.agents[voter.seat], state, max_tokens=self._phase_tokens("vote"))
+                    self._agent_act(self.agents[voter.seat], state, max_tokens=self._phase_tokens("vote"), phase_key="vote")
                 )
 
             results = await asyncio.gather(
@@ -1089,18 +1049,24 @@ class GameRunner:
             }
             nomination_summaries.append(nom_summary)
 
-            # --- Inter-nomination discussion (all players react, one round) ---
-            # Return to NOMINATIONS phase for the discussion and next player
+            # Post-vote discussion — skip if no more nominators remain
+            if state.config.post_vote_discussion:
+                remaining = [
+                    s for s in alive_seats[alive_seats.index(seat) + 1:]
+                    if state.player_at(s).is_alive and can_nominate(state, s)
+                ]
+                if remaining:
+                    await self._run_nomination_discussion(
+                        state,
+                        prompt_builder=lambda p, ns=nom_summary: build_inter_nomination_prompt(
+                            p, state, ns
+                        ),
+                        max_tokens=150,
+                    )
+
+            # Return to NOMINATIONS phase for next player
             transition(state, GamePhase.NOMINATIONS)
             self._emit("phase.change", {"phase": state.phase.value, "day": state.day_number})
-
-            await self._run_nomination_discussion(
-                state,
-                prompt_builder=lambda p, ns=nom_summary: build_inter_nomination_prompt(
-                    p, state, ns
-                ),
-                max_tokens=150,
-            )
 
         # --- Phase 4: Execute whoever is on the block. ---
         if on_the_block is not None:
@@ -1322,12 +1288,14 @@ class GameRunner:
             msg_type = MessageType.DEFENSE
 
         internal_content = ""
+        effort_key = "accusation" if speech_type == "accusation" else "defense"
         try:
             response = await agent.provider.complete_with_retry(
                 system_prompt=agent._system_prompt or "",
                 messages=[{"role": "user", "content": prompt_text}],
                 temperature=agent.llm_config.temperature,
                 max_tokens=300,
+                reasoning_effort=self._phase_effort(effort_key),
             )
             speech_text, internal_content = _sanitize_speech(response.content.strip())
 
@@ -1567,20 +1535,28 @@ class GameRunner:
         m = self.state.config.phase_max_tokens
         return m.get(phase_key, m.get("default", 4096))
 
+    def _phase_effort(self, phase_key: str) -> str | None:
+        """Look up the reasoning effort for a given phase key."""
+        m = self.state.config.phase_reasoning_effort
+        return m.get(phase_key, m.get("default"))
+
     async def _agent_act(
-        self, agent: Agent, state: GameState, max_tokens: int = 4096
+        self, agent: Agent, state: GameState,
+        max_tokens: int = 4096,
+        phase_key: str | None = None,
     ) -> ParsedResponse:
         """Call agent.act() with per-provider rate limiting.
 
         Different providers fire in parallel (independent rate limits),
         but calls to the same provider are gated by a semaphore.
         """
+        effort = self._phase_effort(phase_key) if phase_key else None
         provider = self.agent_configs[agent.seat].provider
         sem = self._provider_semaphores.get(provider)
         if sem:
             async with sem:
-                return await agent.act(state, max_tokens=max_tokens)
-        return await agent.act(state, max_tokens=max_tokens)
+                return await agent.act(state, max_tokens=max_tokens, reasoning_effort=effort)
+        return await agent.act(state, max_tokens=max_tokens, reasoning_effort=effort)
 
     # -------------------------------------------------------------------
     # Slayer ability helper
@@ -1913,7 +1889,7 @@ class GameRunner:
             ]
 
         # Record every broadcast event for late-joining WebSocket clients
-        self.event_history.append({"type": event_type, "data": data})
+        self.event_history.append({"type": event_type, "data": data, "ts": time.time()})
         try:
             self.on_event(event_type, data)
         except Exception:

@@ -73,7 +73,7 @@ async def main():
             max_whisper_chars=150,
         ),
         opening_statements=True,
-        regroup_messages=1,
+        breakout_min_players=6,
         seed=99,
         max_days=5,
         max_concurrent_llm_calls=3,  # Per-provider limit (providers run in parallel)

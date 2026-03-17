@@ -594,15 +594,24 @@ def build_accusation_prompt(
 ) -> str:
     """Build a prompt for the nominator to give an accusation speech.
 
-    The nominator has just nominated the nominee. They should explain
-    why they think this player should be executed.
+    Includes the agent's notes and recent messages for context.
+    Agents may use {RECALL: query} to search past conversations first.
     """
+    from botc.comms.context_manager import build_self_notes, build_recent_messages
+
+    context = (
+        f"=== YOUR NOTES ===\n{build_self_notes(nominator)}\n\n"
+        f"=== RECENT MESSAGES ===\n{build_recent_messages(nominator, state, token_budget=800)}\n\n"
+    )
     return (
+        f"{context}"
+        f"--- ACCUSATION SPEECH ---\n"
         f"You have nominated {nominee.character_name} (Seat {nominee.seat}) for execution. "
         f"Address the town — make your case for why they should be executed. "
-        f"Reference any evidence, contradictions, or suspicions you have.\n\n"
-        f"Speak in character as {nominator.character_name}. "
-        f"Do NOT include private reasoning — everything you say is public.\n\n"
+        f"Reference specific evidence, contradictions, or suspicions.\n\n"
+        f"If you need to look up past conversations, use {{RECALL: query}} and you will "
+        f"be re-prompted with the results to give your speech.\n\n"
+        f"Otherwise, speak in character as {nominator.character_name}. "
         f"Keep your speech concise (2-4 sentences). Do NOT use XML tags. "
         f"Just speak your accusation aloud."
     )
@@ -616,16 +625,25 @@ def build_defense_prompt(
 ) -> str:
     """Build a prompt for the nominee to give a defense speech.
 
-    The nominee has been accused and must defend themselves before the vote.
-    They receive the accusation text so they can respond to specific claims.
+    Includes the agent's notes and recent messages for context.
+    Agents may use {RECALL: query} to search past conversations first.
     """
+    from botc.comms.context_manager import build_self_notes, build_recent_messages
+
+    context = (
+        f"=== YOUR NOTES ===\n{build_self_notes(nominee)}\n\n"
+        f"=== RECENT MESSAGES ===\n{build_recent_messages(nominee, state, token_budget=800)}\n\n"
+    )
     return (
+        f"{context}"
+        f"--- DEFENSE SPEECH ---\n"
         f"You have been accused by {nominator.character_name} (Seat {nominator.seat}). "
         f'Their accusation: "{accusation_text}"\n\n'
-        f"Defend yourself to the town. You may counter their arguments, share information "
+        f"Defend yourself to the town. Counter their arguments, share information "
         f"about your role, or redirect suspicion.\n\n"
-        f"Speak in character as {nominee.character_name}. "
-        f"Do NOT include private reasoning — everything you say is public.\n\n"
+        f"If you need to look up past conversations, use {{RECALL: query}} and you will "
+        f"be re-prompted with the results to give your defense.\n\n"
+        f"Otherwise, speak in character as {nominee.character_name}. "
         f"Keep your speech concise (2-4 sentences). Do NOT use XML tags. "
         f"Just speak your defense aloud."
     )

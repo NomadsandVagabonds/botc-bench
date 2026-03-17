@@ -103,6 +103,7 @@ def _sanitize_speech(raw_text: str) -> tuple[str, str]:
         r"\{PASS\}",
         r"\{NOMINATE:\s*[^}]*\}?",
         r"\{RECALL:\s*[^}]*\}?",
+        r"\(RECALL:\s*[^)]*\)?",
         r"\{VOTE:\s*[^}]*\}?",
         r"\{SLAYER_SHOT:\s*[^}]*\}?",
         r"\{WHISPER:\s*[^}]*\}?",
@@ -1297,8 +1298,6 @@ class GameRunner:
                 max_tokens=300,
                 reasoning_effort=self._phase_effort(effort_key),
             )
-            speech_text, internal_content = _sanitize_speech(response.content.strip())
-
             self._record_tokens(
                 agent_id=agent.agent_id,
                 model=response.model,
@@ -1308,6 +1307,48 @@ class GameRunner:
                 latency_ms=response.latency_ms,
                 seat=agent.seat,
             )
+
+            # Check for RECALL — if the agent wants to look up past conversations,
+            # fetch results and re-prompt so they can give an informed speech.
+            raw = response.content.strip()
+            recall_match = re.search(r"\{RECALL:\s*([^}]*)\}", raw, re.IGNORECASE)
+            if recall_match:
+                query = recall_match.group(1).strip()
+                logger.info(
+                    "%s RECALL for seat %d: %s", speech_type, speaker.seat, query
+                )
+                from botc.comms.context_manager import build_recall_results
+                recall_results = build_recall_results(speaker, state, query)
+
+                re_prompt = (
+                    f"{recall_results}\n\n"
+                    f"Now give your {speech_type} speech based on the information above. "
+                    f"Speak in character. Keep it concise (2-4 sentences). "
+                    f"Do NOT use XML tags or {{RECALL}}. Just speak aloud."
+                )
+                re_response = await agent.provider.complete_with_retry(
+                    system_prompt=agent._system_prompt or "",
+                    messages=[
+                        {"role": "user", "content": prompt_text},
+                        {"role": "assistant", "content": raw},
+                        {"role": "user", "content": re_prompt},
+                    ],
+                    temperature=agent.llm_config.temperature,
+                    max_tokens=300,
+                )
+                self._record_tokens(
+                    agent_id=agent.agent_id,
+                    model=re_response.model,
+                    phase_id=state.phase_id,
+                    input_tokens=re_response.input_tokens,
+                    output_tokens=re_response.output_tokens,
+                    latency_ms=re_response.latency_ms,
+                    seat=agent.seat,
+                )
+                raw = re_response.content.strip()
+
+            speech_text, internal_content = _sanitize_speech(raw)
+
         except Exception as e:
             logger.warning(
                 "%s speech failed for seat %d: %s", speech_type, speaker.seat, e

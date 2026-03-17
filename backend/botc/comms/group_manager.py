@@ -48,7 +48,8 @@ def create_groups(
     """
     config = state.config.breakout
     all_seats = {p.seat for p in state.players}
-    max_per_group = max(config.min_group_size, len(all_seats) // 3)
+    # No group larger than half the players (for 6+ players)
+    max_per_group = max(config.min_group_size, len(all_seats) // 2)
 
     # Bucket seats by requested label
     buckets: dict[str, list[int]] = {}

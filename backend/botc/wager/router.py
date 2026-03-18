@@ -176,11 +176,26 @@ async def get_me(user: dict = Depends(require_user)):
     return {
         "id": user["id"],
         "display_name": user["display_name"],
+        "github_id": user.get("github_id"),
         "total_crowns_earned": user.get("total_crowns_earned", 0),
         "games_watched": user.get("games_watched", 0),
         "correct_bets": user.get("correct_bets", 0),
         "total_bets": user.get("total_bets", 0),
     }
+
+
+# Admin GitHub IDs — comma-separated in env var, or default to NomadsandVagabonds
+_ADMIN_GITHUB_IDS = set(
+    os.environ.get("ADMIN_GITHUB_IDS", "170148445").split(",")
+)
+
+
+@wager_router.get("/api/wager/auth/is-admin")
+async def check_admin(user: dict = Depends(require_user)):
+    """Check if the authenticated user is an admin (GitHub-linked, allowed ID)."""
+    github_id = user.get("github_id")
+    is_admin = github_id is not None and str(github_id) in _ADMIN_GITHUB_IDS
+    return {"is_admin": is_admin}
 
 
 # ═══════════════════════════════════════════════════════════════════

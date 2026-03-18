@@ -216,6 +216,10 @@ def _frontend_url() -> str:
 async def github_login(redirect: str = "/"):
     """Redirect to GitHub OAuth authorize page."""
     client_id = _gh_client_id()
+    log.info("GitHub OAuth check: client_id=%s, has_secret=%s, all_env_keys=%s",
+             client_id[:8] + '...' if client_id else 'EMPTY',
+             bool(_gh_client_secret()),
+             [k for k in os.environ if 'GITHUB' in k])
     if not client_id:
         raise HTTPException(500, "GitHub OAuth not configured")
     params = urllib.parse.urlencode({

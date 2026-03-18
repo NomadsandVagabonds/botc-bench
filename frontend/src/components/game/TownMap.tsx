@@ -10,8 +10,6 @@ import {
   isBehindTower,
   TOWN_POSITIONS,
   GROUP_DESTINATIONS,
-  CIRCLE_CENTER,
-  CIRCLE_RADIUS,
   NIGHT_POSITIONS,
   type Point,
 } from './pathfinding.ts';
@@ -376,7 +374,6 @@ export function TownMap() {
   const [deathNarration, setDeathNarration] = useState<string | null>(null);
   const deathTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [talkingSeats, setTalkingSeats] = useState<number[]>([]);
-  const talkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevMsgCountRef = useRef(0);
 
   // Watch for death narration events

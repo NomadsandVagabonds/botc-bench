@@ -1,7 +1,14 @@
 import type { GameConfig, GameState } from '../types/game.ts';
 import type { MonitorResult } from '../types/monitor.ts';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+function getBaseUrl(): string {
+  // Priority: localStorage override > env var > localhost default
+  return localStorage.getItem('bloodbench_server_url')
+    || import.meta.env.VITE_API_URL
+    || 'http://localhost:8000';
+}
+
+const BASE_URL = getBaseUrl();
 
 // ── Types for backend responses ─────────────────────────────────────
 
@@ -54,6 +61,7 @@ export interface ConfiguredGameRequest {
   reveal_models?: string; // "true" | "false" | "scramble"
   share_stats?: boolean;
   speech_style?: string | null;
+  provider_keys?: Record<string, string>;  // BYOK: client-provided API keys
 }
 
 // ── Model stats types ────────────────────────────────────────────────

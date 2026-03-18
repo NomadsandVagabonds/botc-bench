@@ -36,14 +36,15 @@ export interface WagerStore {
   error: string | null;
 
   // Actions
-  claimName: (name: string) => Promise<void>;
+  claimName: (name: string, passphrase?: string) => Promise<void>;
   loadUser: () => Promise<void>;
   joinGame: (gameId: string) => Promise<void>;
   loadSession: (gameId: string) => Promise<void>;
   refreshMarkets: (gameId: string) => Promise<void>;
   fetchQuote: (gameId: string) => Promise<void>;
   placeBet: (gameId: string) => Promise<void>;
-  cancelBet: (gameId: string, betId: number) => Promise<void>;
+  sellBet: (gameId: string, betId: number) => Promise<void>;
+  settleGame: (gameId: string) => Promise<void>;
   loadLeaderboard: () => Promise<void>;
   setSelectedMarket: (marketId: string | null) => void;
   setSelectedSide: (side: 'yes' | 'no') => void;
@@ -98,20 +99,41 @@ export const useWagerStore = create<WagerStore>()((set, get) => ({
   betAmount: 10,
   error: null,
 
-  claimName: async (name: string) => {
+  claimName: async (name: string, passphrase?: string) => {
     try {
-      const data = await api.claimName(name);
-      set({
-        user: {
-          id: data.user_id,
-          displayName: data.display_name,
-          totalCrownsEarned: 0, gamesWatched: 0, correctBets: 0, totalBets: 0,
-        },
-        authenticated: true,
-        showAuthModal: false,
-        authLoading: false,
-        error: null,
-      });
+      const data = await api.claimName(name, passphrase);
+      // Token is already saved by wagerApi.claimName
+      // Now fetch full profile (existing users have stats)
+      try {
+        const me = await api.getMe();
+        set({
+          user: {
+            id: me.id,
+            displayName: me.display_name,
+            totalCrownsEarned: me.total_crowns_earned ?? 0,
+            gamesWatched: me.games_watched ?? 0,
+            correctBets: me.correct_bets ?? 0,
+            totalBets: me.total_bets ?? 0,
+          },
+          authenticated: true,
+          showAuthModal: false,
+          authLoading: false,
+          error: null,
+        });
+      } catch {
+        // Fallback if /me fails
+        set({
+          user: {
+            id: data.user_id,
+            displayName: data.display_name,
+            totalCrownsEarned: 0, gamesWatched: 0, correctBets: 0, totalBets: 0,
+          },
+          authenticated: true,
+          showAuthModal: false,
+          authLoading: false,
+          error: null,
+        });
+      }
     } catch (e: any) {
       set({ error: e.message });
     }
@@ -137,7 +159,8 @@ export const useWagerStore = create<WagerStore>()((set, get) => ({
         authLoading: false,
         error: null,
       });
-    } catch {
+    } catch (e) {
+      console.warn('[wager] Token invalid or expired, showing auth modal:', e);
       set({ showAuthModal: true, authenticated: false, authLoading: false });
     }
   },
@@ -145,6 +168,7 @@ export const useWagerStore = create<WagerStore>()((set, get) => ({
   joinGame: async (gameId: string) => {
     try {
       const data = await api.joinGame(gameId);
+      console.log('[wager] Joined game', gameId, data);
       set({
         gameId,
         crownsBudget: data.crowns_budget ?? 100,
@@ -154,6 +178,7 @@ export const useWagerStore = create<WagerStore>()((set, get) => ({
         error: null,
       });
     } catch (e: any) {
+      console.warn('[wager] Join failed:', e.message);
       set({ error: e.message });
     }
   },
@@ -211,6 +236,11 @@ export const useWagerStore = create<WagerStore>()((set, get) => ({
     const { selectedMarket, selectedSide, betAmount } = get();
     if (!selectedMarket) return;
     try {
+      // Auto-join if not yet joined
+      if (!get().gameId) {
+        await api.joinGame(gameId);
+        console.log('[wager] Auto-joined game', gameId);
+      }
       const data = await api.placeBet(gameId, selectedMarket, selectedSide, betAmount);
       const newBet = normalizeBet(data);
       // Update markets with new probabilities
@@ -233,16 +263,41 @@ export const useWagerStore = create<WagerStore>()((set, get) => ({
     }
   },
 
-  cancelBet: async (gameId, betId) => {
+  sellBet: async (gameId, betId) => {
     try {
-      const data = await api.cancelBet(gameId, betId);
+      const data = await api.sellBet(gameId, betId);
       set(s => ({
-        bets: s.bets.filter(b => b.id !== betId),
-        crownsBudget: s.crownsBudget + (data.refund ?? 0),
+        bets: s.bets.map(b => b.id === betId
+          ? { ...b, settled: true, correct: false, crownsPayout: data.net }
+          : b
+        ),
+        crownsBudget: s.crownsBudget + (data.net ?? 0),
         error: null,
       }));
     } catch (e: any) {
       set({ error: e.message });
+    }
+  },
+
+  settleGame: async (gameId) => {
+    try {
+      await api.settleGame(gameId);
+    } catch {
+      // Backend may have already settled — that's fine
+    }
+    // Always reload session to get final results (covers auto-settled games)
+    try {
+      const session = await api.getSession(gameId);
+      set({
+        crownsWon: session.crowns_won ?? session.crownsWon ?? 0,
+        sessionSettled: session.settled ?? true,
+        bets: (session.bets ?? []).map(normalizeBet),
+        crownsBudget: session.crowns_budget ?? session.crownsBudget ?? 0,
+      });
+      // Refresh leaderboard after settlement
+      get().loadLeaderboard();
+    } catch {
+      // No session — user didn't join this game
     }
   },
 

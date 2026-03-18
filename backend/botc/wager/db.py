@@ -12,6 +12,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+import hashlib
+
 import aiosqlite
 
 _DB_PATH = Path(__file__).parent.parent.parent / "games" / "wager.db"
@@ -100,6 +102,12 @@ async def get_db() -> aiosqlite.Connection:
         _db = await aiosqlite.connect(str(_DB_PATH))
         _db.row_factory = aiosqlite.Row
         await _db.executescript(_SCHEMA)
+        # Migrations: add columns if missing
+        for col in ("passphrase_hash TEXT", "github_id TEXT"):
+            try:
+                await _db.execute(f"ALTER TABLE users ADD COLUMN {col}")
+            except Exception:
+                pass  # Column already exists
         await _db.commit()
     return _db
 
@@ -113,13 +121,60 @@ async def close_db() -> None:
 
 # ── Users ───────────────────────────────────────────────────────────
 
-async def create_user(display_name: str) -> dict[str, str]:
+def hash_passphrase(passphrase: str) -> str:
+    """Simple SHA-256 hash for game passphrase."""
+    return hashlib.sha256(passphrase.strip().lower().encode()).hexdigest()
+
+
+async def create_user(display_name: str, passphrase: str | None = None) -> dict[str, str]:
     db = await get_db()
     user_id = uuid.uuid4().hex[:12]
     token = uuid.uuid4().hex
+    ph = hash_passphrase(passphrase) if passphrase else None
     await db.execute(
-        "INSERT INTO users (id, display_name, token, created_at) VALUES (?, ?, ?, ?)",
-        (user_id, display_name, token, time.time()),
+        "INSERT INTO users (id, display_name, token, created_at, passphrase_hash) VALUES (?, ?, ?, ?, ?)",
+        (user_id, display_name, token, time.time(), ph),
+    )
+    await db.commit()
+    return {"id": user_id, "token": token, "display_name": display_name}
+
+
+async def set_passphrase(user_id: str, passphrase: str) -> None:
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET passphrase_hash = ? WHERE id = ?",
+        (hash_passphrase(passphrase), user_id),
+    )
+    await db.commit()
+
+
+async def get_user_by_github_id(github_id: str) -> dict[str, Any] | None:
+    db = await get_db()
+    row = await db.execute_fetchall(
+        "SELECT * FROM users WHERE github_id = ?", (github_id,)
+    )
+    return dict(row[0]) if row else None
+
+
+async def create_user_github(display_name: str, github_id: str) -> dict[str, str]:
+    """Create a user authenticated via GitHub OAuth."""
+    db = await get_db()
+    user_id = uuid.uuid4().hex[:12]
+    token = uuid.uuid4().hex
+    # If display_name is taken, append a suffix
+    base_name = display_name
+    suffix = 0
+    while True:
+        existing = await db.execute_fetchall(
+            "SELECT 1 FROM users WHERE display_name = ? COLLATE NOCASE", (display_name,)
+        )
+        if not existing:
+            break
+        suffix += 1
+        display_name = f"{base_name}_{suffix}"
+    await db.execute(
+        "INSERT INTO users (id, display_name, token, created_at, github_id) VALUES (?, ?, ?, ?, ?)",
+        (user_id, display_name, token, time.time(), github_id),
     )
     await db.commit()
     return {"id": user_id, "token": token, "display_name": display_name}

@@ -20,9 +20,11 @@ const AVAILABLE_MODELS = [
   { id: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai' },
   { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai' },
   { id: 'gpt-5.4', label: 'GPT-5.4', provider: 'openai' },
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai' },
   // gpt-5.4-pro uses completions API, not chat — not compatible
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'google' },
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google' },
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google' },
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', provider: 'google' },
 ];
 
@@ -225,7 +227,7 @@ const OPTIONS_TABS: { id: OptionsTab; label: string; stub?: boolean }[] = [
   { id: 'monitor', label: 'Monitor' },
   { id: 'wager', label: "Crown's Wager" },
   { id: 'probabilities', label: 'Probabilities', stub: true },
-  { id: 'api', label: 'API Keys', stub: true },
+  { id: 'api', label: 'API Keys' },
   { id: 'voice', label: 'Voice' },
   { id: 'stats', label: 'Stats' },
 ];
@@ -511,8 +513,10 @@ const MONITOR_MODELS = [
   { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai', cost: '$$' },
   { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai', cost: '$' },
   { id: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai', cost: '$$' },
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai', cost: '$' },
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'google', cost: '$' },
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google', cost: '$$' },
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google', cost: '$' },
 ];
 
 function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
@@ -1007,6 +1011,23 @@ export function GameLobby() {
   const [roleMode, setRoleMode] = useState<'random' | 'assigned'>('random');
   const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_OPTIONS });
 
+  // Client-provided API keys (BYOK mode — stored in localStorage, never sent to server .env)
+  const [clientKeys, setClientKeys] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('bloodbench_api_keys');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const updateClientKey = useCallback((provider: string, key: string) => {
+    setClientKeys(prev => {
+      const next = { ...prev, [provider]: key };
+      // Remove empty keys
+      if (!key) delete next[provider];
+      localStorage.setItem('bloodbench_api_keys', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   // Game list
   const [games, setGames] = useState<GameListItem[]>([]);
   const [gamesError, setGamesError] = useState<string | null>(null);
@@ -1111,6 +1132,8 @@ export function GameLobby() {
         const model = AVAILABLE_MODELS.find((m) => m.id === modelId);
         return { provider: model?.provider ?? 'anthropic', model: modelId };
       });
+      // Include client-provided API keys if any (BYOK mode)
+      const hasClientKeys = Object.keys(clientKeys).length > 0;
       const result = await createConfiguredGame({
         script,
         num_players: playerCount,
@@ -1121,15 +1144,16 @@ export function GameLobby() {
         reveal_models: options.revealModels,
         share_stats: options.shareStats && options.revealModels === 'true',
         speech_style: options.speechStyle || null,
+        ...(hasClientKeys ? { provider_keys: clientKeys } : {}),
       });
       navigateWithTransition(`/game/${result.game_id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
       if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
-      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add to .env.');
+      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab or server .env.');
       else setStartError(msg);
     } finally { setStarting(false); }
-  }, [playerCount, script, seatModels, seatRoles, roleMode, roleWarnings, options, navigate]);
+  }, [playerCount, script, seatModels, seatRoles, roleMode, roleWarnings, options, clientKeys, navigate]);
 
   const isAssignedAvailable = script in SCRIPT_ROLES;
 
@@ -1434,7 +1458,7 @@ export function GameLobby() {
                     </div>
                     <button onClick={() => navigateWithTransition(`/spectate/${g.game_id}`)} style={{
                       padding: '4px 14px', fontSize: '0.7rem', fontWeight: 700,
-                      background: 'transparent', color: '#c9a84c', border: '1px solid #c9a84c55',
+                      background: 'rgba(92, 61, 26, 0.15)', color: '#3d2812', border: '1px solid rgba(92, 61, 26, 0.3)',
                       borderRadius: 4, cursor: 'pointer', fontFamily: 'Georgia, serif',
                     }}>
                       Replay &amp; Bet
@@ -1449,7 +1473,39 @@ export function GameLobby() {
           <StubPanel title="Probability Tweaks" description="Fine-tune game mechanics: drunk information accuracy, poison effects, whisper overhear chance, Spy registration probabilities, and other programmatic percentages." />
         )}
         {optionsTab === 'api' && (
-          <StubPanel title="API Key Management" description="Add, update, or remove API keys for Anthropic, OpenAI, and Google. Configure new models as providers release them. Keys are stored in the server .env file." />
+          <div style={{ padding: '12px 0' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d2812', marginBottom: 4 }}>API Keys</div>
+            <div style={{ fontSize: '0.65rem', color: '#8b7355', marginBottom: 12, lineHeight: 1.5 }}>
+              Bring your own keys. Stored in your browser only — never sent to the server's .env.
+              If empty, the server's .env keys are used as fallback.
+            </div>
+            {[
+              { provider: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...' },
+              { provider: 'openai', label: 'OpenAI', placeholder: 'sk-...' },
+              { provider: 'google', label: 'Google (Gemini)', placeholder: 'AIza...' },
+            ].map(({ provider, label, placeholder }) => (
+              <div key={provider} style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: '0.7rem', color: '#5a4630', fontWeight: 600, display: 'block', marginBottom: 3 }}>
+                  {label}
+                  {clientKeys[provider] && <span style={{ color: '#2d5a2d', marginLeft: 6 }}>Set</span>}
+                </label>
+                <input
+                  type="password"
+                  value={clientKeys[provider] ?? ''}
+                  onChange={e => updateClientKey(provider, e.target.value)}
+                  placeholder={placeholder}
+                  style={{
+                    width: '100%', padding: '6px 10px', boxSizing: 'border-box',
+                    background: '#f5efe0', border: '1px solid #d4c5a0', borderRadius: 4,
+                    fontSize: '0.72rem', fontFamily: 'monospace', color: '#3d2812',
+                  }}
+                />
+              </div>
+            ))}
+            <div style={{ fontSize: '0.6rem', color: '#b89b6a', marginTop: 8, fontStyle: 'italic' }}>
+              Keys are saved to localStorage. Clear your browser data to remove them.
+            </div>
+          </div>
         )}
         {optionsTab === 'voice' && (
           <VoicePanel games={games} />

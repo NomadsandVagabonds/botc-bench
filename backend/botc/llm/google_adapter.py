@@ -45,9 +45,9 @@ class GoogleProvider(LLMProvider):
         # large portion of the token budget for internal reasoning.
         model_lower = self.config.model.lower()
         is_thinking_model = any(
-            k in model_lower for k in ("2.5-pro", "2.5-flash", "3.0", "3.1")
+            k in model_lower for k in ("2.5-pro", "2.5-flash", "3.0", "3.1", "3-flash", "3-pro")
         )
-        effective_max = max(max_tokens, 8192) if is_thinking_model else max_tokens
+        effective_max = max(max_tokens, 16384) if is_thinking_model else max_tokens
 
         config_kwargs: dict = {
             "system_instruction": system_prompt,
@@ -59,7 +59,7 @@ class GoogleProvider(LLMProvider):
         # Map reasoning effort to Gemini thinking config
         if is_thinking_model and reasoning_effort:
             # Gemini 3.x uses thinking_level; 2.5 uses thinking_budget
-            is_gemini3 = any(k in model_lower for k in ("3.0", "3.1"))
+            is_gemini3 = any(k in model_lower for k in ("3.0", "3.1", "3-flash", "3-pro"))
             if is_gemini3:
                 level_map = {"low": "LOW", "medium": "MEDIUM", "high": "HIGH"}
                 level = level_map.get(reasoning_effort)

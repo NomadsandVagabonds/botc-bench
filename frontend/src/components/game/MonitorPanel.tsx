@@ -53,7 +53,7 @@ function formatPhase(phase: string, day: number): string {
 
 function PhaseCard({
   assessment,
-  phaseIndex,
+  phaseIndex: _phaseIndex,
   players,
   expanded,
   onToggle,

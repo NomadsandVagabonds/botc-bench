@@ -220,7 +220,6 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
 
     // Track whether this is a replay (saved game, not live)
     let receivedInitialState: import('../types/events.ts').ServerEvent | null = null;
-    let isLiveGame = false;
 
     ws.onmessage = (ev) => {
       try {
@@ -253,7 +252,7 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
           applyEvent(receivedInitialState);
           applyEvent(event);
           receivedInitialState = null;
-          isLiveGame = true;
+          // live game detected
           return;
         }
 
@@ -262,7 +261,7 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
         if (receivedInitialState) {
           applyEvent(receivedInitialState);
           receivedInitialState = null;
-          isLiveGame = true;
+          // live game detected
         }
 
         applyEvent(event);

@@ -99,6 +99,7 @@ class ConfiguredGameRequest(BaseModel):
     reveal_models: str = "true"  # "true" | "false" | "scramble"
     share_stats: bool = False
     speech_style: str | None = None  # Optional speech style directive
+    provider_keys: dict[str, str] | None = None  # Optional client-provided API keys (BYOK)
 
 
 class GameResponse(BaseModel):
@@ -250,12 +251,18 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
             detail=f"Need {request.num_players} seat_models, got {len(request.seat_models)}",
         )
 
-    # Collect required providers and look up their API keys from environment
+    # Collect required providers and look up their API keys
+    # Priority: client-provided keys > server .env
     required_providers = {sm.provider for sm in request.seat_models}
     provider_keys: dict[str, str] = {}
     missing: list[str] = []
 
     for provider in required_providers:
+        # Check client-provided keys first (BYOK mode)
+        if request.provider_keys and provider in request.provider_keys:
+            provider_keys[provider] = request.provider_keys[provider]
+            continue
+        # Fall back to server .env
         env_var = _PROVIDER_ENV_KEYS.get(provider)
         if not env_var:
             raise HTTPException(
@@ -271,7 +278,7 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
     if missing:
         raise HTTPException(
             status_code=400,
-            detail=f"Missing API keys in server .env: {', '.join(missing)}",
+            detail=f"Missing API keys — provide them in provider_keys or set in server .env: {', '.join(missing)}",
         )
 
     # Build agent configs — agent_ids are placeholders; setup.py assigns character names

@@ -39,8 +39,6 @@ export function BetForm({ onMarketDetail }: { onMarketDetail?: (marketId: string
     await placeBet(gameId);
   };
 
-  const selectedMkt = markets.find(m => m.marketId === selectedMarket);
-
   return (
     <div style={{ padding: 16, fontFamily: 'Georgia, serif', color: '#3d2812' }}>
 

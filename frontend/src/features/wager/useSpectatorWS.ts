@@ -175,6 +175,7 @@ export function useSpectatorWS(gameId: string | undefined) {
 
         if (event.type === 'game.state') {
           initialState = event;
+          console.log('[spectator] game.state received:', event.state?.players?.length, 'players', event.state?.players?.[0]?.characterName);
         }
 
         // For completed games: intercept event.history and enter replay mode
@@ -182,7 +183,7 @@ export function useSpectatorWS(gameId: string | undefined) {
         if (event.type === 'event.history' && initialState) {
           const hasGameOver = event.events.some((e: any) => e.type === 'game.over');
           if (hasGameOver) {
-            // Enter replay mode — events revealed one at a time
+            console.log('[spectator] Entering replay mode:', event.events.length, 'events');
             startReplay(initialState, event.events);
             return;
           }
@@ -190,8 +191,8 @@ export function useSpectatorWS(gameId: string | undefined) {
 
         // Live game: apply events directly
         applyEvent(event);
-      } catch {
-        // ignore parse errors
+      } catch (err) {
+        console.error('[spectator] Error processing message:', err);
       }
     };
 

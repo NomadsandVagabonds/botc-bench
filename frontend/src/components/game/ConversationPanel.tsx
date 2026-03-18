@@ -722,8 +722,6 @@ export function ConversationPanel() {
   const whispers = gameState?.whispers ?? [];
   const breakoutGroups = gameState?.breakoutGroups ?? [];
 
-  const hasWhispers = whispers.length > 0;
-
   // Build a lookup from groupId to label for breakout group badges
   const groupLabels = useMemo(() => {
     const labels: Record<string, string> = {};

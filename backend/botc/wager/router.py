@@ -202,20 +202,26 @@ async def check_admin(user: dict = Depends(require_user)):
 # GITHUB OAUTH
 # ═══════════════════════════════════════════════════════════════════
 
-_GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", "")
-_GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "")
-_FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+def _gh_client_id() -> str:
+    return os.environ.get("GITHUB_CLIENT_ID", "")
+
+def _gh_client_secret() -> str:
+    return os.environ.get("GITHUB_CLIENT_SECRET", "")
+
+def _frontend_url() -> str:
+    return os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 
 @wager_router.get("/api/wager/auth/github")
 async def github_login(redirect: str = "/"):
     """Redirect to GitHub OAuth authorize page."""
-    if not _GITHUB_CLIENT_ID:
+    client_id = _gh_client_id()
+    if not client_id:
         raise HTTPException(500, "GitHub OAuth not configured")
     params = urllib.parse.urlencode({
-        "client_id": _GITHUB_CLIENT_ID,
+        "client_id": client_id,
         "scope": "read:user",
-        "state": redirect,  # pass frontend redirect path as state
+        "state": redirect,
     })
     return RedirectResponse(f"https://github.com/login/oauth/authorize?{params}")
 
@@ -223,7 +229,7 @@ async def github_login(redirect: str = "/"):
 @wager_router.get("/api/wager/auth/github/callback")
 async def github_callback(code: str, state: str = "/"):
     """Handle GitHub OAuth callback — exchange code for token, create/find user."""
-    if not _GITHUB_CLIENT_ID or not _GITHUB_CLIENT_SECRET:
+    if not _gh_client_id() or not _gh_client_secret():
         raise HTTPException(500, "GitHub OAuth not configured")
 
     # Exchange code for access token
@@ -259,14 +265,15 @@ async def github_callback(code: str, state: str = "/"):
     # Redirect to frontend with token
     redirect_path = state if state.startswith("/") else "/"
     sep = "&" if "?" in redirect_path else "?"
-    return RedirectResponse(f"{_FRONTEND_URL}{redirect_path}{sep}wager_token={wager_token}")
+    frontend = _frontend_url()
+    return RedirectResponse(f"{frontend}{redirect_path}{sep}wager_token={wager_token}")
 
 
 def _github_exchange_code(code: str) -> dict:
     """Synchronous GitHub OAuth token exchange (run via to_thread)."""
     data = urllib.parse.urlencode({
-        "client_id": _GITHUB_CLIENT_ID,
-        "client_secret": _GITHUB_CLIENT_SECRET,
+        "client_id": _gh_client_id(),
+        "client_secret": _gh_client_secret(),
         "code": code,
     }).encode()
     req = urllib.request.Request(

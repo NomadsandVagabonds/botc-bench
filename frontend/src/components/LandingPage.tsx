@@ -81,10 +81,6 @@ export function LandingPage() {
 
   return (
     <div style={styles.page}>
-      {/* Background */}
-      <div style={styles.bgLayer} />
-      <div style={styles.bgOverlay} />
-
       {/* Splash */}
       {showSplash && (
         <motion.div
@@ -119,20 +115,87 @@ export function LandingPage() {
         </motion.div>
       )}
 
+      {/* Top-right header nav */}
+      <div style={styles.topNav}>
+        <button
+          onClick={() => setShowConnect(!showConnect)}
+          style={styles.navBtn}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(92, 61, 26, 0.6)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(92, 61, 26, 0.3)'; }}
+        >
+          <span style={{
+            display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+            background: connected ? '#4a8a4a' : '#5c3d1a',
+            boxShadow: connected ? '0 0 6px #4a8a4a' : 'none',
+            marginRight: 6,
+          }} />
+          {connected ? 'Connected' : 'Connect Server'}
+        </button>
+        {connected && (
+          <button
+            onClick={() => navigate('/admin')}
+            style={styles.navBtn}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(92, 61, 26, 0.6)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(92, 61, 26, 0.3)'; }}
+          >
+            Admin
+          </button>
+        )}
+        <a
+          href="https://github.com/NomadsandVagabonds/botc-bench"
+          target="_blank"
+          rel="noopener"
+          style={styles.navBtn}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(92, 61, 26, 0.6)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(92, 61, 26, 0.3)'; }}
+        >
+          GitHub
+        </a>
+      </div>
+
+      {/* Server Connection Panel (top, expandable) */}
+      {showConnect && (
+        <motion.div
+          style={styles.connectPanelTop}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div style={{ fontSize: 14, color: C.gold, marginBottom: 8, fontWeight: 'bold' }}>
+            Connect to a BloodBench server
+          </div>
+          <p style={{ fontSize: 12, color: C.brownLight, margin: '0 0 10px', lineHeight: 1.5 }}>
+            Run the backend locally with your own API keys in <code style={{ color: C.gold }}>.env</code> — they never leave your machine.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={connectInput}
+              onChange={e => setConnectInput(e.target.value)}
+              placeholder="http://localhost:8000"
+              style={styles.connectInput}
+              onKeyDown={e => e.key === 'Enter' && handleConnect()}
+            />
+            <button onClick={handleConnect} style={styles.connectBtn}>Connect</button>
+          </div>
+          {serverUrl && (
+            <div style={{ fontSize: 11, color: C.brownMuted, marginTop: 6 }}>
+              Current: {serverUrl} {connected ? '(connected)' : '(unreachable)'}
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Main content */}
       <div style={styles.content}>
-        {/* Logo + Title */}
+        {/* Subtitle — positioned below the logo baked into background.jpg */}
+        {/* Logo/clocktower ends at ~y=155 in the 800px-tall image (11.8vw from top) */}
         <motion.div
-          style={styles.heroSection}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          style={styles.subtitleWrap}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.8 }}
         >
-          <img src="/title.jpg" alt="BotC Bench" style={styles.heroLogo} />
-          <h1 style={styles.heroTitle}>An AI deception benchmark.</h1>
-          <p style={styles.heroSubtitle}>
-            Can an AI lie convincingly? Can it catch a liar?
-          </p>
+          <div style={styles.subtitle}>multi-agent social deduction evaluations</div>
         </motion.div>
 
         {/* Live Games Banner */}
@@ -238,35 +301,13 @@ export function LandingPage() {
         )}
 
         {/* Bottom Buttons */}
-        <motion.div
-          style={styles.bottomButtons}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-        >
-          <button
-            onClick={() => setShowConnect(!showConnect)}
-            style={styles.woodButton}
-            onMouseEnter={e => { e.currentTarget.style.background = '#5a3a1a'; e.currentTarget.style.borderColor = '#8b6030'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.woodBtnBg; e.currentTarget.style.borderColor = C.woodBtnBorder; }}
+        {liveGames.length > 0 && (
+          <motion.div
+            style={styles.bottomButtons}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
           >
-            {connected ? (
-              <><span style={styles.connDot} /> Connected</>
-            ) : (
-              'Connect Server'
-            )}
-          </button>
-          <a
-            href="https://github.com/NomadsandVagabonds/botc-bench"
-            target="_blank"
-            rel="noopener"
-            style={styles.woodButton}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#5a3a1a'; (e.currentTarget as HTMLElement).style.borderColor = '#8b6030'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = C.woodBtnBg; (e.currentTarget as HTMLElement).style.borderColor = C.woodBtnBorder; }}
-          >
-            GitHub
-          </a>
-          {liveGames.length > 0 && (
             <button
               onClick={() => navigate(`/spectate/${liveGames[0].game_id}`)}
               style={{ ...styles.woodButton, background: '#8b1a1a', borderColor: '#c0392b', position: 'relative' }}
@@ -280,52 +321,9 @@ export function LandingPage() {
               }} />
               LIVE NOW — {liveGames.length} game{liveGames.length > 1 ? 's' : ''}
             </button>
-          )}
-          {connected && (
-            <button
-              onClick={() => navigate('/admin')}
-              style={{ ...styles.woodButton, background: '#2d5a2d', borderColor: '#3d7a3d' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#3a6a3a'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#2d5a2d'; }}
-            >
-              Admin Panel
-            </button>
-          )}
-        </motion.div>
-        <style>{`@keyframes live-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }`}</style>
-
-        {/* Server Connection Panel (expandable) */}
-        {showConnect && (
-          <motion.div
-            style={styles.connectPanel}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-          >
-            <div style={styles.connectTitle}>Connect to a BloodBench server</div>
-            <p style={styles.connectDesc}>
-              Run the backend locally with your own API keys in <code style={{ color: C.gold }}>.env</code> — they never leave your machine.
-              Or connect to any hosted instance. This site is just a frontend.
-            </p>
-            <div style={styles.connectRow}>
-              <input
-                type="text"
-                value={connectInput}
-                onChange={e => setConnectInput(e.target.value)}
-                placeholder="http://localhost:8000"
-                style={styles.connectInput}
-                onKeyDown={e => e.key === 'Enter' && handleConnect()}
-              />
-              <button onClick={handleConnect} style={styles.connectBtn}>
-                Connect
-              </button>
-            </div>
-            {serverUrl && (
-              <div style={{ fontSize: 11, color: C.brownMuted, marginTop: 8 }}>
-                Current: {serverUrl} {connected ? '(connected)' : '(unreachable)'}
-              </div>
-            )}
           </motion.div>
         )}
+        <style>{`@keyframes live-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }`}</style>
 
         {/* Supported Models */}
         <div style={styles.modelsRow}>
@@ -425,28 +423,17 @@ function ModelBadge({ name, color }: { name: string; color: string }) {
 // ── Styles ────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
-  // Page & background
+  // Page — background.jpg (1312x800) has the logo/clocktower baked in.
+  // Rendered at 100% width so vertical positions scale with viewport width.
   page: {
     minHeight: '100vh',
-    position: 'relative',
-    color: C.goldBright,
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    overflow: 'auto',
-  },
-  bgLayer: {
-    position: 'fixed',
-    inset: 0,
-    backgroundImage: 'url(/web.jpg)',
-    backgroundSize: 'cover',
+    backgroundImage: 'url(/background.jpg)',
+    backgroundSize: '100% auto',
     backgroundPosition: 'center top',
     backgroundRepeat: 'no-repeat',
-    zIndex: 0,
-  },
-  bgOverlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.8) 100%)',
-    zIndex: 0,
+    backgroundColor: '#0a0806',
+    color: C.goldBright,
+    fontFamily: 'Georgia, "Times New Roman", serif',
   },
 
   // Splash
@@ -467,41 +454,65 @@ const styles: Record<string, React.CSSProperties> = {
   },
   splashCta: { fontSize: 12, color: 'rgba(255,255,255,0.3)', letterSpacing: 1 },
 
-  // Main content
+  // Top-right nav
+  topNav: {
+    position: 'absolute' as const,
+    top: 16,
+    right: 20,
+    display: 'flex',
+    gap: 8,
+    zIndex: 10,
+  },
+  navBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '6px 14px',
+    background: 'rgba(92, 61, 26, 0.3)',
+    border: `1px solid ${C.brown}`,
+    borderRadius: 4,
+    color: C.brownLight,
+    fontSize: 13,
+    fontFamily: 'Georgia, serif',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    transition: 'background 0.2s',
+    backdropFilter: 'blur(4px)',
+  },
+
+  // Connect panel (top, below nav)
+  connectPanelTop: {
+    position: 'absolute' as const,
+    top: 52,
+    right: 20,
+    width: 380,
+    padding: '16px 20px',
+    background: 'rgba(20, 12, 6, 0.95)',
+    border: `1px solid ${C.brown}`,
+    borderRadius: 8,
+    backdropFilter: 'blur(8px)',
+    zIndex: 10,
+  },
+
+  // Content wrapper — positioned over the background
   content: {
-    position: 'relative',
-    zIndex: 1,
-    maxWidth: 960,
+    maxWidth: 900,
     margin: '0 auto',
     padding: '0 24px 48px',
   },
 
-  // Hero
-  heroSection: {
+  // Subtitle — sits right below the logo/clocktower graphic in background.jpg
+  // Image is 5504x6144. Logo ends at ~y=1359 → 1359/5504*100 ≈ 24.7vw from top
+  subtitleWrap: {
+    paddingTop: '25vw',
     textAlign: 'center' as const,
-    padding: '48px 0 24px',
   },
-  heroLogo: {
-    maxWidth: 400,
-    width: '80%',
-    marginBottom: 20,
-    filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.6))',
-  },
-  heroTitle: {
-    fontSize: 32,
-    fontWeight: 'bold' as const,
-    color: '#fff',
-    margin: '0 0 8px',
-    textShadow: '0 2px 8px rgba(0,0,0,0.8)',
-    letterSpacing: 1,
-  },
-  heroSubtitle: {
-    fontSize: 17,
+  subtitle: {
+    fontSize: 'clamp(11px, 1.2vw, 16px)',
     color: C.goldBright,
-    margin: 0,
+    letterSpacing: 3,
+    textShadow: '0 2px 8px rgba(0,0,0,0.9)',
+    opacity: 0.8,
     fontStyle: 'italic' as const,
-    textShadow: '0 2px 6px rgba(0,0,0,0.7)',
-    opacity: 0.9,
   },
 
   // Live games

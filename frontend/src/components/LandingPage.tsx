@@ -187,7 +187,7 @@ export function LandingPage() {
 
       {/* Main content */}
       <div style={styles.content}>
-        {/* Subtitle — positioned below the logo baked into background.jpg */}
+        {/* Subtitle — positioned below the logo baked into bg.jpg */}
         {/* Logo/clocktower ends at ~y=155 in the 800px-tall image (11.8vw from top) */}
         <motion.div
           style={styles.subtitleWrap}
@@ -423,11 +423,11 @@ function ModelBadge({ name, color }: { name: string; color: string }) {
 // ── Styles ────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
-  // Page — background.jpg (1312x800) has the logo/clocktower baked in.
+  // Page — bg.jpg (1312x800) has the logo/clocktower baked in.
   // Rendered at 100% width so vertical positions scale with viewport width.
   page: {
     minHeight: '100vh',
-    backgroundImage: 'url(/background.jpg)',
+    backgroundImage: 'url(/bg.jpg)',
     backgroundSize: '100% auto',
     backgroundPosition: 'center top',
     backgroundRepeat: 'no-repeat',
@@ -500,7 +500,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0 24px 48px',
   },
 
-  // Subtitle — sits right below the logo/clocktower graphic in background.jpg
+  // Subtitle — sits right below the logo/clocktower graphic in bg.jpg
   // Image is 5504x6144. Logo ends at ~y=1359 → 1359/5504*100 ≈ 24.7vw from top
   subtitleWrap: {
     paddingTop: '25vw',

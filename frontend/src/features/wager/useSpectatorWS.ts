@@ -9,7 +9,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useGameStore } from '../../stores/gameStore.ts';
 
-const WS_BASE = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000';
+// WS URL: explicit env var > derive from API URL > localhost default
+const WS_BASE = import.meta.env.VITE_WS_URL
+  || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/^http/, 'ws') : null)
+  || 'ws://localhost:8000';
 
 function normalizeSpectatorEvent(raw: { type: string; data: any }): any | null {
   const { type, data } = raw;

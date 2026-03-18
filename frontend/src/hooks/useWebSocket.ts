@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../stores/gameStore.ts';
 import type { ServerEvent } from '../types/events.ts';
 
-const WS_BASE = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000';
+// WS URL: explicit env var > derive from API URL > localhost default
+const WS_BASE = import.meta.env.VITE_WS_URL
+  || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/^http/, 'ws') : null)
+  || 'ws://localhost:8000';
 
 const MAX_RECONNECT_DELAY = 30_000;
 const INITIAL_RECONNECT_DELAY = 1_000;

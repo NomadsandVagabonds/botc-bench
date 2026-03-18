@@ -203,6 +203,24 @@ These are not engine bugs but affect benchmark quality.
 
 ---
 
+## Token Budget Issues
+
+### T1. Gemini 3 Flash truncates nomination/accusation/defense speech
+
+- **Severity:** Medium (affects game quality, not correctness)
+- **Date:** 2026-03-17
+- **Games:** Local Gemini 3 Flash game (all 7 players truncated during nominations)
+- **Description:** Gemini thinking models use most of the `max_output_tokens` budget for internal reasoning, leaving very few tokens for the visible `<SAY>` content. During nominations, accusations, and defenses, player speech is cut to a few words (e.g., "Ffion told", "Wait, Oeric—", "fion, you'").
+- **Root cause:** `google_adapter.py` sets `effective_max = max(max_tokens, 16384)` for thinking models, but with `reasoning_effort: "high"`, the thinking budget consumes most of it. The `phase_max_tokens` for nomination/accusation/defense is 2048, boosted to 16384, but HIGH thinking can use 14000+ of that.
+- **Proposed fix:** Increase token budget — do NOT lower reasoning effort (deception/accusation requires high reasoning). Options:
+  1. Increase `phase_max_tokens` for nomination/accusation/defense to 8192+ (all providers)
+  2. Gemini-specific multiplier: `effective_max = max(max_tokens * 4, 32768)` for thinking models
+  3. Set minimum visible output floor (ensure at least 1024 tokens after thinking budget)
+- **Files:** `engine/types.py:294` (phase_max_tokens), `llm/google_adapter.py:50` (effective_max), `orchestrator/game_runner.py:1594` (_phase_tokens)
+- **Status:** OPEN
+
+---
+
 ## Summary
 
 | ID | Category | Severity | Status |

@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from botc.api.routes import router
+from botc.wager.router import wager_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,6 +41,29 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(wager_router)
+
+
+@app.on_event("startup")
+async def _start_background_tasks():
+    import asyncio
+    import subprocess
+    from botc.wager.router import settlement_loop
+
+    asyncio.create_task(settlement_loop())
+
+    # Prevent macOS sleep while the server is running.
+    # caffeinate -i keeps the system awake (idle sleep prevention).
+    # The process dies automatically when the parent (uvicorn) exits.
+    try:
+        subprocess.Popen(
+            ["caffeinate", "-i", "-w", str(os.getpid())],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        logging.getLogger(__name__).info("caffeinate started — system will not sleep while server is running")
+    except FileNotFoundError:
+        pass  # Not on macOS
 
 
 @app.get("/")

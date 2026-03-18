@@ -1226,11 +1226,11 @@ class TestGameState:
         assert len(game_7p.alive_players) == 6
 
     def test_vote_threshold(self, game_7p):
-        # 7 alive -> threshold is 4
+        # BotC uses >= 50% (ceiling division): 7 alive -> 4, 6 alive -> 3
         assert game_7p.vote_threshold() == 4
         game_7p.players[0].is_alive = False
-        # 6 alive -> threshold is 4
-        assert game_7p.vote_threshold() == 4
+        # 6 alive -> threshold is 3 (at least half)
+        assert game_7p.vote_threshold() == 3
 
     def test_start_new_day_resets(self, game_7p):
         game_7p.players[0].has_nominated_today = True

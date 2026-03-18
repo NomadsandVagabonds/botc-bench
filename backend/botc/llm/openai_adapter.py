@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import time
 
+import httpx
 import openai
 
 from botc.llm.provider import AgentConfig, LLMProvider, LLMResponse
+
+log = logging.getLogger(__name__)
+
+# OpenRouter thinking models that need inflated max_tokens for reasoning
+_OPENROUTER_THINKING_KEYWORDS = ("qwen3", "kimi-k2", "deepseek-r1")
 
 
 class OpenAIProvider(LLMProvider):
@@ -14,9 +21,15 @@ class OpenAIProvider(LLMProvider):
 
     def __init__(self, config: AgentConfig, base_url: str | None = None) -> None:
         super().__init__(config)
+        extra_kwargs: dict = {}
+        if base_url:
+            extra_kwargs["base_url"] = base_url
+            # OpenRouter requests can be slow; set a 120s timeout
+            if "openrouter" in base_url:
+                extra_kwargs["timeout"] = httpx.Timeout(120.0)
         self._client = openai.AsyncOpenAI(
             api_key=config.api_key,
-            **({"base_url": base_url} if base_url else {}),
+            **extra_kwargs,
         )
 
     async def complete(
@@ -41,6 +54,15 @@ class OpenAIProvider(LLMProvider):
             model_base.startswith(p) for p in ("o1", "o3", "o4", "gpt-5")
         )
 
+        # OpenRouter: only inflate max_tokens for thinking models
+        is_openrouter = "openrouter" in (self._client.base_url.host or "")
+        if is_openrouter and not is_reasoning_model:
+            is_thinking_or = any(k in model_lower for k in _OPENROUTER_THINKING_KEYWORDS)
+            if is_thinking_or:
+                effective_max = max(max_tokens, 10240 + 2048)
+            else:
+                effective_max = max_tokens  # Llama, Gemma, Mistral — no thinking overhead
+
         if is_reasoning_model:
             effective_max = max(max_tokens, 8192)
             kwargs: dict = {
@@ -52,6 +74,14 @@ class OpenAIProvider(LLMProvider):
             if reasoning_effort:
                 kwargs["reasoning_effort"] = reasoning_effort
             response = await self._client.chat.completions.create(**kwargs)
+        elif is_openrouter and not is_reasoning_model:
+            # Use the OpenRouter-adjusted effective_max computed above
+            response = await self._client.chat.completions.create(
+                model=self.config.model,
+                messages=full_messages,
+                temperature=temperature,
+                max_tokens=effective_max,
+            )
         else:
             response = await self._client.chat.completions.create(
                 model=self.config.model,
@@ -64,6 +94,14 @@ class OpenAIProvider(LLMProvider):
 
         choice = response.choices[0]
         usage = response.usage
+
+        # Log response time for OpenRouter diagnostics
+        if is_openrouter:
+            reasoning_tokens = getattr(usage, "reasoning_tokens", 0) if usage else 0
+            log.info(
+                "OpenRouter %s: %.1fs, %d reasoning tokens",
+                self.config.model, latency_ms / 1000, reasoning_tokens,
+            )
 
         return LLMResponse(
             content=choice.message.content or "",

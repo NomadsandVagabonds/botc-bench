@@ -127,6 +127,21 @@ def refresh_script_poisoning(state: GameState) -> None:
             or p.hidden_state.get("minstrel_drunk_until_day", -1) >= state.day_number
         )
         p.is_poisoned = bool(base_poisoned)
+        # Track dynamic drunk status (separate from is_poisoned) for UI display.
+        # Sailor/innkeeper/goon/courtier/minstrel/sweetheart drunk effects
+        # should show the mug icon in the frontend via Player.is_drunk.
+        drunk_source = (
+            p.hidden_state.get("sweetheart_drunk", False)
+            or p.hidden_state.get("sailor_drunk_until_day", -1) >= state.day_number
+            or p.hidden_state.get("innkeeper_drunk_until_day", -1) >= state.day_number
+            or p.hidden_state.get("goon_drunk_until_day", -1) >= state.day_number
+            or p.hidden_state.get("courtier_drunk_until_day", -1) >= state.day_number
+            or p.hidden_state.get("minstrel_drunk_until_day", -1) >= state.day_number
+        )
+        if drunk_source:
+            p.hidden_state["_dynamically_drunk"] = True
+        else:
+            p.hidden_state.pop("_dynamically_drunk", None)
 
     # No Dashii: immediate seated neighbors that are Townsfolk are poisoned.
     n = len(state.players)

@@ -214,7 +214,7 @@ function DistributionSummary({ playerCount, seatRoles, roleMode, scriptId }: {
 
 // ── Options tabs ─────────────────────────────────────────────────────
 
-type OptionsTab = 'rules' | 'conversation' | 'agents' | 'audio' | 'fun' | 'monitor' | 'probabilities' | 'api' | 'voice' | 'stats';
+type OptionsTab = 'rules' | 'conversation' | 'agents' | 'audio' | 'fun' | 'monitor' | 'wager' | 'probabilities' | 'api' | 'voice' | 'stats';
 
 const OPTIONS_TABS: { id: OptionsTab; label: string; stub?: boolean }[] = [
   { id: 'rules', label: 'Game Rules' },
@@ -223,6 +223,7 @@ const OPTIONS_TABS: { id: OptionsTab; label: string; stub?: boolean }[] = [
   { id: 'audio', label: 'Audio' },
   { id: 'fun', label: 'Fun' },
   { id: 'monitor', label: 'Monitor' },
+  { id: 'wager', label: "Crown's Wager" },
   { id: 'probabilities', label: 'Probabilities', stub: true },
   { id: 'api', label: 'API Keys', stub: true },
   { id: 'voice', label: 'Voice' },
@@ -1372,6 +1373,78 @@ export function GameLobby() {
         {optionsTab === 'monitor' && (
           <MonitorOptionsPanel games={games} />
         )}
+        {optionsTab === 'wager' && (
+          <div style={{ padding: '12px 0' }}>
+            <div style={{ fontSize: '0.85rem', color: '#5c3d1a', marginBottom: 16, lineHeight: 1.5 }}>
+              <strong>The Crown's Wager</strong> — spectate live games and place bets on who is evil, what roles players have, and which team will win. Earn Crowns for correct predictions. Earlier bets pay more.
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#8b7355', marginBottom: 12 }}>
+              Running games available for spectating:
+            </div>
+            {games.length === 0 ? (
+              <div style={{ textAlign: 'center', color: '#8b7355', padding: 16, fontSize: '0.8rem', fontStyle: 'italic' }}>
+                No games available. Start a game first.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {/* Running games first */}
+                {games.filter(g => g.status === 'running').map(g => (
+                  <div key={g.game_id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px', background: 'rgba(92, 61, 26, 0.08)',
+                    borderRadius: 6, border: '1px solid rgba(92, 61, 26, 0.15)',
+                  }}>
+                    <div>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#3d2812' }}>
+                        {g.game_id.slice(0, 8)}
+                      </span>
+                      <span style={{
+                        marginLeft: 8, fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                        background: '#F59E0B22', color: '#92400E',
+                      }}>live</span>
+                    </div>
+                    <button onClick={() => navigateWithTransition(`/spectate/${g.game_id}`)} style={{
+                      padding: '4px 14px', fontSize: '0.7rem', fontWeight: 700,
+                      background: '#c9a84c', color: '#1a1a2e', border: 'none',
+                      borderRadius: 4, cursor: 'pointer', fontFamily: 'Georgia, serif',
+                    }}>
+                      Spectate
+                    </button>
+                  </div>
+                ))}
+                {/* Completed games — replay mode */}
+                {games.filter(g => g.status === 'completed').map(g => (
+                  <div key={g.game_id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px', background: 'rgba(92, 61, 26, 0.04)',
+                    borderRadius: 6, border: '1px solid rgba(92, 61, 26, 0.10)',
+                  }}>
+                    <div>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#3d2812' }}>
+                        {g.game_id.slice(0, 8)}
+                      </span>
+                      <span style={{
+                        marginLeft: 8, fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                        background: '#10B98122', color: '#065F46',
+                      }}>{g.winner} wins</span>
+                      <span style={{
+                        marginLeft: 4, fontSize: '0.55rem', padding: '1px 5px', borderRadius: 6,
+                        background: '#3d281208', color: '#8b7355',
+                      }}>replay</span>
+                    </div>
+                    <button onClick={() => navigateWithTransition(`/spectate/${g.game_id}`)} style={{
+                      padding: '4px 14px', fontSize: '0.7rem', fontWeight: 700,
+                      background: 'transparent', color: '#c9a84c', border: '1px solid #c9a84c55',
+                      borderRadius: 4, cursor: 'pointer', fontFamily: 'Georgia, serif',
+                    }}>
+                      Replay &amp; Bet
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {optionsTab === 'probabilities' && (
           <StubPanel title="Probability Tweaks" description="Fine-tune game mechanics: drunk information accuracy, poison effects, whisper overhear chance, Spy registration probabilities, and other programmatic percentages." />
         )}
@@ -1431,19 +1504,30 @@ export function GameLobby() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {games.map((g) => (
-                <div key={g.game_id} onClick={() => navigateWithTransition(`/game/${g.game_id}`)} style={st.gameCard} role="button" tabIndex={0}>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>{g.game_id.slice(0, 8)}</span>
-                  <span style={{
-                    fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase',
-                    background: g.status === 'running' ? '#F59E0B22' : g.status === 'completed' ? '#10B98122' : '#EF444422',
-                    color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#065F46' : '#991B1B',
-                  }}>{g.status}</span>
-                  {g.winner && (
+                <div key={g.game_id} style={{ ...st.gameCard, justifyContent: 'flex-start', gap: 8 }} role="button" tabIndex={0}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => navigateWithTransition(`/game/${g.game_id}`)}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>{g.game_id.slice(0, 8)}</span>
                     <span style={{
-                      fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                      background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
-                      color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
-                    }}>{g.winner} wins</span>
+                      fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase',
+                      background: g.status === 'running' ? '#F59E0B22' : g.status === 'completed' ? '#10B98122' : '#EF444422',
+                      color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#065F46' : '#991B1B',
+                    }}>{g.status}</span>
+                    {g.winner && (
+                      <span style={{
+                        fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                        background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
+                        color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
+                      }}>{g.winner} wins</span>
+                    )}
+                  </div>
+                  {g.status === 'running' && (
+                    <button onClick={(e) => { e.stopPropagation(); navigateWithTransition(`/spectate/${g.game_id}`); }} style={{
+                      padding: '2px 10px', fontSize: '0.6rem', fontWeight: 700,
+                      background: '#c9a84c', color: '#1a1a2e', border: 'none',
+                      borderRadius: 4, cursor: 'pointer', fontFamily: 'Georgia, serif',
+                    }}>
+                      Spectate
+                    </button>
                   )}
                 </div>
               ))}

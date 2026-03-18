@@ -466,6 +466,13 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       }
 
       case 'night.action': {
+        // Dedup: skip if we already have an entry with same seat+day+action
+        // (can arrive via both live WebSocket and event.history)
+        const existingNA = get().nightActions;
+        const isDupNA = existingNA.some(
+          e => e.seat === event.seat && e.day === event.day && e.action === event.action
+        );
+        if (isDupNA) break;
         const entry: NightActionEntry = {
           seat: event.seat,
           name: event.name,
@@ -882,18 +889,24 @@ export const useGameStore = create<GameStore>()((set, get) => ({
             }
             case 'night.action': {
               const na = evt as import('../types/events.ts').NightActionEvent;
-              hNightActions.push({
-                seat: na.seat,
-                name: na.name,
-                role: na.role,
-                roleId: na.roleId,
-                action: na.action,
-                targetSeat: na.targetSeat,
-                targetName: na.targetName,
-                effect: na.effect,
-                day: na.day,
-                timestamp: Date.now(),
-              });
+              // Dedup: skip if same seat+day+action already present
+              const dupNA = hNightActions.some(
+                e => e.seat === na.seat && e.day === na.day && e.action === na.action
+              );
+              if (!dupNA) {
+                hNightActions.push({
+                  seat: na.seat,
+                  name: na.name,
+                  role: na.role,
+                  roleId: na.roleId,
+                  action: na.action,
+                  targetSeat: na.targetSeat,
+                  targetName: na.targetName,
+                  effect: na.effect,
+                  day: na.day,
+                  timestamp: Date.now(),
+                });
+              }
               break;
             }
             case 'player.reasoning': {

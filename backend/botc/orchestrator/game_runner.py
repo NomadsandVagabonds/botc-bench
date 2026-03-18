@@ -42,6 +42,7 @@ from botc.engine.phase_machine import (
 )
 from botc.engine.setup import create_game
 from botc.engine.types import (
+    Alignment,
     GameConfig,
     GamePhase,
     GameState,
@@ -135,6 +136,12 @@ def _sanitize_speech(raw_text: str) -> tuple[str, str]:
             filtered_lines.append(line)
 
     clean = "\n".join(filtered_lines).strip()
+
+    # Bare "PASS" (without braces) as entire message → treat as pass action
+    if clean.upper() == "PASS":
+        internal_parts.append("PASS")
+        clean = ""
+
     internal = "\n".join(internal_parts).strip()
     return clean, internal
 
@@ -567,6 +574,12 @@ class GameRunner:
         for seat, result in zip(tasks.keys(), results):
             if isinstance(result, Exception):
                 logger.error("Night action failed for seat %d: %s", seat, result)
+                # Even on LLM failure, generate a fallback for critical roles
+                role_id = state.player_at(seat).role.id
+                fallback = self._fallback_night_action(state, seat, role_id)
+                if fallback is not None:
+                    logger.info("Fallback night action for seat %d (%s)", seat, role_id)
+                    actions[seat] = fallback
                 continue
 
             parsed: ParsedResponse = result
@@ -577,6 +590,12 @@ class GameRunner:
             action = self._extract_night_action(parsed, seat=seat, role_id=role_id)
             if action is not None:
                 actions[seat] = action
+            else:
+                # LLM didn't provide a valid target — use smart fallback
+                fallback = self._fallback_night_action(state, seat, role_id)
+                if fallback is not None:
+                    logger.info("Fallback night action for seat %d (%s): targets=%s", seat, role_id, fallback.targets)
+                    actions[seat] = fallback
 
         return actions
 
@@ -1924,6 +1943,71 @@ class GameRunner:
                 )
         return None
 
+    # ── Roles that should NEVER skip their night action ──────────────
+    # 1-target, avoid own team (evil won't target evil, good won't target good)
+    _FALLBACK_1_AVOID_TEAM: set[str] = {
+        "imp", "fang_gu", "vigormortis", "no_dashii", "vortox",
+        "po", "pukka", "shabaloth", "zombuul",  # demons
+        "poisoner", "witch", "cerenovus",         # minions that target
+        "assassin", "godfather", "devils_advocate",
+    }
+    # 1-target, target anyone except self
+    _FALLBACK_1_ANY: set[str] = {
+        "monk", "butler", "exorcist", "dreamer", "sailor",
+        "snake_charmer", "pit_hag",
+    }
+    # 2-target roles
+    _FALLBACK_2: set[str] = {
+        "fortune_teller", "chambermaid", "seamstress", "innkeeper",
+    }
+
+    def _fallback_night_action(
+        self, state: GameState, seat: int, role_id: str,
+    ) -> NightAction | None:
+        """Generate a smart random fallback when the LLM fails to provide a target.
+
+        Strategic rules:
+        - Evil roles don't target their own evil teammates
+        - Good roles don't target their own good teammates (for Monk protection, etc. — actually Monk should protect anyone, so target anyone)
+        - Demons never self-target (no accidental starpass)
+        """
+        rng = state.rng
+        actor = state.player_at(seat)
+        alive_others = [p for p in state.alive_players if p.seat != seat]
+
+        if not alive_others:
+            return None
+
+        if role_id in self._FALLBACK_1_AVOID_TEAM:
+            # Evil roles: target alive non-evil players
+            # Good roles (rare but possible): target alive non-good
+            if actor.alignment == Alignment.EVIL:
+                candidates = [p for p in alive_others if p.alignment != Alignment.EVIL]
+            else:
+                candidates = [p for p in alive_others if p.alignment != Alignment.GOOD]
+            if not candidates:
+                candidates = alive_others  # fallback to anyone if all same team
+            target = rng.choice(candidates)
+            return NightAction(actor_seat=seat, role_id=role_id, targets=[target.seat])
+
+        if role_id in self._FALLBACK_1_ANY:
+            target = rng.choice(alive_others)
+            return NightAction(actor_seat=seat, role_id=role_id, targets=[target.seat])
+
+        if role_id in self._FALLBACK_2:
+            if len(alive_others) < 2:
+                # Can't pick 2 distinct targets
+                return None
+            targets = rng.sample(alive_others, 2)
+            return NightAction(
+                actor_seat=seat, role_id=role_id,
+                targets=[t.seat for t in targets],
+            )
+
+        # Roles not in any fallback set (philosopher, gambler, courtier, etc.)
+        # — these need role_choice which we can't generate sensibly, so skip.
+        return None
+
     def _extract_group_preference(self, parsed: ParsedResponse) -> str:
         for action in parsed.actions:
             if action.action_type == "JOIN" and action.value:
@@ -1963,6 +2047,26 @@ class GameRunner:
             self.on_event(event_type, data)
         except Exception:
             logger.exception("Event callback error for %s", event_type)
+
+        # Checkpoint save after every phase change so games survive crashes
+        if event_type == "phase.change":
+            self._checkpoint_save()
+
+    def _checkpoint_save(self) -> None:
+        """Save current game state to disk so it survives crashes/restarts."""
+        if not self.state:
+            return
+        try:
+            from botc.api.persistence import save_game
+            from botc.engine.state import snapshot_observer
+            save_game(
+                self.state.game_id,
+                "running",
+                events=self.event_history,
+                initial_state=self._initial_snapshot or snapshot_observer(self.state),
+            )
+        except Exception:
+            logger.exception("Checkpoint save failed for %s", self.state.game_id)
 
     def _record_tokens(
         self,

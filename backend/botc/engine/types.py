@@ -223,7 +223,10 @@ class Player:
 
     @property
     def is_drunk(self) -> bool:
-        return self.role.id == "drunk"
+        if self.role.id == "drunk":
+            return True
+        # Dynamic drunk effects set by refresh_script_poisoning()
+        return bool(self.hidden_state.get("_dynamically_drunk", False))
 
     @property
     def gets_true_info(self) -> bool:
@@ -399,9 +402,9 @@ class GameState:
         return [p for p in self.players if p.alignment == Alignment.GOOD]
 
     def vote_threshold(self) -> int:
-        """Number of votes required to put someone on the block (majority of alive)."""
+        """Number of votes required to put someone on the block (>= half of alive)."""
         alive_count = len(self.alive_players)
-        return (alive_count // 2) + 1
+        return (alive_count + 1) // 2
 
     def add_message(self, msg: Message) -> None:
         self.all_messages.append(msg)

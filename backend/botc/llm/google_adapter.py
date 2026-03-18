@@ -56,24 +56,25 @@ class GoogleProvider(LLMProvider):
         if not is_thinking_model:
             config_kwargs["temperature"] = temperature
 
-        # Thinking config — always set for thinking models so CoT doesn't
-        # consume the entire output budget, leaving nothing for speech.
-        if is_thinking_model:
+        # Map reasoning effort to Gemini thinking config
+        if is_thinking_model and reasoning_effort:
+            # Gemini 3.x uses thinking_level; 2.5 uses thinking_budget
             is_gemini3 = any(k in model_lower for k in ("3.0", "3.1", "3-flash", "3-pro"))
             if is_gemini3:
-                # Gemini 3.x: thinking_level
                 level_map = {"low": "LOW", "medium": "MEDIUM", "high": "HIGH"}
-                level = level_map.get(reasoning_effort or "low", "LOW")
-                config_kwargs["thinking_config"] = types.ThinkingConfig(
-                    thinking_level=level,
-                )
+                level = level_map.get(reasoning_effort)
+                if level:
+                    config_kwargs["thinking_config"] = types.ThinkingConfig(
+                        thinking_level=level,
+                    )
             else:
                 # Gemini 2.5: thinking_budget in tokens
                 budget_map = {"low": 1024, "medium": 4096, "high": 16384}
-                budget = budget_map.get(reasoning_effort or "low", 1024)
-                config_kwargs["thinking_config"] = types.ThinkingConfig(
-                    thinking_budget=budget,
-                )
+                budget = budget_map.get(reasoning_effort)
+                if budget:
+                    config_kwargs["thinking_config"] = types.ThinkingConfig(
+                        thinking_budget=budget,
+                    )
 
         response = await self._client.aio.models.generate_content(
             model=self.config.model,

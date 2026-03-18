@@ -44,17 +44,21 @@ export function LandingPage() {
   const [showConnect, setShowConnect] = useState(false);
   const [connectInput, setConnectInput] = useState(serverUrl);
 
+  // Fetch games on connect + poll every 10s for live updates
   useEffect(() => {
     if (!serverUrl) return;
-    const controller = new AbortController();
-    fetch(`${serverUrl}/api/games`, { signal: controller.signal })
-      .then(r => r.json())
-      .then(data => {
-        setGames(Array.isArray(data) ? data : []);
-        setConnected(true);
-      })
-      .catch(() => setConnected(false));
-    return () => controller.abort();
+    const fetchGames = () => {
+      fetch(`${serverUrl}/api/games`)
+        .then(r => r.json())
+        .then(data => {
+          setGames(Array.isArray(data) ? data : []);
+          setConnected(true);
+        })
+        .catch(() => setConnected(false));
+    };
+    fetchGames();
+    const interval = setInterval(fetchGames, 10_000);
+    return () => clearInterval(interval);
   }, [serverUrl]);
 
   const handleConnect = () => {
@@ -167,23 +171,23 @@ export function LandingPage() {
               <div style={styles.stepsGrid}>
                 <StepCard
                   icon="&#9876;"
-                  title="Clone the repo"
-                  desc="Clone the repository and install dependencies for backend and frontend."
+                  title="Clone & install"
+                  desc="git clone github.com/NomadsandVagabonds/botc-bench && cd backend && pip install -e ."
                 />
                 <StepCard
                   icon="&#128477;"
-                  title="Add API keys"
-                  desc="Add your Anthropic, OpenAI, or Google API keys to the .env file."
+                  title="Add your API keys"
+                  desc="Copy .env.example to .env and add your Anthropic, OpenAI, or Google keys. Keys stay on your machine."
                 />
                 <StepCard
                   icon="&#9881;"
-                  title="Run the backend"
-                  desc="Start the FastAPI server and the React frontend dev server."
+                  title="Start the server"
+                  desc="uvicorn botc.main:app --port 8000 — then click 'Connect Server' above and enter localhost:8000"
                 />
                 <StepCard
                   icon="&#9733;"
-                  title="Connect & play"
-                  desc="Connect to your server, configure agents, and start a game."
+                  title="Run a game"
+                  desc="Open Admin, pick models per seat, hit start. Watch AI agents deceive each other live."
                 />
               </div>
             </div>
@@ -262,6 +266,21 @@ export function LandingPage() {
           >
             GitHub
           </a>
+          {liveGames.length > 0 && (
+            <button
+              onClick={() => navigate(`/spectate/${liveGames[0].game_id}`)}
+              style={{ ...styles.woodButton, background: '#8b1a1a', borderColor: '#c0392b', position: 'relative' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#a02020'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#8b1a1a'; }}
+            >
+              <span style={{
+                display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                background: '#e74c3c', boxShadow: '0 0 8px #e74c3c',
+                animation: 'live-pulse 1.5s infinite', marginRight: 8,
+              }} />
+              LIVE NOW — {liveGames.length} game{liveGames.length > 1 ? 's' : ''}
+            </button>
+          )}
           {connected && (
             <button
               onClick={() => navigate('/admin')}
@@ -273,6 +292,7 @@ export function LandingPage() {
             </button>
           )}
         </motion.div>
+        <style>{`@keyframes live-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }`}</style>
 
         {/* Server Connection Panel (expandable) */}
         {showConnect && (
@@ -283,8 +303,8 @@ export function LandingPage() {
           >
             <div style={styles.connectTitle}>Connect to a BloodBench server</div>
             <p style={styles.connectDesc}>
-              Run the backend locally (<code style={{ color: C.gold }}>uvicorn botc.main:app --port 8000</code>)
-              or connect to a hosted instance.
+              Run the backend locally with your own API keys in <code style={{ color: C.gold }}>.env</code> — they never leave your machine.
+              Or connect to any hosted instance. This site is just a frontend.
             </p>
             <div style={styles.connectRow}>
               <input

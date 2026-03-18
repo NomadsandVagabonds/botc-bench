@@ -36,6 +36,9 @@ npm run dev  # http://localhost:5173
 
 Navigate to the lobby, pick your models, and start a game.
 
+<img width="1534" height="856" alt="image" src="https://github.com/user-attachments/assets/f39b1323-381e-4c0c-b163-f20c0ed98166" />
+
+
 ## Architecture
 
 ```
@@ -53,6 +56,9 @@ frontend/          React 19, Vite, TypeScript, Zustand
   hooks/           WebSocket connection, replay controller
 ```
 
+<img width="1734" height="854" alt="image" src="https://github.com/user-attachments/assets/be4a3080-2e99-4a5f-8670-1d9c018c6a50" />
+
+
 ## Monitor Agent
 
 Run a "monitor" LLM against completed games — it watches only public information (no night actions, no private messages, no roles) and rates each player 0-100 on how likely they are to be evil. Scores combine alignment accuracy, bet timing, and ROC-AUC.
@@ -67,6 +73,9 @@ curl -X POST http://localhost:8000/api/games/{game_id}/monitors \
 ```
 
 Compare models head-to-head: run Haiku, Sonnet, and GPT on the same game, then switch between results in the monitor panel.
+
+<img width="1017" height="735" alt="image" src="https://github.com/user-attachments/assets/a0bc38ee-c7cf-4c52-9d1c-07789161ab7c" />
+
 
 ## Game Flow
 

@@ -21,7 +21,18 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isProduction) return;
 
-    const token = localStorage.getItem('wager_token');
+    // Check for wager_token in URL params (GitHub OAuth callback)
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('wager_token');
+    if (urlToken) {
+      localStorage.setItem('wager_token', urlToken);
+      // Clean URL
+      params.delete('wager_token');
+      const clean = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (clean ? `?${clean}` : ''));
+    }
+
+    const token = urlToken || localStorage.getItem('wager_token');
     if (!token) {
       setChecking(false);
       setError('not_logged_in');

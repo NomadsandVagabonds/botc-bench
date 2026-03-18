@@ -26,12 +26,21 @@ const AVAILABLE_MODELS = [
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google' },
   { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google' },
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', provider: 'google' },
+  // OpenRouter — use any model via a single API key
+  { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (OR)', provider: 'openrouter' },
+  { id: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (OR)', provider: 'openrouter' },
+  { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (OR)', provider: 'openrouter' },
+  { id: 'openai/gpt-4o', label: 'GPT-4o (OR)', provider: 'openrouter' },
+  { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash (OR)', provider: 'openrouter' },
+  { id: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B (OR)', provider: 'openrouter' },
+  { id: 'mistralai/mistral-large', label: 'Mistral Large (OR)', provider: 'openrouter' },
 ];
 
 const PROVIDER_COLORS: Record<string, string> = {
   anthropic: '#D97706',
   openai: '#10B981',
   google: '#3B82F6',
+  openrouter: '#9333EA',
 };
 
 const SCRIPTS: { label: string; value: string; note?: string }[] = [
@@ -1483,6 +1492,7 @@ export function GameLobby() {
               { provider: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...' },
               { provider: 'openai', label: 'OpenAI', placeholder: 'sk-...' },
               { provider: 'google', label: 'Google (Gemini)', placeholder: 'AIza...' },
+              { provider: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...' },
             ].map(({ provider, label, placeholder }) => (
               <div key={provider} style={{ marginBottom: 10 }}>
                 <label style={{ fontSize: '0.7rem', color: '#5a4630', fontWeight: 600, display: 'block', marginBottom: 3 }}>

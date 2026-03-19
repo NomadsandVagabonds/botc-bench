@@ -43,8 +43,18 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     fetch(`${serverUrl}/api/wager/auth/is-admin`, {
       headers: { 'X-Wager-Token': token },
     })
-      .then(r => r.json())
+      .then(r => {
+        if (r.status === 401) {
+          // Token is stale (DB was wiped on redeploy) — clear and show login
+          localStorage.removeItem('wager_token');
+          setError('not_logged_in');
+          setChecking(false);
+          return null;
+        }
+        return r.json();
+      })
       .then(data => {
+        if (!data) return;
         if (data.is_admin) {
           setAuthorized(true);
         } else {

@@ -1525,8 +1525,22 @@
 .landing__nav-right {
   display: flex;
   align-items: center;
-  gap: var(--bb-space-sm);
+  gap: var(--bb-space-xs);
   pointer-events: auto;
+}
+
+/* On mobile, hide admin-only buttons — show only GitHub */
+.landing__nav-right .landing__nav-btn--admin {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .landing__nav-right .landing__nav-btn--admin {
+    display: inline-flex;
+  }
+  .landing__nav-right {
+    gap: var(--bb-space-sm);
+  }
 }
 
 .landing__nav-btn {

@@ -372,17 +372,17 @@ export function LandingPageV2() {
         <div className="landing__nav-left" />
         <div className="landing__nav-right">
           <button
-            className="landing__nav-btn"
+            className="landing__nav-btn landing__nav-btn--admin"
             onClick={() => setShowConnect(!showConnect)}
           >
             <span
               className={`landing__nav-dot ${connected ? 'landing__nav-dot--on' : ''}`}
             />
-            {connected ? 'Connected' : 'Connect Server'}
+            {connected ? 'Connected' : 'Connect'}
           </button>
           {connected && (
             <button
-              className="landing__nav-btn"
+              className="landing__nav-btn landing__nav-btn--admin"
               onClick={() => navigate('/lobby')}
             >
               Lobby
@@ -390,7 +390,7 @@ export function LandingPageV2() {
           )}
           {connected && (
             <button
-              className="landing__nav-btn"
+              className="landing__nav-btn landing__nav-btn--admin"
               onClick={() => navigate('/admin')}
             >
               Admin

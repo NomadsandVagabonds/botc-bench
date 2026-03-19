@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../../stores/gameStore.ts';
 import { useWagerStore } from '../wagerStore.ts';
 import { CrownBalance } from './CrownBalance.tsx';
@@ -5,6 +6,7 @@ import { CrownBalance } from './CrownBalance.tsx';
 export function SpectatorHeader() {
   const gameState = useGameStore(s => s.gameState);
   const { bets, sessionSettled, crownsWon } = useWagerStore();
+  const navigate = useNavigate();
 
   const phaseLabels: Record<string, string> = {
     setup: 'Setup',
@@ -71,7 +73,19 @@ export function SpectatorHeader() {
         )}
       </div>
 
-      <CrownBalance />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <CrownBalance />
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            background: 'linear-gradient(180deg, #4a4a4a, #2a2a2a)',
+            border: '1px solid #1a1a1a', borderRadius: 3,
+            color: '#999', padding: '3px 10px', fontSize: 11, cursor: 'pointer',
+            fontFamily: 'Georgia, serif',
+            boxShadow: 'inset 0 1px 0 #555',
+          }}
+        >Lobby</button>
+      </div>
     </div>
   );
 }

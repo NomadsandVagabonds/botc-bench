@@ -9,7 +9,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useGameStore } from '../../stores/gameStore.ts';
 
-const WS_BASE = import.meta.env.VITE_WS_URL ?? 'ws://localhost:8000';
+// WS URL: explicit env var > derive from API URL > localhost default
+const WS_BASE = import.meta.env.VITE_WS_URL
+  || (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/^http/, 'ws') : null)
+  || 'ws://localhost:8000';
 
 function normalizeSpectatorEvent(raw: { type: string; data: any }): any | null {
   const { type, data } = raw;
@@ -175,6 +178,7 @@ export function useSpectatorWS(gameId: string | undefined) {
 
         if (event.type === 'game.state') {
           initialState = event;
+          console.log('[spectator] game.state received:', event.state?.players?.length, 'players', event.state?.players?.[0]?.characterName);
         }
 
         // For completed games: intercept event.history and enter replay mode
@@ -182,7 +186,7 @@ export function useSpectatorWS(gameId: string | undefined) {
         if (event.type === 'event.history' && initialState) {
           const hasGameOver = event.events.some((e: any) => e.type === 'game.over');
           if (hasGameOver) {
-            // Enter replay mode — events revealed one at a time
+            console.log('[spectator] Entering replay mode:', event.events.length, 'events');
             startReplay(initialState, event.events);
             return;
           }
@@ -190,8 +194,8 @@ export function useSpectatorWS(gameId: string | undefined) {
 
         // Live game: apply events directly
         applyEvent(event);
-      } catch {
-        // ignore parse errors
+      } catch (err) {
+        console.error('[spectator] Error processing message:', err);
       }
     };
 

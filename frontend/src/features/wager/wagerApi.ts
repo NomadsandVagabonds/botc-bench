@@ -2,7 +2,13 @@
  * REST API client for The Crown's Wager (prediction market version).
  */
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+function getBaseUrl(): string {
+  return localStorage.getItem('bloodbench_server_url')
+    || import.meta.env.VITE_API_URL
+    || 'http://localhost:8000';
+}
+
+const API_BASE = getBaseUrl();
 
 function getToken(): string | null {
   return localStorage.getItem('wager_token');
@@ -29,13 +35,13 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 // ── Auth ────────────────────────────────────────────────────────────
 
-export async function claimName(displayName: string) {
+export async function claimName(displayName: string, passphrase?: string) {
   const res = await fetch(`${API_BASE}/api/wager/auth/claim`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ display_name: displayName }),
+    body: JSON.stringify({ display_name: displayName, passphrase: passphrase || null }),
   });
-  const data = await handleResponse<{ user_id: string; token: string; display_name: string }>(res);
+  const data = await handleResponse<{ user_id: string; token: string; display_name: string; returning?: boolean }>(res);
   setToken(data.token);
   return data;
 }
@@ -97,9 +103,17 @@ export async function listBets(gameId: string) {
   return handleResponse<any[]>(res);
 }
 
-export async function cancelBet(gameId: string, betId: number) {
-  const res = await fetch(`${API_BASE}/api/wager/games/${gameId}/bets/${betId}`, {
-    method: 'DELETE',
+export async function sellBet(gameId: string, betId: number) {
+  const res = await fetch(`${API_BASE}/api/wager/games/${gameId}/bets/${betId}/sell`, {
+    method: 'POST',
+    headers: headers(),
+  });
+  return handleResponse<any>(res);
+}
+
+export async function settleGame(gameId: string) {
+  const res = await fetch(`${API_BASE}/api/wager/games/${gameId}/settle`, {
+    method: 'POST',
     headers: headers(),
   });
   return handleResponse<any>(res);

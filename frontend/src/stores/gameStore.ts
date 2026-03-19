@@ -548,6 +548,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
         set({
           gameState: {
             ...gameState,
+            phase: 'game_over',
             winner: event.winner,
             winCondition: event.winCondition,
             messages: [...gameState.messages, winMsg],

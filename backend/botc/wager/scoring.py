@@ -81,6 +81,49 @@ class Market:
             return 0.0
         return amount + self.no_pool * amount / (self.yes_pool + amount)
 
+    def sell_yes(self, shares: float) -> float:
+        """Sell YES shares back to pool. Returns Crowns received.
+
+        Reverse of buy: sell YES shares to pool, receive Crowns.
+        Pool absorbs YES shares, gives back NO shares which are
+        redeemed as Crowns (burn matched YES+NO → Crowns).
+        """
+        if shares <= 0 or shares >= self.yes_pool + shares:
+            return 0.0
+        # Swap: add YES shares to pool, get NO shares out
+        no_out = self.no_pool * shares / (self.yes_pool + shares)
+        self.yes_pool += shares
+        self.no_pool -= no_out
+        # Burn matched pairs: min(shares_returned, no_out) pairs → Crowns
+        # The user had YES shares, got NO shares from pool.
+        # Redeem min(shares, no_out) matched pairs as Crowns.
+        crowns_out = min(shares, no_out)
+        return crowns_out
+
+    def sell_no(self, shares: float) -> float:
+        """Sell NO shares back to pool. Returns Crowns received."""
+        if shares <= 0 or shares >= self.no_pool + shares:
+            return 0.0
+        yes_out = self.yes_pool * shares / (self.no_pool + shares)
+        self.no_pool += shares
+        self.yes_pool -= yes_out
+        crowns_out = min(shares, yes_out)
+        return crowns_out
+
+    def quote_sell_yes(self, shares: float) -> float:
+        """Preview selling YES shares (no state change)."""
+        if shares <= 0:
+            return 0.0
+        no_out = self.no_pool * shares / (self.yes_pool + shares)
+        return min(shares, no_out)
+
+    def quote_sell_no(self, shares: float) -> float:
+        """Preview selling NO shares (no state change)."""
+        if shares <= 0:
+            return 0.0
+        yes_out = self.yes_pool * shares / (self.no_pool + shares)
+        return min(shares, yes_out)
+
     def payout_per_share(self) -> float:
         return 1.0
 

@@ -127,6 +127,27 @@ export interface EventHistoryEvent {
   events: ServerEvent[];
 }
 
+export interface MonitorStartedEvent {
+  type: 'monitor.started';
+  monitor_id?: string;
+  model?: string;
+  total_phases?: number;
+}
+
+export interface MonitorPhaseEvent {
+  type: 'monitor.phase';
+  phase?: string;
+  day?: number;
+  analysis?: string;
+  ratings?: Record<string, unknown>;
+  bets?: unknown[];
+}
+
+export interface MonitorCompleteEvent {
+  type: 'monitor.complete';
+  result?: unknown;
+}
+
 // ── Union type ──────────────────────────────────────────────────────
 
 export type ServerEvent =
@@ -147,4 +168,7 @@ export type ServerEvent =
   | AgentTokensEvent
   | GameOverEvent
   | DebriefMessageEvent
-  | EventHistoryEvent;
+  | EventHistoryEvent
+  | MonitorStartedEvent
+  | MonitorPhaseEvent
+  | MonitorCompleteEvent;

@@ -484,6 +484,23 @@ def resolve_investigator(state: GameState, player: Player) -> str:
     ]
 
     if not minion_players:
+        # No one registers as Minion (e.g. Spy hiding).
+        # Fabricate a pair with two random non-Investigator players
+        # and a random Minion role from the script.
+        candidates = [p for p in state.players if p.seat != player.seat]
+        if len(candidates) >= 2:
+            pair_players = state.rng.sample(candidates, 2)
+            pair = [pair_players[0].seat, pair_players[1].seat]
+            # Pick a random Minion role name from the script
+            script_minion_names = [
+                p.role.name for p in state.players if p.role.role_type == RoleType.MINION
+            ]
+            if not script_minion_names:
+                script_minion_names = ["Poisoner"]  # fallback
+            role_name = state.rng.choice(script_minion_names)
+            return (f"You learn that 1 of [{state.player_at(pair[0]).character_name} (Seat {pair[0]}), "
+                    f"{state.player_at(pair[1]).character_name} (Seat {pair[1]})] "
+                    f"is the {role_name}.")
         return "You learn that no Minions are in play."
 
     target = state.rng.choice(minion_players)
@@ -831,13 +848,20 @@ def resolve_chambermaid(state: GameState, player: Player, action: NightAction) -
 
 
 def resolve_exorcist(state: GameState, player: Player, action: NightAction) -> str | None:
-    """Exorcist blocks a chosen Demon from acting tonight."""
+    """Exorcist blocks a chosen Demon from acting tonight.
+
+    May not choose the same player two nights in a row.
+    """
     if should_malfunction(player):
         return None
     if not action.targets:
         return None
 
     target = state.player_at(action.targets[0])
+    # Cannot choose the same player two nights in a row
+    last_target = player.hidden_state.get("exorcist_last_target")
+    if last_target is not None and last_target == target.seat:
+        return None
     if target.role.role_type == RoleType.DEMON:
         target.hidden_state["exorcised_night"] = state.day_number
     player.hidden_state["exorcist_last_target"] = target.seat
@@ -1585,7 +1609,15 @@ def resolve_slayer_shot(state: GameState, slayer: Player, target: Player) -> boo
     """Slayer publicly chooses a player: if they're the Demon, they die.
 
     Returns True if the target died.
+    Only the actual Slayer (or someone who believes they are the Slayer,
+    e.g. a Drunk who thinks they're the Slayer) can use this ability.
     """
+    # Must actually be the Slayer (or perceive themselves as one, e.g. Drunk)
+    actual_role = slayer.role.id
+    perceived_role = slayer.perceived_role.id if slayer.perceived_role else actual_role
+    if actual_role != "slayer" and perceived_role != "slayer":
+        return False
+
     if slayer.hidden_state.get("slayer_used"):
         return False
 

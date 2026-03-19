@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import json as json_mod
 import logging
 import os
+import urllib.request
+import urllib.parse
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
@@ -99,6 +103,7 @@ class ConfiguredGameRequest(BaseModel):
     reveal_models: str = "true"  # "true" | "false" | "scramble"
     share_stats: bool = False
     speech_style: str | None = None  # Optional speech style directive
+    provider_keys: dict[str, str] | None = None  # Optional client-provided API keys (BYOK)
 
 
 class GameResponse(BaseModel):
@@ -137,6 +142,30 @@ def _mark_game_failed(runner: GameRunner, exc: Exception) -> None:
         logger.exception("Failed to save game %s to disk", game_id)
 
 
+def _save_to_github(game_id: str, content: str) -> None:
+    """Save game JSON to GitHub repo (non-blocking, best-effort)."""
+    token = os.environ.get("GITHUB_REPO_TOKEN", "")
+    if not token:
+        return
+    repo = os.environ.get("GITHUB_REPO", "NomadsandVagabonds/botc-bench")
+    path = f"backend/games/game_{game_id}.json"
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    body = json_mod.dumps({
+        "message": f"Auto-save game {game_id[:8]}",
+        "content": base64.b64encode(content.encode()).decode(),
+    }).encode()
+    req = urllib.request.Request(url, data=body, method="PUT", headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            logger.info("Game %s saved to GitHub (%d)", game_id[:8], resp.status)
+    except Exception as e:
+        logger.warning("Failed to save game %s to GitHub: %s", game_id[:8], e)
+
+
 def _save_completed_game(runner: GameRunner, result: GameResult) -> None:
     """Save a completed game's result and full event history to disk."""
     game_id = result.game_id
@@ -162,6 +191,17 @@ def _save_completed_game(runner: GameRunner, result: GameResult) -> None:
         )
     except Exception:
         logger.exception("Failed to save game %s to disk", game_id)
+
+    # Auto-save to GitHub (best-effort, non-blocking)
+    try:
+        from botc.api.persistence import _GAMES_DIR
+        game_path = _GAMES_DIR / f"game_{game_id}.json"
+        if game_path.exists():
+            asyncio.get_event_loop().run_in_executor(
+                None, _save_to_github, game_id, game_path.read_text()
+            )
+    except Exception:
+        logger.warning("GitHub auto-save skipped for game %s", game_id)
 
 
 # ---------------------------------------------------------------------------
@@ -250,12 +290,18 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
             detail=f"Need {request.num_players} seat_models, got {len(request.seat_models)}",
         )
 
-    # Collect required providers and look up their API keys from environment
+    # Collect required providers and look up their API keys
+    # Priority: client-provided keys > server .env
     required_providers = {sm.provider for sm in request.seat_models}
     provider_keys: dict[str, str] = {}
     missing: list[str] = []
 
     for provider in required_providers:
+        # Check client-provided keys first (BYOK mode)
+        if request.provider_keys and provider in request.provider_keys:
+            provider_keys[provider] = request.provider_keys[provider]
+            continue
+        # Fall back to server .env
         env_var = _PROVIDER_ENV_KEYS.get(provider)
         if not env_var:
             raise HTTPException(
@@ -271,7 +317,7 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
     if missing:
         raise HTTPException(
             status_code=400,
-            detail=f"Missing API keys in server .env: {', '.join(missing)}",
+            detail=f"Missing API keys — provide them in provider_keys or set in server .env: {', '.join(missing)}",
         )
 
     # Build agent configs — agent_ids are placeholders; setup.py assigns character names
@@ -542,6 +588,20 @@ async def get_game(game_id: str) -> dict:
     return {"game_id": game_id, "status": info["status"]}
 
 
+@router.get("/api/games/{game_id}/download")
+async def download_game(game_id: str):
+    """Download the full game JSON file."""
+    from botc.api.persistence import _GAMES_DIR
+    game_path = _GAMES_DIR / f"game_{game_id}.json"
+    if game_path.exists():
+        return FileResponse(
+            game_path,
+            media_type="application/json",
+            filename=f"game_{game_id}.json",
+        )
+    raise HTTPException(404, "Game file not found")
+
+
 # ---------------------------------------------------------------------------
 # Stats
 # ---------------------------------------------------------------------------
@@ -551,6 +611,13 @@ async def model_stats() -> dict:
     """Return aggregate per-model performance stats from saved games."""
     from botc.api.stats import compute_model_stats
     return compute_model_stats()
+
+
+@router.get("/api/stats/leaderboard")
+async def leaderboard_stats() -> dict:
+    """Extended leaderboard: nominations, votes, kills, tokens, role breakdown."""
+    from botc.api.stats import compute_leaderboard_stats
+    return compute_leaderboard_stats()
 
 
 # ---------------------------------------------------------------------------

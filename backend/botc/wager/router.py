@@ -7,10 +7,15 @@ YES/NO shares priced by a CPMM. Buying one side moves the price.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import os
+import urllib.request
+import urllib.parse
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from . import db
@@ -130,6 +135,7 @@ def _get_runner_info(game_id: str) -> dict[str, Any] | None:
 
 class ClaimNameRequest(BaseModel):
     display_name: str = Field(..., min_length=2, max_length=24)
+    passphrase: str | None = None
 
 class PlaceBetRequest(BaseModel):
     market_id: str          # e.g. "alignment_seat_3" or "winner_evil"
@@ -143,13 +149,26 @@ class PlaceBetRequest(BaseModel):
 
 @wager_router.post("/api/wager/auth/claim")
 async def claim_name(req: ClaimNameRequest):
-    """Claim a new name or return with an existing one."""
+    """Claim a new name or log in to an existing one."""
     existing = await db.get_user_by_name(req.display_name)
     if existing:
-        # Return the existing user's token (acts as login)
-        return {"user_id": existing["id"], "token": existing["token"], "display_name": existing["display_name"]}
-    user = await db.create_user(req.display_name)
-    return {"user_id": user["id"], "token": user["token"], "display_name": user["display_name"]}
+        # Existing user — verify passphrase if one is set
+        stored_hash = existing.get("passphrase_hash")
+        if stored_hash:
+            if not req.passphrase:
+                raise HTTPException(401, "Passphrase required for this name")
+            if db.hash_passphrase(req.passphrase) != stored_hash:
+                raise HTTPException(401, "Wrong passphrase")
+        elif req.passphrase:
+            # Legacy user without passphrase — set it now
+            await db.set_passphrase(existing["id"], req.passphrase)
+        return {
+            "user_id": existing["id"], "token": existing["token"],
+            "display_name": existing["display_name"],
+            "returning": True,
+        }
+    user = await db.create_user(req.display_name, req.passphrase)
+    return {"user_id": user["id"], "token": user["token"], "display_name": user["display_name"], "returning": False}
 
 
 @wager_router.get("/api/wager/auth/me")
@@ -157,11 +176,132 @@ async def get_me(user: dict = Depends(require_user)):
     return {
         "id": user["id"],
         "display_name": user["display_name"],
+        "github_id": user.get("github_id"),
         "total_crowns_earned": user.get("total_crowns_earned", 0),
         "games_watched": user.get("games_watched", 0),
         "correct_bets": user.get("correct_bets", 0),
         "total_bets": user.get("total_bets", 0),
     }
+
+
+# Admin GitHub IDs — comma-separated in env var, or default to NomadsandVagabonds
+_ADMIN_GITHUB_IDS = set(
+    os.environ.get("ADMIN_GITHUB_IDS", "170148445").split(",")
+)
+
+
+@wager_router.get("/api/wager/auth/is-admin")
+async def check_admin(user: dict = Depends(require_user)):
+    """Check if the authenticated user is an admin (GitHub-linked, allowed ID)."""
+    github_id = user.get("github_id")
+    is_admin = github_id is not None and str(github_id) in _ADMIN_GITHUB_IDS
+    return {"is_admin": is_admin}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# GITHUB OAUTH
+# ═══════════════════════════════════════════════════════════════════
+
+def _gh_client_id() -> str:
+    return os.environ.get("GITHUB_CLIENT_ID", "")
+
+def _gh_client_secret() -> str:
+    return os.environ.get("GITHUB_CLIENT_SECRET", "")
+
+def _frontend_url() -> str:
+    return os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+
+@wager_router.get("/api/wager/auth/github")
+async def github_login(redirect: str = "/"):
+    """Redirect to GitHub OAuth authorize page."""
+    client_id = _gh_client_id()
+    log.info("GitHub OAuth check: client_id=%s, has_secret=%s, github_keys=%s, total_env_count=%d, sample_keys=%s",
+             client_id[:8] + '...' if client_id else 'EMPTY',
+             bool(_gh_client_secret()),
+             [k for k in os.environ if 'GITHUB' in k],
+             len(os.environ),
+             list(os.environ.keys())[:20])
+    if not client_id:
+        raise HTTPException(500, "GitHub OAuth not configured")
+    params = urllib.parse.urlencode({
+        "client_id": client_id,
+        "scope": "read:user",
+        "state": redirect,
+    })
+    return RedirectResponse(f"https://github.com/login/oauth/authorize?{params}")
+
+
+@wager_router.get("/api/wager/auth/github/callback")
+async def github_callback(code: str, state: str = "/"):
+    """Handle GitHub OAuth callback — exchange code for token, create/find user."""
+    if not _gh_client_id() or not _gh_client_secret():
+        raise HTTPException(500, "GitHub OAuth not configured")
+
+    # Exchange code for access token
+    try:
+        token_data = await asyncio.to_thread(_github_exchange_code, code)
+    except Exception as e:
+        log.error("GitHub token exchange failed: %s", e)
+        raise HTTPException(502, "GitHub authentication failed")
+
+    access_token = token_data.get("access_token")
+    if not access_token:
+        log.error("No access_token in GitHub response: %s", token_data)
+        raise HTTPException(502, "GitHub authentication failed")
+
+    # Get GitHub user profile
+    try:
+        gh_user = await asyncio.to_thread(_github_get_user, access_token)
+    except Exception as e:
+        log.error("GitHub user fetch failed: %s", e)
+        raise HTTPException(502, "Could not fetch GitHub profile")
+
+    github_id = str(gh_user.get("id", ""))
+    github_name = gh_user.get("login", "github_user")
+
+    # Find or create wager user
+    existing = await db.get_user_by_github_id(github_id)
+    if existing:
+        wager_token = existing["token"]
+    else:
+        user = await db.create_user_github(github_name, github_id)
+        wager_token = user["token"]
+
+    # Redirect to frontend with token
+    redirect_path = state if state.startswith("/") else "/"
+    sep = "&" if "?" in redirect_path else "?"
+    frontend = _frontend_url()
+    return RedirectResponse(f"{frontend}{redirect_path}{sep}wager_token={wager_token}")
+
+
+def _github_exchange_code(code: str) -> dict:
+    """Synchronous GitHub OAuth token exchange (run via to_thread)."""
+    data = urllib.parse.urlencode({
+        "client_id": _gh_client_id(),
+        "client_secret": _gh_client_secret(),
+        "code": code,
+    }).encode()
+    req = urllib.request.Request(
+        "https://github.com/login/oauth/access_token",
+        data=data,
+        headers={"Accept": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
+
+
+def _github_get_user(access_token: str) -> dict:
+    """Synchronous GitHub API call to get user profile (run via to_thread)."""
+    req = urllib.request.Request(
+        "https://api.github.com/user",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -399,21 +539,71 @@ async def list_bets(game_id: str, user: dict = Depends(require_user)):
     return [_format_bet(b) for b in bets]
 
 
-@wager_router.delete("/api/wager/games/{game_id}/bets/{bet_id}")
-async def cancel_bet(game_id: str, bet_id: int, user: dict = Depends(require_user)):
-    """Cancel a bet. The Crown taketh a 10% tax. Shares are burned (not returned to pool)."""
+@wager_router.post("/api/wager/games/{game_id}/bets/{bet_id}/sell")
+async def sell_bet(game_id: str, bet_id: int, user: dict = Depends(require_user)):
+    """Sell shares back to the market at current price minus 10% spread."""
     bet = await db.get_bet(bet_id)
     if not bet or bet["user_id"] != user["id"]:
         raise HTTPException(404, "Bet not found")
     if bet["settled"]:
         raise HTTPException(400, "This wager hath been settled already.")
-    refund = await db.cancel_bet(bet_id)
-    tax = bet["crowns_spent"] - refund
+
+    info = _get_runner_info(game_id)
+    if not info:
+        raise HTTPException(404, "Game not found")
+
+    markets = await _ensure_markets(game_id, info.get("total_players", 10))
+    market = markets.get(bet["market_id"])
+    if not market:
+        raise HTTPException(404, "Market not found")
+
+    shares = bet["shares_acquired"]
+    side = bet["side"]
+
+    # Sell shares back to CPMM
+    if side == "yes":
+        gross = market.sell_yes(shares)
+    else:
+        gross = market.sell_no(shares)
+
+    # 10% market maker spread
+    tax = gross * 0.10
+    net = gross - tax
+
+    # Update pool state + record history
+    await db.update_market_pools(game_id, bet["market_id"], market.yes_pool, market.no_pool)
+    await db.record_market_history(game_id, bet["market_id"], market.prob_yes, "sell", user.get("display_name"))
+
+    # Mark bet as settled (sold) — store net as payout so frontend can distinguish sold vs lost
+    await db.settle_bet(bet_id, correct=None, payout=net)
+    await db.update_session_budget(bet["session_id"], net)
+
     return {
-        "cancelled": True,
-        "refund": round(refund, 1),
+        "sold": True,
+        "gross": round(gross, 1),
         "tax": round(tax, 1),
-        "message": f"The Crown retaineth {tax:.0f} Crown{'s' if tax != 1 else ''} as tax.",
+        "net": round(net, 1),
+        "market": {
+            "market_id": market.market_id,
+            "prob_yes": round(market.prob_yes, 4),
+            "prob_no": round(market.prob_no, 4),
+        },
+    }
+
+
+@wager_router.post("/api/wager/games/{game_id}/settle")
+async def trigger_settle(game_id: str, user: dict = Depends(require_user)):
+    """Manually trigger settlement (for replay mode)."""
+    from .settlement import settle_game
+    result = await settle_game(game_id)
+    # Reload user's session
+    session = await db.get_session(user["id"], game_id)
+    return {
+        "settled": result.get("settled", 0),
+        "session": {
+            "crowns_won": session["crowns_won"] if session else 0,
+            "settled": session["settled"] if session else False,
+        },
     }
 
 

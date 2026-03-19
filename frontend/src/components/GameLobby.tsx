@@ -20,16 +20,27 @@ const AVAILABLE_MODELS = [
   { id: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai' },
   { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai' },
   { id: 'gpt-5.4', label: 'GPT-5.4', provider: 'openai' },
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai' },
   // gpt-5.4-pro uses completions API, not chat — not compatible
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'google' },
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google' },
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google' },
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', provider: 'google' },
+  // OpenRouter — use any model via a single API key
+  { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (OR)', provider: 'openrouter' },
+  { id: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (OR)', provider: 'openrouter' },
+  { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (OR)', provider: 'openrouter' },
+  { id: 'openai/gpt-4o', label: 'GPT-4o (OR)', provider: 'openrouter' },
+  { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash (OR)', provider: 'openrouter' },
+  { id: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B (OR)', provider: 'openrouter' },
+  { id: 'mistralai/mistral-large', label: 'Mistral Large (OR)', provider: 'openrouter' },
 ];
 
 const PROVIDER_COLORS: Record<string, string> = {
   anthropic: '#D97706',
   openai: '#10B981',
   google: '#3B82F6',
+  openrouter: '#9333EA',
 };
 
 const SCRIPTS: { label: string; value: string; note?: string }[] = [
@@ -225,7 +236,7 @@ const OPTIONS_TABS: { id: OptionsTab; label: string; stub?: boolean }[] = [
   { id: 'monitor', label: 'Monitor' },
   { id: 'wager', label: "Crown's Wager" },
   { id: 'probabilities', label: 'Probabilities', stub: true },
-  { id: 'api', label: 'API Keys', stub: true },
+  { id: 'api', label: 'API Keys' },
   { id: 'voice', label: 'Voice' },
   { id: 'stats', label: 'Stats' },
 ];
@@ -494,10 +505,11 @@ function StatsPanel({ shareStats, revealModels, onToggleShare }: {
 
 // ── Monitor panel ────────────────────────────────────────────────────
 
-type MonitorSubTab = 'run' | 'batch' | 'compare' | 'settings';
+type MonitorSubTab = 'run' | 'results' | 'batch' | 'compare' | 'settings';
 
 const MONITOR_SUB_TABS: { id: MonitorSubTab; label: string; stub?: boolean }[] = [
   { id: 'run', label: 'Run Monitor' },
+  { id: 'results', label: 'Results' },
   { id: 'batch', label: 'Batch Run', stub: true },
   { id: 'compare', label: 'Compare Models', stub: true },
   { id: 'settings', label: 'Settings', stub: true },
@@ -511,8 +523,10 @@ const MONITOR_MODELS = [
   { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai', cost: '$$' },
   { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai', cost: '$' },
   { id: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai', cost: '$$' },
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai', cost: '$' },
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'google', cost: '$' },
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google', cost: '$$' },
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google', cost: '$' },
 ];
 
 function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
@@ -616,6 +630,85 @@ function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
           ))}
         </div>
         <StubPanel title="Multi-Model Comparison" description="Run the same game through 2-5 different monitor models side-by-side. Compare deception detection scores, analysis quality, cost efficiency, and where each model's suspicions diverge. Export comparison tables." />
+      </div>
+    );
+  }
+
+  if (subTab === 'results') {
+    const gamesWithMonitors = completedGames.filter(g => (monitorResults[g.game_id] ?? []).length > 0);
+    return (
+      <div>
+        <div style={subTabBarStyle}>
+          {MONITOR_SUB_TABS.map(t => (
+            <button key={t.id} style={{ ...subTabStyle, ...(subTab === t.id ? subTabActiveStyle : {}), ...(t.id === MONITOR_SUB_TABS[MONITOR_SUB_TABS.length - 1].id ? { borderRight: 'none' } : {}) }}
+              onClick={() => setSubTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+        {gamesWithMonitors.length === 0 ? (
+          <div style={{ padding: '20px 0', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.8rem', color: '#3d2812', fontWeight: 700 }}>No Monitor Results Yet</div>
+            <div style={{ fontSize: '0.68rem', color: '#8b7355', marginTop: 4 }}>Run a monitor on a completed game in the "Run Monitor" tab.</div>
+          </div>
+        ) : (
+          <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {gamesWithMonitors.map(g => {
+              const results = monitorResults[g.game_id] ?? [];
+              return (
+                <div key={g.game_id} style={{
+                  padding: '10px 12px', borderRadius: 6,
+                  background: 'rgba(92, 61, 26, 0.05)',
+                  border: '1px solid rgba(92, 61, 26, 0.12)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#3d2812', fontWeight: 700 }}>
+                      {g.game_id.slice(0, 8)}
+                    </span>
+                    <span style={{
+                      fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8,
+                      background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
+                      color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
+                    }}>
+                      {g.winner} wins
+                    </span>
+                    {g.total_days != null && (
+                      <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days}d</span>
+                    )}
+                    <span style={{ fontSize: '0.55rem', color: '#b89b6a' }}>
+                      {results.length} run{results.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  {results.map((r, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '4px 8px', marginTop: 3, borderRadius: 4,
+                      background: 'rgba(124, 58, 237, 0.06)',
+                    }}>
+                      <span style={{
+                        fontSize: '0.62rem', fontWeight: 700, color: '#5b21b6', minWidth: 50,
+                      }}>
+                        {r.scores.total.toFixed(1)} pts
+                      </span>
+                      <span style={{
+                        fontSize: '0.58rem', color: PROVIDER_COLORS[r.config.provider] ?? '#5c3d1a', fontWeight: 600,
+                      }}>
+                        {MONITOR_MODELS.find(m => m.id === r.config.model)?.label ?? r.config.model}
+                      </span>
+                      <span style={{ fontSize: '0.52rem', color: '#8b7355' }}>
+                        align: {(r.scores.alignment_accuracy * 100).toFixed(0)}%
+                      </span>
+                      <span style={{ fontSize: '0.52rem', color: '#8b7355' }}>
+                        AUC: {r.scores.auc.toFixed(2)}
+                      </span>
+                      <span style={{ fontSize: '0.52rem', color: '#8b7355' }}>
+                        bets: {(r.scores.bet_accuracy * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }
@@ -964,6 +1057,286 @@ const DEFAULT_OPTIONS: GameOptions = {
   speechStyle: '',
 };
 
+// ── Menu Button ─────────────────────────────────────────────────────
+
+function MenuButton({ children, onClick, primary, dim }: {
+  children: React.ReactNode;
+  onClick: () => void;
+  primary?: boolean;
+  dim?: boolean;
+}) {
+  const [hover, setHover] = useState(false);
+
+  const base: React.CSSProperties = {
+    minWidth: 240,
+    padding: primary ? '10px 48px' : '8px 36px',
+    fontFamily: '"Press Start 2P", "Courier New", monospace',
+    fontSize: primary ? '0.85rem' : dim ? '0.6rem' : '0.72rem',
+    fontWeight: 400,
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    cursor: 'pointer',
+    border: 'none',
+    background: 'transparent',
+    transition: 'color 0.15s ease',
+    color: hover ? '#8b1a1a' : dim ? '#8b7355' : '#3d2812',
+    textShadow: hover ? '0 0 8px rgba(139, 26, 26, 0.3)' : 'none',
+  };
+
+  return (
+    <button
+      style={base}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {children}
+    </button>
+  );
+}
+
+
+// ── Leaderboard ──────────────────────────────────────────────────────
+
+interface LeaderboardModel {
+  games_played: number;
+  overall_win_rate: number;
+  good: { played: number; wins: number; win_rate: number; noms_made: number; noms_hit_evil: number; nom_accuracy: number; votes_cast: number; votes_correct: number; vote_accuracy: number };
+  evil: { played: number; wins: number; win_rate: number; night_kills: number; mislynch_caused: number; survival_rate: number };
+  demon: { played: number; wins: number; win_rate: number };
+  avg_tokens_per_day: number;
+  avg_cost_per_day: number;
+  roles: Record<string, { played: number; wins: number; win_rate: number }>;
+}
+
+function LeaderboardView() {
+  const [data, setData] = useState<{ models: Record<string, LeaderboardModel>; total_games: number } | null>(null);
+  const [sortKey, setSortKey] = useState<string>('overall_win_rate');
+  const [expandedModel, setExpandedModel] = useState<string | null>(null);
+
+  useEffect(() => {
+    const serverUrl = localStorage.getItem('bloodbench_server_url')
+      || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    fetch(`${serverUrl}/api/stats/leaderboard`)
+      .then(r => r.json())
+      .then(setData)
+      .catch(() => {});
+  }, []);
+
+  if (!data || Object.keys(data.models).length === 0) {
+    return (
+      <div style={{ width: '100%' }}>
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d2812' }}>Leaderboard</div>
+          <div style={{ fontSize: '0.72rem', color: '#8b7355', marginTop: 4 }}>
+            {data ? 'No games played yet.' : 'Loading...'}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const models = Object.entries(data.models);
+  const sorted = [...models].sort((a, b) => {
+    const av = _getSortValue(a[1], sortKey);
+    const bv = _getSortValue(b[1], sortKey);
+    return bv - av;
+  });
+
+  const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+
+  return (
+    <div style={{ width: '100%' }}>
+      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d2812', marginBottom: 2, textAlign: 'center' }}>
+        Model Leaderboard
+      </div>
+      <div style={{ fontSize: '0.6rem', color: '#8b7355', marginBottom: 10, textAlign: 'center' }}>
+        {data.total_games} games analyzed
+      </div>
+
+      {/* Sort selector */}
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12, justifyContent: 'center' }}>
+        {[
+          { key: 'overall_win_rate', label: 'Overall' },
+          { key: 'good_win_rate', label: 'Good WR' },
+          { key: 'evil_win_rate', label: 'Evil WR' },
+          { key: 'nom_accuracy', label: 'Nom Acc' },
+          { key: 'vote_accuracy', label: 'Vote Acc' },
+          { key: 'survival_rate', label: 'Survival' },
+          { key: 'avg_cost_per_day', label: 'Cost/Day' },
+        ].map(s => (
+          <button key={s.key} onClick={() => setSortKey(s.key)} style={{
+            padding: '4px 10px', borderRadius: 3, fontSize: '0.68rem', cursor: 'pointer',
+            background: sortKey === s.key ? 'rgba(92, 61, 26, 0.2)' : 'transparent',
+            border: sortKey === s.key ? '1px solid rgba(92, 61, 26, 0.5)' : '1px solid rgba(92, 61, 26, 0.2)',
+            color: sortKey === s.key ? '#2a1a0a' : '#5a4630',
+            fontWeight: sortKey === s.key ? 700 : 500,
+          }}>{s.label}</button>
+        ))}
+      </div>
+
+      {/* Column headers — adapt to sort mode */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '22px 1fr 48px 48px 48px 48px 48px 48px',
+        gap: 4, padding: '4px 8px', marginBottom: 4,
+        fontSize: '0.58rem', color: '#5a4630', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600,
+      }}>
+        <span />
+        <span>Model</span>
+        {sortKey === 'survival_rate' ? (
+          <>
+            <span style={{ textAlign: 'center' }}>WR</span>
+            <span style={{ textAlign: 'center' }}>Evil WR</span>
+            <span style={{ textAlign: 'center' }}>Surv.</span>
+            <span style={{ textAlign: 'center' }}>Kills</span>
+            <span style={{ textAlign: 'center' }}>Mis.</span>
+            <span style={{ textAlign: 'center' }}>Games</span>
+          </>
+        ) : sortKey === 'avg_cost_per_day' ? (
+          <>
+            <span style={{ textAlign: 'center' }}>$/Day</span>
+            <span style={{ textAlign: 'center' }}>Tok/Day</span>
+            <span style={{ textAlign: 'center' }}>WR</span>
+            <span style={{ textAlign: 'center' }}>Good</span>
+            <span style={{ textAlign: 'center' }}>Evil</span>
+            <span style={{ textAlign: 'center' }}>Games</span>
+          </>
+        ) : (
+          <>
+            <span style={{ textAlign: 'center' }}>WR</span>
+            <span style={{ textAlign: 'center' }}>Good</span>
+            <span style={{ textAlign: 'center' }}>Evil</span>
+            <span style={{ textAlign: 'center' }}>Noms</span>
+            <span style={{ textAlign: 'center' }}>Votes</span>
+            <span style={{ textAlign: 'center' }}>Games</span>
+          </>
+        )}
+      </div>
+
+      {/* Table */}
+      <div style={{ maxHeight: '48vh', overflowY: 'auto' }}>
+        {sorted.map(([model, m], rank) => {
+          const shortName = model.replace('claude-', '').replace('-20250514', '').replace('-20251001', '')
+            .replace('-preview', '');
+          const provider = model.includes('claude') ? 'anthropic' : model.includes('gpt') || model.includes('o4') || model.includes('o3') ? 'openai' : model.includes('gemini') ? 'google' : 'openrouter';
+          const isExpanded = expandedModel === model;
+
+          return (
+            <div key={model} style={{ marginBottom: 4 }}>
+              <div
+                onClick={() => setExpandedModel(isExpanded ? null : model)}
+                style={{
+                  display: 'grid', gridTemplateColumns: '18px 1fr 48px 48px 48px 48px 48px 48px',
+                  gap: 4, alignItems: 'center', padding: '6px 8px', borderRadius: 4, cursor: 'pointer',
+                  background: rank === 0 ? 'rgba(201, 168, 76, 0.1)' : 'rgba(92, 61, 26, 0.04)',
+                  border: `1px solid ${rank === 0 ? 'rgba(201, 168, 76, 0.3)' : 'rgba(92, 61, 26, 0.1)'}`,
+                }}
+              >
+                <span style={{ fontSize: '0.7rem', color: '#3d2812', fontWeight: 700 }}>#{rank + 1}</span>
+                <span style={{
+                  fontSize: '0.72rem', fontWeight: 700,
+                  color: PROVIDER_COLORS[provider] ?? '#3d2812',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{shortName}</span>
+                {sortKey === 'survival_rate' ? (
+                  <>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center', fontWeight: 600 }}>{pct(m.overall_win_rate)}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#991B1B', textAlign: 'center', fontWeight: 600 }}>{m.evil.played > 0 ? pct(m.evil.win_rate) : '-'}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center', fontWeight: 600 }}>{m.evil.played > 0 ? pct(m.evil.survival_rate) : '-'}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center' }}>{m.evil.night_kills}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center' }}>{m.evil.mislynch_caused}</span>
+                    <span style={{ fontSize: '0.62rem', color: '#5a4630', textAlign: 'center' }}>{m.games_played}g</span>
+                  </>
+                ) : sortKey === 'avg_cost_per_day' ? (
+                  <>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center', fontWeight: 600 }}>${m.avg_cost_per_day.toFixed(3)}</span>
+                    <span style={{ fontSize: '0.62rem', color: '#2a1a0a', textAlign: 'center' }}>{(m.avg_tokens_per_day / 1000).toFixed(0)}k</span>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center', fontWeight: 600 }}>{pct(m.overall_win_rate)}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#1E40AF', textAlign: 'center', fontWeight: 600 }}>{m.good.played > 0 ? pct(m.good.win_rate) : '-'}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#991B1B', textAlign: 'center', fontWeight: 600 }}>{m.evil.played > 0 ? pct(m.evil.win_rate) : '-'}</span>
+                    <span style={{ fontSize: '0.62rem', color: '#5a4630', textAlign: 'center' }}>{m.games_played}g</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center', fontWeight: 600 }}>{pct(m.overall_win_rate)}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#1E40AF', textAlign: 'center', fontWeight: 600 }}>{m.good.played > 0 ? pct(m.good.win_rate) : '-'}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#991B1B', textAlign: 'center', fontWeight: 600 }}>{m.evil.played > 0 ? pct(m.evil.win_rate) : '-'}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center' }}>{m.good.noms_made > 0 ? pct(m.good.nom_accuracy) : '-'}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center' }}>{m.good.votes_cast > 0 ? pct(m.good.vote_accuracy) : '-'}</span>
+                    <span style={{ fontSize: '0.62rem', color: '#5a4630', textAlign: 'center' }}>{m.games_played}g</span>
+                  </>
+                )}
+              </div>
+
+              {/* Expanded detail */}
+              {isExpanded && (
+                <div style={{
+                  padding: '8px 12px', margin: '2px 0 4px',
+                  background: 'rgba(92, 61, 26, 0.06)', borderRadius: 4,
+                  border: '1px solid rgba(92, 61, 26, 0.1)',
+                  fontSize: '0.68rem', color: '#2a1a0a',
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#1E40AF', marginBottom: 3 }}>Good ({m.good.played}g, {pct(m.good.win_rate)} WR)</div>
+                      <div>Noms: {m.good.noms_hit_evil}/{m.good.noms_made} hit evil ({m.good.noms_made > 0 ? pct(m.good.nom_accuracy) : '-'})</div>
+                      <div>Votes: {m.good.votes_correct}/{m.good.votes_cast} correct ({m.good.votes_cast > 0 ? pct(m.good.vote_accuracy) : '-'})</div>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#991B1B', marginBottom: 3 }}>Evil ({m.evil.played}g, {pct(m.evil.win_rate)} WR)</div>
+                      <div>Night kills: {m.evil.night_kills}</div>
+                      <div>Mislynches caused: {m.evil.mislynch_caused}</div>
+                      <div>Survival: {pct(m.evil.survival_rate)}</div>
+                      {m.demon.played > 0 && <div>Demon: {m.demon.wins}/{m.demon.played} wins</div>}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 4 }}>
+                    <span style={{ color: '#8b7355' }}>
+                      Avg tokens/day: {m.avg_tokens_per_day.toLocaleString()} | Cost/day: ${m.avg_cost_per_day.toFixed(3)}
+                    </span>
+                  </div>
+                  {Object.keys(m.roles).length > 0 && (
+                    <div>
+                      <div style={{ fontWeight: 700, marginBottom: 2 }}>Roles played:</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {Object.entries(m.roles).map(([role, rs]) => (
+                          <span key={role} style={{
+                            padding: '1px 6px', borderRadius: 8, fontSize: '0.52rem',
+                            background: rs.win_rate >= 0.5 ? '#10B98118' : '#EF444418',
+                            color: rs.win_rate >= 0.5 ? '#065F46' : '#991B1B',
+                          }}>
+                            {role} {rs.wins}/{rs.played}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+    </div>
+  );
+}
+
+function _getSortValue(m: LeaderboardModel, key: string): number {
+  switch (key) {
+    case 'overall_win_rate': return m.overall_win_rate;
+    case 'good_win_rate': return m.good.win_rate;
+    case 'evil_win_rate': return m.evil.win_rate;
+    case 'nom_accuracy': return m.good.nom_accuracy;
+    case 'vote_accuracy': return m.good.vote_accuracy;
+    case 'survival_rate': return m.evil.survival_rate;
+    case 'avg_cost_per_day': return -m.avg_cost_per_day; // lower is better
+    default: return m.overall_win_rate;
+  }
+}
+
+
 // ── Main component ──────────────────────────────────────────────────
 
 export function GameLobby() {
@@ -996,7 +1369,7 @@ export function GameLobby() {
   }, [navigate]);
 
   // View state
-  const [view, setView] = useState<'menu' | 'setup' | 'options'>('menu');
+  const [view, setView] = useState<'menu' | 'setup' | 'options' | 'games' | 'leaderboard'>('menu');
   const [optionsTab, setOptionsTab] = useState<OptionsTab>('rules');
 
   // Game config
@@ -1006,6 +1379,23 @@ export function GameLobby() {
   const [seatRoles, setSeatRoles] = useState<string[]>(Array(15).fill(''));
   const [roleMode, setRoleMode] = useState<'random' | 'assigned'>('random');
   const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_OPTIONS });
+
+  // Client-provided API keys (BYOK mode — stored in localStorage, never sent to server .env)
+  const [clientKeys, setClientKeys] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('bloodbench_api_keys');
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
+  const updateClientKey = useCallback((provider: string, key: string) => {
+    setClientKeys(prev => {
+      const next = { ...prev, [provider]: key };
+      // Remove empty keys
+      if (!key) delete next[provider];
+      localStorage.setItem('bloodbench_api_keys', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   // Game list
   const [games, setGames] = useState<GameListItem[]>([]);
@@ -1111,6 +1501,8 @@ export function GameLobby() {
         const model = AVAILABLE_MODELS.find((m) => m.id === modelId);
         return { provider: model?.provider ?? 'anthropic', model: modelId };
       });
+      // Include client-provided API keys if any (BYOK mode)
+      const hasClientKeys = Object.keys(clientKeys).length > 0;
       const result = await createConfiguredGame({
         script,
         num_players: playerCount,
@@ -1121,15 +1513,16 @@ export function GameLobby() {
         reveal_models: options.revealModels,
         share_stats: options.shareStats && options.revealModels === 'true',
         speech_style: options.speechStyle || null,
+        ...(hasClientKeys ? { provider_keys: clientKeys } : {}),
       });
       navigateWithTransition(`/game/${result.game_id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
       if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
-      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add to .env.');
+      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab or server .env.');
       else setStartError(msg);
     } finally { setStarting(false); }
-  }, [playerCount, script, seatModels, seatRoles, roleMode, roleWarnings, options, navigate]);
+  }, [playerCount, script, seatModels, seatRoles, roleMode, roleWarnings, options, clientKeys, navigate]);
 
   const isAssignedAvailable = script in SCRIPT_ROLES;
 
@@ -1434,7 +1827,7 @@ export function GameLobby() {
                     </div>
                     <button onClick={() => navigateWithTransition(`/spectate/${g.game_id}`)} style={{
                       padding: '4px 14px', fontSize: '0.7rem', fontWeight: 700,
-                      background: 'transparent', color: '#c9a84c', border: '1px solid #c9a84c55',
+                      background: 'rgba(92, 61, 26, 0.15)', color: '#3d2812', border: '1px solid rgba(92, 61, 26, 0.3)',
                       borderRadius: 4, cursor: 'pointer', fontFamily: 'Georgia, serif',
                     }}>
                       Replay &amp; Bet
@@ -1449,7 +1842,40 @@ export function GameLobby() {
           <StubPanel title="Probability Tweaks" description="Fine-tune game mechanics: drunk information accuracy, poison effects, whisper overhear chance, Spy registration probabilities, and other programmatic percentages." />
         )}
         {optionsTab === 'api' && (
-          <StubPanel title="API Key Management" description="Add, update, or remove API keys for Anthropic, OpenAI, and Google. Configure new models as providers release them. Keys are stored in the server .env file." />
+          <div style={{ padding: '12px 0' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d2812', marginBottom: 4 }}>API Keys</div>
+            <div style={{ fontSize: '0.65rem', color: '#8b7355', marginBottom: 12, lineHeight: 1.5 }}>
+              Bring your own keys. Stored in your browser only — never sent to the server's .env.
+              If empty, the server's .env keys are used as fallback.
+            </div>
+            {[
+              { provider: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...' },
+              { provider: 'openai', label: 'OpenAI', placeholder: 'sk-...' },
+              { provider: 'google', label: 'Google (Gemini)', placeholder: 'AIza...' },
+              { provider: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...' },
+            ].map(({ provider, label, placeholder }) => (
+              <div key={provider} style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: '0.7rem', color: '#5a4630', fontWeight: 600, display: 'block', marginBottom: 3 }}>
+                  {label}
+                  {clientKeys[provider] && <span style={{ color: '#2d5a2d', marginLeft: 6 }}>Set</span>}
+                </label>
+                <input
+                  type="password"
+                  value={clientKeys[provider] ?? ''}
+                  onChange={e => updateClientKey(provider, e.target.value)}
+                  placeholder={placeholder}
+                  style={{
+                    width: '100%', padding: '6px 10px', boxSizing: 'border-box',
+                    background: '#f5efe0', border: '1px solid #d4c5a0', borderRadius: 4,
+                    fontSize: '0.72rem', fontFamily: 'monospace', color: '#3d2812',
+                  }}
+                />
+              </div>
+            ))}
+            <div style={{ fontSize: '0.6rem', color: '#b89b6a', marginTop: 8, fontStyle: 'italic' }}>
+              Keys are saved to localStorage. Clear your browser data to remove them.
+            </div>
+          </div>
         )}
         {optionsTab === 'voice' && (
           <VoicePanel games={games} />
@@ -1468,74 +1894,70 @@ export function GameLobby() {
   // ── Render: Main menu ──────────────────────────────────────────────
 
   const menuView = (
-    <>
-      <div style={st.menuArea}>
-        <button style={{ ...st.menuBtn, ...st.menuBtnPrimary }} onClick={() => setView('setup')}>
-          Start Game
-        </button>
+    <div style={st.menuArea}>
+      <MenuButton primary onClick={() => setView('setup')}>Start Game</MenuButton>
+      <MenuButton onClick={() => setView('options')}>Options</MenuButton>
+      <MenuButton onClick={() => setView('leaderboard')}>Leaderboard</MenuButton>
+      {games.length > 0 && (
+        <MenuButton onClick={() => setView('games')}>Past Games ({games.length})</MenuButton>
+      )}
+      <MenuButton dim onClick={() => window.close()}>Quit</MenuButton>
+    </div>
+  );
 
-        <button style={st.menuBtn} onClick={() => setView('options')}>
-          Options
-        </button>
-
-        {games.length > 0 && (
-          <button style={st.menuBtn} onClick={() => {
-            document.getElementById('games-section')?.scrollIntoView({ behavior: 'smooth' });
-          }}>
-            Past Games ({games.length})
-          </button>
-        )}
-
-        <button style={{ ...st.menuBtn, ...st.quitBtn }} onClick={() => window.close()}>
-          Quit
-        </button>
+  const gamesView = (
+    <div style={{ width: '100%' }}>
+      <button style={st.backBtn} onClick={() => setView('menu')}>Back</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={st.label}>Past Games</span>
+        <button style={st.smallBtn} onClick={() => void fetchGames()}>Refresh</button>
       </div>
-
-      {/* Past games */}
-      {(games.length > 0 || gamesError) && (
-        <div id="games-section" style={st.gamesSection}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={st.label}>Past Games</span>
-            <button style={st.smallBtn} onClick={() => void fetchGames()}>Refresh</button>
-          </div>
-          {gamesError && <div style={st.errorBox}>{gamesError}</div>}
-          {gamesLoading ? (
-            <div style={{ textAlign: 'center', color: '#8b7355', padding: 12, fontSize: '0.8rem' }}>Loading...</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {games.map((g) => (
-                <div key={g.game_id} style={{ ...st.gameCard, justifyContent: 'flex-start', gap: 8 }} role="button" tabIndex={0}>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => navigateWithTransition(`/game/${g.game_id}`)}>
-                    <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>{g.game_id.slice(0, 8)}</span>
-                    <span style={{
-                      fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase',
-                      background: g.status === 'running' ? '#F59E0B22' : g.status === 'completed' ? '#10B98122' : '#EF444422',
-                      color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#065F46' : '#991B1B',
-                    }}>{g.status}</span>
-                    {g.winner && (
-                      <span style={{
-                        fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                        background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
-                        color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
-                      }}>{g.winner} wins</span>
-                    )}
-                  </div>
-                  {g.status === 'running' && (
-                    <button onClick={(e) => { e.stopPropagation(); navigateWithTransition(`/spectate/${g.game_id}`); }} style={{
-                      padding: '2px 10px', fontSize: '0.6rem', fontWeight: 700,
-                      background: '#c9a84c', color: '#1a1a2e', border: 'none',
-                      borderRadius: 4, cursor: 'pointer', fontFamily: 'Georgia, serif',
-                    }}>
-                      Spectate
-                    </button>
-                  )}
-                </div>
-              ))}
+      {gamesError && <div style={st.errorBox}>{gamesError}</div>}
+      {gamesLoading ? (
+        <div style={{ textAlign: 'center', color: '#8b7355', padding: 12, fontSize: '0.8rem' }}>Loading...</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
+          {games.map((g) => (
+            <div key={g.game_id} style={{ ...st.gameCard, justifyContent: 'flex-start', gap: 8 }} role="button" tabIndex={0}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => navigateWithTransition(`/game/${g.game_id}`)}>
+                <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>{g.game_id.slice(0, 8)}</span>
+                <span style={{
+                  fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase',
+                  background: g.status === 'running' ? '#F59E0B22' : g.status === 'completed' ? '#10B98122' : '#EF444422',
+                  color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#065F46' : '#991B1B',
+                }}>{g.status}</span>
+                {g.winner && (
+                  <span style={{
+                    fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                    background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
+                    color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
+                  }}>{g.winner} wins</span>
+                )}
+                {g.total_days != null && (
+                  <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days}d</span>
+                )}
+              </div>
+              {g.status === 'running' && (
+                <button onClick={(e) => { e.stopPropagation(); navigateWithTransition(`/spectate/${g.game_id}`); }} style={{
+                  padding: '2px 10px', fontSize: '0.6rem', fontWeight: 700,
+                  background: '#c9a84c', color: '#1a1a2e', border: 'none',
+                  borderRadius: 4, cursor: 'pointer', fontFamily: 'Georgia, serif',
+                }}>
+                  Spectate
+                </button>
+              )}
             </div>
-          )}
+          ))}
         </div>
       )}
-    </>
+    </div>
+  );
+
+  const leaderboardView = (
+    <div style={{ width: '100%' }}>
+      <button style={st.backBtn} onClick={() => setView('menu')}>Back</button>
+      <LeaderboardView />
+    </div>
   );
 
   return (
@@ -1548,6 +1970,8 @@ export function GameLobby() {
           {view === 'menu' && menuView}
           {view === 'setup' && setupView}
           {view === 'options' && optionsView}
+          {view === 'games' && gamesView}
+          {view === 'leaderboard' && leaderboardView}
         </div>
       </div>
     </>
@@ -1577,7 +2001,10 @@ const st: Record<string, React.CSSProperties> = {
     pointerEvents: 'none',
   },
   content: {
-    position: 'relative',
+    position: 'fixed',
+    top: '28vh',
+    left: '50%',
+    transform: 'translateX(-50%)',
     zIndex: 1,
     display: 'flex',
     flexDirection: 'column',
@@ -1585,7 +2012,9 @@ const st: Record<string, React.CSSProperties> = {
     width: '100%',
     maxWidth: 620,
     padding: '0 24px',
-    paddingTop: '30vh',
+    maxHeight: '54vh',
+    overflowY: 'auto',
+    boxSizing: 'border-box',
   },
   menuArea: {
     display: 'flex',

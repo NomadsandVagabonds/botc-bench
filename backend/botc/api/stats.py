@@ -257,6 +257,244 @@ def compute_model_stats() -> dict[str, Any]:
     }
 
 
+def compute_leaderboard_stats() -> dict[str, Any]:
+    """Extended stats for the leaderboard — nominations, votes, kills, tokens, role breakdown.
+
+    Good metrics (only counted when player is good):
+      - noms_made, noms_hit_evil, nom_accuracy
+      - votes_cast, votes_correct, vote_accuracy (YES on evil, NO on good)
+
+    Evil metrics:
+      - night_kills (kills outside executions)
+      - mislynch_caused (good players executed when this evil player was alive)
+      - survival_rate (days survived / total days)
+      - wins as evil, wins as demon
+
+    General:
+      - win_rate by role (TB roles only)
+      - avg tokens per day
+      - avg cost per day
+    """
+    games_dir = _GAMES_DIR
+    if not games_dir.exists():
+        return {"models": {}, "role_stats": {}, "total_games": 0}
+
+    accum: dict[str, dict[str, Any]] = {}
+    role_accum: dict[str, dict[str, dict[str, Any]]] = {}  # model -> role -> stats
+    total_games = 0
+
+    for path in sorted(games_dir.glob("game_*.json")):
+        try:
+            data = json.loads(path.read_text())
+        except Exception:
+            continue
+
+        result = data.get("result") or data.get("result_data")
+        if not result:
+            continue
+        winner = result.get("winner")
+        if not winner:
+            continue
+
+        players = result.get("players", [])
+        if not players:
+            continue
+
+        total_games += 1
+        total_days = result.get("total_days", 1) or 1
+        events = data.get("events", [])
+        seat_models = _extract_seat_models(data)
+        seat_role_types = _extract_seat_role_types(data)
+
+        # Build seat -> player info
+        seat_info: dict[int, dict] = {}
+        for p in players:
+            seat = p.get("seat")
+            if seat is not None:
+                seat_info[seat] = p
+
+        # Extract nominations, votes, deaths from events
+        nominations = []
+        votes: list[dict] = []
+        deaths: list[dict] = []
+        executions: list[dict] = []
+        token_events: list[dict] = []
+
+        for e in events:
+            t = e.get("type", "")
+            d = e.get("data", {})
+            if t == "nomination.result":
+                nominations.append(d)
+            elif t == "vote.cast":
+                votes.append(d)
+            elif t == "death":
+                deaths.append(d)
+            elif t == "execution":
+                executions.append(d)
+            elif t == "agent.tokens":
+                token_events.append(d)
+
+        # Executed seats
+        executed_seats = {e.get("seat") for e in executions}
+        # Night kill seats
+        night_kill_seats = {d.get("seat") for d in deaths if d.get("cause") in ("night_kill", "demon_kill")}
+
+        for p in players:
+            seat = p.get("seat")
+            model = seat_models.get(seat, "") if seat is not None else ""
+            if not model:
+                continue
+            alignment = p.get("alignment", "")
+            role = p.get("role", "")
+            survived = p.get("survived", True)
+            team_won = alignment == winner
+
+            if model not in accum:
+                accum[model] = {
+                    "games": set(),
+                    # Good metrics
+                    "good_noms_made": 0, "good_noms_hit_evil": 0,
+                    "good_votes_cast": 0, "good_votes_correct": 0,
+                    "good_played": 0, "good_wins": 0,
+                    # Evil metrics
+                    "evil_played": 0, "evil_wins": 0,
+                    "evil_night_kills": 0, "evil_mislynch_caused": 0,
+                    "evil_days_survived": 0, "evil_total_days": 0,
+                    # Demon
+                    "demon_played": 0, "demon_wins": 0,
+                    # Tokens
+                    "total_tokens": 0, "total_cost": 0.0, "total_days": 0,
+                }
+
+            a = accum[model]
+            a["games"].add(path.stem)
+            a["total_days"] += total_days
+
+            # Per-agent token cost
+            agent_tokens_for_seat = [
+                te for te in token_events if te.get("seat") == seat
+            ]
+            for te in agent_tokens_for_seat:
+                a["total_tokens"] += te.get("input_tokens", 0) + te.get("output_tokens", 0)
+                a["total_cost"] += te.get("cost_usd", 0.0)
+
+            if alignment == "good":
+                a["good_played"] += 1
+                if team_won:
+                    a["good_wins"] += 1
+
+                # Good nomination accuracy: did they nominate evil?
+                for nom in nominations:
+                    if nom.get("nominator") == seat:
+                        a["good_noms_made"] += 1
+                        nominee_seat = nom.get("nominee")
+                        nominee_info = seat_info.get(nominee_seat, {})
+                        if nominee_info.get("alignment") == "evil":
+                            a["good_noms_hit_evil"] += 1
+
+                # Good vote accuracy: YES on evil nominee, NO on good nominee
+                for v in votes:
+                    if v.get("seat") == seat:
+                        a["good_votes_cast"] += 1
+                        nominee_seat = v.get("nominee")
+                        nominee_info = seat_info.get(nominee_seat, {})
+                        voted_yes = v.get("vote", False)
+                        nominee_evil = nominee_info.get("alignment") == "evil"
+                        if (voted_yes and nominee_evil) or (not voted_yes and not nominee_evil):
+                            a["good_votes_correct"] += 1
+
+            elif alignment == "evil":
+                a["evil_played"] += 1
+                if team_won:
+                    a["evil_wins"] += 1
+
+                # Survival rate: estimate days survived
+                death_event = next((d for d in deaths if d.get("seat") == seat), None)
+                if death_event:
+                    death_day = death_event.get("death_day", total_days)
+                    a["evil_days_survived"] += death_day
+                else:
+                    a["evil_days_survived"] += total_days
+                a["evil_total_days"] += total_days
+
+                # Night kills (demon only)
+                if _is_demon(role, seat, seat_role_types):
+                    a["demon_played"] += 1
+                    if team_won:
+                        a["demon_wins"] += 1
+                    a["evil_night_kills"] += len(night_kill_seats)
+
+                # Mislynch: good players executed while this evil player was alive
+                for ex_seat in executed_seats:
+                    ex_info = seat_info.get(ex_seat, {})
+                    if ex_info.get("alignment") == "good":
+                        # Was this evil player alive at the time? Approximate: they survived or died after
+                        if not death_event or death_event.get("death_day", 999) >= ex_info.get("death_day", 0):
+                            a["evil_mislynch_caused"] += 1
+
+            # Role stats
+            if model not in role_accum:
+                role_accum[model] = {}
+            if role not in role_accum[model]:
+                role_accum[model][role] = {"played": 0, "wins": 0}
+            role_accum[model][role]["played"] += 1
+            if team_won:
+                role_accum[model][role]["wins"] += 1
+
+    # Build output
+    def _rate(n: int, d: int) -> float:
+        return round(n / d, 3) if d > 0 else 0.0
+
+    models: dict[str, dict[str, Any]] = {}
+    for model, a in accum.items():
+        games_played = len(a["games"])
+        total_played = a["good_played"] + a["evil_played"]
+        total_wins = a["good_wins"] + a["evil_wins"]
+        total_days_sum = a["total_days"] or 1
+
+        models[model] = {
+            "games_played": games_played,
+            "overall_win_rate": _rate(total_wins, total_played),
+            # Good
+            "good": {
+                "played": a["good_played"], "wins": a["good_wins"],
+                "win_rate": _rate(a["good_wins"], a["good_played"]),
+                "noms_made": a["good_noms_made"],
+                "noms_hit_evil": a["good_noms_hit_evil"],
+                "nom_accuracy": _rate(a["good_noms_hit_evil"], a["good_noms_made"]),
+                "votes_cast": a["good_votes_cast"],
+                "votes_correct": a["good_votes_correct"],
+                "vote_accuracy": _rate(a["good_votes_correct"], a["good_votes_cast"]),
+            },
+            # Evil
+            "evil": {
+                "played": a["evil_played"], "wins": a["evil_wins"],
+                "win_rate": _rate(a["evil_wins"], a["evil_played"]),
+                "night_kills": a["evil_night_kills"],
+                "mislynch_caused": a["evil_mislynch_caused"],
+                "survival_rate": _rate(a["evil_days_survived"], a["evil_total_days"]),
+            },
+            # Demon
+            "demon": {
+                "played": a["demon_played"], "wins": a["demon_wins"],
+                "win_rate": _rate(a["demon_wins"], a["demon_played"]),
+            },
+            # Tokens
+            "avg_tokens_per_day": round(a["total_tokens"] / total_days_sum) if total_days_sum else 0,
+            "avg_cost_per_day": round(a["total_cost"] / total_days_sum, 4) if total_days_sum else 0,
+            # Role breakdown
+            "roles": {
+                role: {
+                    "played": rs["played"], "wins": rs["wins"],
+                    "win_rate": _rate(rs["wins"], rs["played"]),
+                }
+                for role, rs in role_accum.get(model, {}).items()
+            },
+        }
+
+    return {"models": models, "total_games": total_games}
+
+
 def build_stats_prompt_section() -> str:
     """Build a Markdown section summarizing model performance for injection into system prompts.
 

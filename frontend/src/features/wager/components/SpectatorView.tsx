@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useGameStore } from '../../../stores/gameStore.ts';
 import { TownMap } from '../../../components/game/TownMap.tsx';
 import { VotingOverlay } from '../../../components/game/VotingOverlay.tsx';
@@ -20,16 +20,27 @@ import { ReplayControls } from './ReplayControls.tsx';
 
 export function SpectatorView() {
   const { gameId } = useParams<{ gameId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const gameState = useGameStore(s => s.gameState);
   const connected = useGameStore(s => s.connected);
   const replayMode = useGameStore(s => s.replayMode);
   const {
     authenticated, authLoading, loadUser, joinGame, loadSession,
-    refreshMarkets, showAuthModal, sessionSettled,
+    refreshMarkets, showAuthModal, sessionSettled, settleGame,
   } = useWagerStore();
   const prevPhaseRef = useRef<string | null>(null);
 
   useSpectatorWS(gameId);
+
+  // Handle GitHub OAuth callback — save token from URL, clean params
+  useEffect(() => {
+    const token = searchParams.get('wager_token');
+    if (token) {
+      localStorage.setItem('wager_token', token);
+      searchParams.delete('wager_token');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (useGameStore.getState().showObserverInfo) {
@@ -61,11 +72,13 @@ export function SpectatorView() {
   }, [gameState?.phase, gameId, authenticated, refreshMarkets]);
 
   useEffect(() => {
-    if (gameState?.phase === 'game_over' && gameId && authenticated && !sessionSettled) {
-      const timer = setTimeout(() => loadSession(gameId), 3000);
+    const isOver = gameState?.phase === 'game_over' || gameState?.winner;
+    if (isOver && gameId && authenticated && !sessionSettled) {
+      // Trigger settlement, then reload session
+      const timer = setTimeout(() => settleGame(gameId), 2000);
       return () => clearTimeout(timer);
     }
-  }, [gameState?.phase, gameId, authenticated, sessionSettled, loadSession]);
+  }, [gameState?.phase, gameState?.winner, gameId, authenticated, sessionSettled, settleGame]);
 
   useEffect(() => {
     return () => { useGameStore.getState().reset(); };

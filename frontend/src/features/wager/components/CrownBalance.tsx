@@ -1,7 +1,8 @@
 import { useWagerStore } from '../wagerStore.ts';
 
 export function CrownBalance() {
-  const { crownsBudget, crownsWon, user } = useWagerStore();
+  const { crownsBudget, crownsWon, sessionSettled, user } = useWagerStore();
+  const total = sessionSettled ? crownsBudget + crownsWon : crownsBudget;
 
   return (
     <div style={{
@@ -10,7 +11,7 @@ export function CrownBalance() {
     }}>
       <img src="/coin.png" alt="Crown" style={{ width: 24, height: 24, borderRadius: '50%' }} />
       <span style={{ fontSize: 20, fontWeight: 'bold' }}>
-        {crownsBudget.toFixed(0)}
+        {total.toFixed(0)}
       </span>
       <span style={{ fontSize: 11, opacity: 0.7 }}>Crowns</span>
 

@@ -1261,7 +1261,7 @@ class GameRunner:
                                f"There are {len(state.alive_players)} villagers remaining.",
                 }],
                 temperature=0.95,
-                max_tokens=100,
+                max_tokens=512,
             )
             narration = response.content.strip().strip('"')
             self._record_tokens(
@@ -1653,7 +1653,7 @@ class GameRunner:
                     state.add_message(Message.system(
                         state.phase_id,
                         f"{slayer.character_name} uses the Slayer ability on "
-                        f"{target.character_name}... but nothing happens.",
+                        f"{target.character_name}... but the shot misses.",
                     ))
                 self._emit("message.new", {
                     "seat": None,

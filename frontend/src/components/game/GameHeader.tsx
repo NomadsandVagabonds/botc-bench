@@ -104,6 +104,22 @@ export function GameHeader({ muted = false, onToggleMute }: GameHeaderProps) {
 
       {/* Right: controls */}
       <div style={styles.right}>
+        {(phase === 'game_over' || phase === 'debrief') && gameId && (
+          <button
+            className="btn btn-secondary"
+            style={styles.smallBtn}
+            onClick={() => {
+              const url = `${window.location.protocol}//${window.location.host}/api/games/${gameId}/download`;
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `game_${gameId}.json`;
+              a.click();
+            }}
+            title="Download game JSON"
+          >
+            Download
+          </button>
+        )}
         <button
           className="btn btn-secondary"
           style={styles.smallBtn}

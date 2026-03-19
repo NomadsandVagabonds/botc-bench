@@ -184,9 +184,10 @@ async def get_me(user: dict = Depends(require_user)):
     }
 
 
-# Admin GitHub IDs — comma-separated in env var, or default to NomadsandVagabonds
+# Admin GitHub IDs — comma-separated in env var, or default to core team
+# 170148445 = NomadsandVagabonds, 52980237 = ogilg (Oscar)
 _ADMIN_GITHUB_IDS = set(
-    os.environ.get("ADMIN_GITHUB_IDS", "170148445").split(",")
+    os.environ.get("ADMIN_GITHUB_IDS", "170148445,52980237").split(",")
 )
 
 

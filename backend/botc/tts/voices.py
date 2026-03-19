@@ -56,6 +56,7 @@ VOICE_POOLS = {
 
 # Common feminine medieval name endings/patterns
 _FEMININE_NAMES = {
+    # Original
     "Astrid", "Aveline", "Beatrix", "Branwen", "Briar", "Cedany",
     "Celestine", "Colette", "Cordelia", "Daphne", "Elowen", "Elspeth",
     "Ember", "Enid", "Esmé", "Esme", "Eudora", "Evangeline",
@@ -66,6 +67,25 @@ _FEMININE_NAMES = {
     "Petra", "Primrose", "Ragnild", "Rosalind", "Rowena", "Sable",
     "Sabine", "Seraphina", "Sigrid", "Solveig", "Sybil",
     "Thalassa", "Thora", "Ursula", "Vivienne", "Winifred", "Ysolde",
+    # From original name bank
+    "Celine", "Dagny", "Elara", "Eowyn", "Estrid", "Ffion",
+    "Gwendolen", "Helena", "Hilde", "Iona", "Irina", "Katrin",
+    "Liora", "Maren", "Matilda", "Morwen", "Nessa", "Niamh",
+    "Orla", "Rhiannon", "Rosmund", "Seren", "Sorcha", "Vesper",
+    "Wren", "Zelma", "Brigid", "Dagna", "Ulfhild", "Valdis", "Wynne",
+    # New Shakespearean / Arthurian / Gothic
+    "Adeliza", "Agatha", "Anwen", "Ariadne", "Arwen", "Azenor",
+    "Benedicta", "Callista", "Clarimond", "Cressida", "Damaris",
+    "Delphine", "Eglantine", "Eithne", "Eleanora", "Emmeline",
+    "Euphemia", "Felicity", "Fortuna", "Genevieve", "Gloriana",
+    "Griselda", "Guinevere", "Hecate", "Hermione", "Honoria",
+    "Hortensia", "Ianthe", "Imogen", "Isadora", "Jessamy", "Juliana",
+    "Kerensa", "Lavinia", "Leocadia", "Lilian", "Lysandra", "Lysbet",
+    "Marguerite", "Melisande", "Melusine", "Millicent", "Morgana",
+    "Nimue", "Octavia", "Ottilie", "Ottoline", "Perpetua", "Philomena",
+    "Portia", "Prudence", "Reverie", "Rosaline", "Sybilla",
+    "Tamsin", "Tempest", "Theodora", "Thomasin", "Titania", "Undine",
+    "Venetia", "Verity", "Wisteria", "Zenobia",
 }
 
 # If not in feminine set, check common endings

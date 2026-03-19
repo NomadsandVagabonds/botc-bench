@@ -257,8 +257,11 @@ export function PlayerDetailDrawer() {
               {player.isProtected && showObserverInfo && (
                 <StatusPill label="Protected" color="#22D3EE" />
               )}
-              {!player.isAlive && player.ghostVoteUsed && (
-                <StatusPill label="Vote used" color="#6B7280" />
+              {!player.isAlive && (
+                <StatusPill
+                  label={player.ghostVoteUsed ? '\uD83D\uDC7B Vote used' : '\uD83D\uDC7B Vote ready'}
+                  color={player.ghostVoteUsed ? '#6B7280' : '#6ee7b7'}
+                />
               )}
             </div>
           </div>

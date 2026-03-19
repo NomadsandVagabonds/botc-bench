@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../stores/gameStore.ts';
 import { getProviderColor, shortModelName } from '../../utils/models.ts';
@@ -6,9 +6,8 @@ import type { NominationRecord, OnTheBlock, Player } from '../../types/game.ts';
 import { Phase } from '../../types/game.ts';
 
 /**
- * Parchment-style voting tracker pinned to the bottom of the map.
- * Shows nominations, vote tally, per-player vote indicators,
- * and "ON THE BLOCK" status for the current highest vote holder.
+ * Compact voting tracker pinned to the bottom center of the map.
+ * Shows one nomination at a time with prev/next navigation.
  */
 
 function outcomeLabel(outcome: string | null): { text: string; color: string } | null {
@@ -25,7 +24,7 @@ function outcomeLabel(outcome: string | null): { text: string; color: string } |
   }
 }
 
-function VoteRow({
+function VoteCard({
   nomination,
   players,
   aliveCount,
@@ -44,88 +43,85 @@ function VoteRow({
 
   return (
     <div style={{
-      ...row.container,
       ...(isOnTheBlock ? {
-        background: 'rgba(245, 158, 11, 0.08)',
         borderLeft: '3px solid #f59e0b',
         paddingLeft: 8,
       } : {}),
     }}>
-      {/* Who nominated whom */}
-      <div style={row.names}>
-        <span style={{ color: nominator ? getProviderColor(nominator.modelName || nominator.agentId) : '#c4a265' }}>
-          {nominator ? (nominator.characterName || shortModelName(nominator.modelName || nominator.agentId)) : `Seat ${nomination.nominatorSeat}`}
-        </span>
-        <span style={row.arrow}>accuses</span>
-        <span style={{
-          color: nominee ? getProviderColor(nominee.modelName || nominee.agentId) : '#c4a265',
-          fontWeight: 700,
-        }}>
-          {nominee ? (nominee.characterName || shortModelName(nominee.modelName || nominee.agentId)) : `Seat ${nomination.nomineeSeat}`}
-        </span>
-      </div>
-
-      {/* Vote tally */}
-      <div style={row.tally}>
-        <span style={row.forCount}>{forCount}</span>
-        <span style={row.slash}>/</span>
-        <span style={row.threshold}>{threshold}</span>
-        <span style={row.slash}>needed</span>
+      {/* Who nominated whom + tally on same line */}
+      <div style={card.row}>
+        <div style={card.names}>
+          <span style={{ color: nominator ? getProviderColor(nominator.modelName || nominator.agentId) : '#c4a265', fontWeight: 700 }}>
+            {nominator ? (nominator.characterName || shortModelName(nominator.modelName || nominator.agentId)) : `Seat ${nomination.nominatorSeat}`}
+          </span>
+          <span style={card.arrow}>accuses</span>
+          <span style={{
+            color: nominee ? getProviderColor(nominee.modelName || nominee.agentId) : '#c4a265',
+            fontWeight: 700,
+          }}>
+            {nominee ? (nominee.characterName || shortModelName(nominee.modelName || nominee.agentId)) : `Seat ${nomination.nomineeSeat}`}
+          </span>
+        </div>
+        <div style={card.tally}>
+          <span style={{ color: '#4ade80', fontWeight: 700 }}>{forCount}</span>
+          <span style={card.slash}>/</span>
+          <span style={{ color: '#c4a265', fontWeight: 600 }}>{threshold}</span>
+          {label && (
+            <span style={{ color: label.color, fontWeight: 800, fontSize: 11, marginLeft: 6, letterSpacing: '0.04em' }}>
+              {label.text}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Per-player vote dots */}
-      <div style={row.dots}>
+      <div style={card.dots}>
         {players
           .filter((p) => p.isAlive || !p.ghostVoteUsed)
           .map((p) => {
             const votedFor = nomination.votesFor.includes(p.seat);
             const votedAgainst = nomination.votesAgainst.includes(p.seat);
             const voted = votedFor || votedAgainst;
+            const isGhostVote = votedFor && !p.isAlive;
             return (
               <div
                 key={p.seat}
-                title={`${p.characterName || shortModelName(p.modelName || p.agentId)}: ${votedFor ? 'YES' : votedAgainst ? 'NO' : '...'}`}
+                title={`${p.characterName || shortModelName(p.modelName || p.agentId)}: ${isGhostVote ? 'GHOST VOTE' : votedFor ? 'YES' : votedAgainst ? 'NO' : '...'}`}
                 style={{
-                  ...row.dot,
-                  background: votedFor
-                    ? '#4ade80'
-                    : votedAgainst
-                      ? '#f87171'
-                      : '#5c4f3a',
-                  borderColor: voted ? 'transparent' : '#8b7355',
+                  ...card.dot,
+                  background: isGhostVote
+                    ? '#6ee7b7'
+                    : votedFor
+                      ? '#4ade80'
+                      : votedAgainst
+                        ? '#f87171'
+                        : '#5c4f3a',
+                  borderColor: isGhostVote ? '#4ade80' : voted ? 'transparent' : '#8b7355',
                   color: voted ? '#1a1206' : '#8b7355',
                 }}
               >
-                {votedFor ? '\u270B' : votedAgainst ? '\u2715' : p.seat}
+                {isGhostVote ? '\uD83D\uDC7B' : votedFor ? '\u270B' : votedAgainst ? '\u2715' : p.seat}
               </div>
             );
           })}
       </div>
-
-      {/* Result — now shows outcome from the on-the-block system */}
-      {label && (
-        <div style={{
-          ...row.result,
-          color: label.color,
-        }}>
-          {label.text}
-        </div>
-      )}
     </div>
   );
 }
 
-const row: Record<string, React.CSSProperties> = {
-  container: {
-    padding: '6px 0',
-    borderBottom: '1px solid rgba(139,115,85,0.2)',
+const card: Record<string, React.CSSProperties> = {
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    flexWrap: 'wrap',
   },
   names: {
     display: 'flex',
     alignItems: 'center',
     gap: 6,
     fontSize: 13,
-    fontWeight: 600,
   },
   arrow: {
     color: '#8b7355',
@@ -136,17 +132,7 @@ const row: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: 4,
-    marginTop: 3,
-    fontSize: 12,
-  },
-  forCount: {
-    color: '#4ade80',
-    fontWeight: 700,
-    fontSize: 14,
-  },
-  threshold: {
-    color: '#c4a265',
-    fontWeight: 600,
+    fontSize: 13,
   },
   slash: {
     color: '#8b7355',
@@ -156,7 +142,7 @@ const row: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexWrap: 'wrap',
     gap: 3,
-    marginTop: 4,
+    marginTop: 5,
   },
   dot: {
     width: 20,
@@ -170,19 +156,13 @@ const row: Record<string, React.CSSProperties> = {
     border: '1px solid',
     transition: 'background 0.3s',
   },
-  result: {
-    marginTop: 4,
-    fontSize: 12,
-    fontWeight: 800,
-    letterSpacing: '0.05em',
-    textTransform: 'uppercase',
-  },
 };
 
 // ── Main overlay ──────────────────────────────────────────────────────
 
 export function VotingOverlay() {
   const gameState = useGameStore((s) => s.gameState);
+  const [viewIndex, setViewIndex] = useState<number | null>(null);
 
   const isVotingPhase = gameState?.phase === Phase.VOTING ||
     gameState?.phase === Phase.NOMINATIONS ||
@@ -197,22 +177,52 @@ export function VotingOverlay() {
     return gameState.nominations;
   }, [gameState?.nominations]);
 
+  // Show the latest nomination by default, or the user-selected one
+  const total = currentNominations.length;
+  const activeIndex = viewIndex !== null ? Math.min(viewIndex, total - 1) : total - 1;
+  const activeNom = total > 0 ? currentNominations[activeIndex] : null;
+
+  // Auto-follow latest when new nominations arrive
+  const prevTotal = useMemo(() => total, [total]);
+  if (viewIndex !== null && total > prevTotal) {
+    // New nomination arrived — jump to it
+    setViewIndex(null);
+  }
+
   return (
     <AnimatePresence>
-      {isVotingPhase && currentNominations.length > 0 && (
+      {isVotingPhase && activeNom && (
         <motion.div
           key="voting-parchment"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 30 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
           style={styles.parchment}
         >
-          {/* Header */}
+          {/* Header with nav */}
           <div style={styles.header}>
-            <span style={styles.headerIcon}>{'\u2696'}</span>
-            <span>Town Vote</span>
-            <span style={styles.headerIcon}>{'\u2696'}</span>
+            {total > 1 && (
+              <button
+                style={styles.navBtn}
+                onClick={() => setViewIndex(Math.max(0, activeIndex - 1))}
+                disabled={activeIndex === 0}
+              >
+                {'\u25C0'}
+              </button>
+            )}
+            <span style={styles.headerTitle}>
+              {'\u2696'} Vote {activeIndex + 1}/{total} {'\u2696'}
+            </span>
+            {total > 1 && (
+              <button
+                style={styles.navBtn}
+                onClick={() => setViewIndex(activeIndex + 1 >= total ? null : activeIndex + 1)}
+                disabled={viewIndex === null && activeIndex === total - 1}
+              >
+                {'\u25B6'}
+              </button>
+            )}
           </div>
 
           {/* On the block banner */}
@@ -226,18 +236,15 @@ export function VotingOverlay() {
             </div>
           )}
 
-          {/* Nominations */}
+          {/* Single nomination card */}
           <div style={styles.body}>
-            {currentNominations.map((nom, i) => (
-              <VoteRow
-                key={`${nom.nominatorSeat}-${nom.nomineeSeat}-${i}`}
-                nomination={nom}
-                players={players}
-                aliveCount={aliveCount}
-                isOnTheBlock={onTheBlock?.seat === nom.nomineeSeat &&
-                  (nom.outcome === 'on_the_block' || nom.outcome === 'replaced')}
-              />
-            ))}
+            <VoteCard
+              nomination={activeNom}
+              players={players}
+              aliveCount={aliveCount}
+              isOnTheBlock={onTheBlock?.seat === activeNom.nomineeSeat &&
+                (activeNom.outcome === 'on_the_block' || activeNom.outcome === 'replaced')}
+            />
           </div>
         </motion.div>
       )}
@@ -247,18 +254,10 @@ export function VotingOverlay() {
 
 const styles: Record<string, React.CSSProperties> = {
   parchment: {
-    position: 'absolute',
-    bottom: 12,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: 'min(420px, 85%)',
-    zIndex: 90,
+    width: '100%',
 
-    // Parchment look
     background: 'linear-gradient(180deg, #2a2115 0%, #1e180f 100%)',
-    border: '2px solid #5c4f3a',
-    borderRadius: 6,
-    boxShadow: '0 4px 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(196,162,101,0.15)',
+    borderTop: '1px solid #5c4f3a',
 
     fontFamily: 'Georgia, "Times New Roman", serif',
     color: '#c4a265',
@@ -268,21 +267,28 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: '8px 12px 4px',
-    fontSize: 14,
+    padding: '6px 12px 4px',
+    borderBottom: '1px solid rgba(139,115,85,0.3)',
+  },
+  headerTitle: {
+    fontSize: 12,
     fontWeight: 700,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
     color: '#d4b376',
-    borderBottom: '1px solid rgba(139,115,85,0.3)',
   },
-  headerIcon: {
-    fontSize: 12,
-    opacity: 0.6,
+  navBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#c4a265',
+    cursor: 'pointer',
+    fontSize: 10,
+    padding: '2px 6px',
+    opacity: 0.7,
   },
   blockBanner: {
-    padding: '4px 14px',
-    fontSize: 12,
+    padding: '3px 14px',
+    fontSize: 11,
     fontWeight: 800,
     letterSpacing: '0.06em',
     textTransform: 'uppercase',
@@ -292,8 +298,6 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
   },
   body: {
-    padding: '4px 14px 10px',
-    maxHeight: 200,
-    overflowY: 'auto',
+    padding: '6px 14px 8px',
   },
 };

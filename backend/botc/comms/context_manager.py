@@ -395,7 +395,17 @@ def build_phase_instructions(player: Player, state: GameState) -> str:
             return "You are dead and have used your ghost vote. You cannot vote."
         ghost_note = ""
         if not player.is_alive:
-            ghost_note = "You are dead. This will use your ONE ghost vote. Choose carefully.\n"
+            ghost_note = (
+                "*** GHOST VOTE DECISION ***\n"
+                "You are dead and have exactly ONE ghost vote for the entire game. "
+                "Voting YES here will permanently spend it.\n"
+                "Strategic considerations:\n"
+                "- Ghost votes are most powerful in the late game when margins are tight\n"
+                "- A single ghost vote can swing an execution when alive players are split\n"
+                "- If this nomination is likely to pass/fail regardless, consider saving your vote\n"
+                "- If this is a critical vote that could decide the game, NOW may be the time\n"
+                "Think carefully in your <THINK> block about whether to spend your ghost vote now or save it.\n"
+            )
         return (
             f"{ghost_note}"
             "A nomination is being voted on. Vote YES or NO.\n"

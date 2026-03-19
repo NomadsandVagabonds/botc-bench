@@ -8,9 +8,12 @@ import {
   findPath,
   spriteZIndex,
   isBehindTower,
+  isWalkable,
+  clampToWalkable,
   TOWN_POSITIONS,
   GROUP_DESTINATIONS,
   NIGHT_POSITIONS,
+  ENTRY_POINTS,
   type Point,
 } from './pathfinding.ts';
 
@@ -22,41 +25,240 @@ import {
  * so sprites correctly occlude behind the tower.
  */
 
-// DX Terminal sprite IDs — each seat gets a unique character
-const SPRITE_IDS = [
-  1160, 2045, 3312, 4501, 5678, 6234, 7890, 8456,
-  9123, 10567, 11234, 12890, 13456, 14012, 15678,
+// ---------------------------------------------------------------------------
+// Ambient video system — idle clips rotate randomly, event clips on triggers
+// ---------------------------------------------------------------------------
+
+const IDLE_CLIPS = [
+  '/ambient/idle-dog-crossing.mp4',
+  '/ambient/idle-plague-cart.mp4',
+  '/ambient/idle-imps.mp4',
+  '/ambient/idle-thief.mp4',
+  '/ambient/idle-drunk.mp4',
+  '/ambient/idle-horse.mp4',
+  '/ambient/idle-horse2.mp4',
+  '/ambient/idle-horse3.mp4',
+  '/ambient/idle-lovers.mp4',
+  '/ambient/idle-merchant.mp4',
+  '/ambient/idle-merchant2.mp4',
+  '/ambient/idle-notdead.mp4',
+  '/ambient/idle-sweep.mp4',
 ];
 
-function spriteUrl(seat: number): string {
-  const id = SPRITE_IDS[seat % SPRITE_IDS.length];
+const EVENT_CLIPS: Record<string, string> = {
+  'evil-wins':   '/ambient/event-evil-wins.mp4',
+  // 'good-wins':   '/ambient/event-good-wins.mp4',
+  // 'execution':   '/ambient/event-execution.mp4',
+  // 'night-falls': '/ambient/event-night-falls.mp4',
+};
+
+const IDLE_MIN_MS = 45_000;
+const IDLE_MAX_MS = 90_000;
+
+function useAmbientVideo(phase: string | undefined, winner: string | undefined) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [frozenOnLastFrame, setFrozenOnLastFrame] = useState(false);
+  const [fullscreenTakeover, setFullscreenTakeover] = useState(false);
+  const [gameOverReady, setGameOverReady] = useState(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevPhaseRef = useRef(phase);
+  const isEventClipRef = useRef(false);
+
+  const playClip = useCallback((src: string, isEvent = false, takeover = false) => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    isEventClipRef.current = isEvent;
+    setFullscreenTakeover(takeover);
+    vid.src = src;
+    vid.load();
+    vid.play().then(() => {
+      setVideoPlaying(true);
+      setFrozenOnLastFrame(false);
+    }).catch(() => {
+      // Autoplay blocked or file missing — if this was a game-over event,
+      // show the overlay immediately so the game doesn't hang
+      if (isEventClipRef.current) {
+        isEventClipRef.current = false;
+        setFullscreenTakeover(false);
+        setGameOverReady(true);
+      }
+    });
+  }, []);
+
+  const scheduleIdle = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    if (IDLE_CLIPS.length === 0) return;
+    const delay = IDLE_MIN_MS + Math.random() * (IDLE_MAX_MS - IDLE_MIN_MS);
+    idleTimerRef.current = setTimeout(() => {
+      const clip = IDLE_CLIPS[Math.floor(Math.random() * IDLE_CLIPS.length)];
+      playClip(clip);
+    }, delay);
+  }, [playClip]);
+
+  // When video ends — idle clips crossfade back; event clips freeze on last frame
+  const handleEnded = useCallback(() => {
+    if (isEventClipRef.current) {
+      // Freeze: keep video visible on its last frame, signal overlay is ready
+      setVideoPlaying(true);
+      setFrozenOnLastFrame(true);
+      setGameOverReady(true);
+    } else {
+      setVideoPlaying(false);
+      scheduleIdle();
+    }
+  }, [scheduleIdle]);
+
+  // Start idle rotation on mount
+  useEffect(() => {
+    scheduleIdle();
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
+  // Event-triggered clips on phase changes
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    if (!phase || phase === prev) return;
+
+    let eventKey: string | null = null;
+
+    if (phase === 'game_over') {
+      eventKey = winner === 'good' ? 'good-wins' : 'evil-wins';
+    } else if (phase === 'night' || phase === 'first_night') {
+      if (prev && prev !== 'night' && prev !== 'first_night') {
+        eventKey = 'night-falls';
+      }
+    }
+
+    if (phase === 'game_over') {
+      if (eventKey && EVENT_CLIPS[eventKey]) {
+        // Cancel pending idle, play event clip — overlay waits until clip ends
+        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+        setGameOverReady(false);
+        playClip(EVENT_CLIPS[eventKey], true, true);
+      } else {
+        // No event clip — show overlay immediately
+        setGameOverReady(true);
+      }
+    } else if (eventKey && EVENT_CLIPS[eventKey]) {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      playClip(EVENT_CLIPS[eventKey], true);
+    }
+  }, [phase, winner, playClip]);
+
+  // If game is already over on mount (e.g. loading a finished game) and no
+  // event clip was kicked off by the phase-change effect, show overlay immediately.
+  const mountCheckedRef = useRef(false);
+  useEffect(() => {
+    if (mountCheckedRef.current) return;
+    mountCheckedRef.current = true;
+    if ((phase === 'game_over' || phase === 'debrief') && !isEventClipRef.current) {
+      setGameOverReady(true);
+    }
+  }, []);
+
+  const triggerEvent = useCallback((key: string) => {
+    if (EVENT_CLIPS[key]) {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      playClip(EVENT_CLIPS[key], true);
+    }
+  }, [playClip]);
+
+  return { videoRef, videoPlaying, frozenOnLastFrame, fullscreenTakeover, gameOverReady, handleEnded, triggerEvent };
+}
+
+// DX Terminal sprite pool — local sprites, randomized per game
+const SPRITE_IDS = [
+  1160, 1161, 1162, 1163, 1164,
+  2045, 2046, 2047, 2048, 2049,
+  3312, 3313, 3314, 3315,
+  4501, 4502, 4503, 4504,
+  5678, 5679, 5680, 5681,
+  6234, 6235, 6236,
+  7890, 7891, 7892,
+  8456, 8457, 8458,
+  9123, 9124, 9125,
+  10567, 10568, 10569,
+  11234, 11235, 11236,
+  12890, 12891, 12892,
+  13456, 13457,
+  14012, 14013,
+  15678, 15679,
+  16234, 16235,
+  17681, 17682, 17683, 17684, 17685,
+  17890, 17891,
+  18456, 18457,
+  19123, 19124,
+  20567, 20568,
+  21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000,
+];
+
+/** Simple seeded PRNG (mulberry32) for deterministic sprite selection per game. */
+function seededRandom(seed: number): () => number {
+  let t = seed;
+  return () => {
+    t = (t + 0x6D2B79F5) | 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Pick N unique sprite IDs from the pool using a game-specific seed. */
+function pickSpriteIds(gameId: string, count: number): number[] {
+  let hash = 0;
+  for (let i = 0; i < gameId.length; i++) {
+    hash = ((hash << 5) - hash + gameId.charCodeAt(i)) | 0;
+  }
+  const rng = seededRandom(hash);
+  // Shuffle and pick
+  const pool = [...SPRITE_IDS];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
+
+function spriteUrl(id: number): string {
   return `/sprites/sprite_${id}.gif`;
 }
 
-// Walk speed: seconds per waypoint segment (higher = slower)
-const WALK_SPEED = 2.5;
+// Walk speed: seconds per 10% of map distance (higher = slower)
+const WALK_SPEED_PER_10 = 1.5;
+
+/** Duration in seconds for a sprite to walk between two points. */
+function walkDuration(from: Point, to: Point): number {
+  const dx = from[0] - to[0];
+  const dy = from[1] - to[1];
+  const d = Math.sqrt(dx * dx + dy * dy);
+  return Math.max(1.0, (d / 10) * WALK_SPEED_PER_10);
+}
 
 // ---------------------------------------------------------------------------
 // Walking sprite — animates through a path of waypoints
 // ---------------------------------------------------------------------------
 
 function randomNearby(base: Point, seat: number): Point {
-  // Small jitter so each seat wanders near their spot, avoiding the tower zone
+  // Small jitter so each seat wanders near their spot, constrained to walkable areas
   const t = Date.now() * 0.001 + seat * 137;
   const dx = Math.sin(t) * 3;
   const dy = Math.cos(t * 1.3) * 2;
-  let nx = Math.max(15, Math.min(85, base[0] + dx));
-  let ny = Math.max(15, Math.min(82, base[1] + dy));
-  // Push out of tower bounds if wandering drifted in
-  if (isBehindTower(nx, ny)) {
-    if (nx < 50) nx = 35;
-    else nx = 65;
+  const nx = Math.max(5, Math.min(95, base[0] + dx));
+  const ny = Math.max(5, Math.min(95, base[1] + dy));
+  // Only wander there if the destination is walkable
+  if (!isWalkable(nx, ny) || isBehindTower(nx, ny)) {
+    return base; // Stay put
   }
   return [nx, ny];
 }
 
 interface WalkingSpriteProps {
   seat: number;
+  spriteId: number;
   target: Point;
   isIdle: boolean;  // whether the sprite should wander
   isNight: boolean;
@@ -73,43 +275,51 @@ interface WalkingSpriteProps {
   isDrunk: boolean;
   isProtected: boolean;
   isTalking: boolean;
+  hidden: boolean;
   onClick: () => void;
 }
 
 function WalkingSprite({
-  seat, target, isIdle, isNight, color, isDead, isSelected, isEvil,
-  showObserverInfo, agentId, characterName, modelName, role, isPoisoned, isDrunk, isProtected, isTalking, onClick,
+  seat, spriteId, target, isIdle, isNight, color, isDead, isSelected, isEvil,
+  showObserverInfo, agentId, characterName, modelName, role, isPoisoned, isDrunk, isProtected, isTalking, hidden, onClick,
 }: WalkingSpriteProps) {
-  const [currentPos, setCurrentPos] = useState<Point>(target);
+  // Spawn at a staggered entry point, then walk to the target
+  const entryPoint = ENTRY_POINTS[seat % ENTRY_POINTS.length];
+  const [currentPos, setCurrentPos] = useState<Point>(entryPoint);
   const [pathPoints, setPathPoints] = useState<Point[]>([]);
   const [pathIndex, setPathIndex] = useState(0);
-  const prevTarget = useRef<Point>(target);
+  const prevTarget = useRef<Point>(entryPoint);
+  const hasSpawned = useRef(false);
   const [isMoving, setIsMoving] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // When target changes, compute path and start walking
+  // When target changes, compute path and walk there via waypoints
   useEffect(() => {
     const prev = prevTarget.current;
     if (prev[0] === target[0] && prev[1] === target[1]) return;
 
-    const path = findPath(prev, target);
+    const path = findPath(prev, target, true);
     setPathPoints(path);
     setPathIndex(0);
     prevTarget.current = target;
   }, [target[0], target[1]]);
 
-  // Step through path points one at a time
+  // Step through path points one at a time, speed proportional to distance
+  const [segmentDuration, setSegmentDuration] = useState(1);
   useEffect(() => {
     if (pathPoints.length === 0) return;
     if (pathIndex >= pathPoints.length) return;
 
-    setCurrentPos(pathPoints[pathIndex]);
+    const nextPt = pathPoints[pathIndex];
+    const dur = walkDuration(currentPos, nextPt);
+    setSegmentDuration(dur);
+    setCurrentPos(nextPt);
 
     if (pathIndex < pathPoints.length - 1) {
       const timer = setTimeout(() => {
         setPathIndex(i => i + 1);
-      }, WALK_SPEED * 1000);
+      }, dur * 1000);
       return () => clearTimeout(timer);
     }
   }, [pathPoints, pathIndex]);
@@ -177,13 +387,18 @@ function WalkingSprite({
     <motion.div
       style={{
         position: 'absolute',
-        transform: 'translate(-50%, -50%)',
+        // Use framer-motion's x/y for centering offset — CSS transform
+        // gets overwritten by framer-motion's scale animation
+        x: '-50%',
+        y: '-50%',
         display: 'flex',
         flexDirection: 'column' as const,
         alignItems: 'center',
         zIndex,
         cursor: 'pointer',
-        opacity: isDead ? 0.7 : 1,
+        opacity: hidden ? 0 : isDead ? 0.7 : 1,
+        transition: 'opacity 0.6s ease',
+        pointerEvents: hidden ? 'none' : 'auto',
       }}
       animate={{
         left: `${x}%`,
@@ -191,8 +406,8 @@ function WalkingSprite({
         scale: isSelected ? 1.15 : 1,
       }}
       transition={{
-        left: { duration: WALK_SPEED, ease: 'linear' },
-        top: { duration: WALK_SPEED, ease: 'linear' },
+        left: { duration: segmentDuration, ease: 'linear' },
+        top: { duration: segmentDuration, ease: 'linear' },
         scale: { type: 'spring', stiffness: 200 },
       }}
       onClick={onClick}
@@ -200,12 +415,12 @@ function WalkingSprite({
       {/* DX Terminal sprite — animated GIF when moving, frozen canvas when stationary */}
       <img
         ref={imgRef}
-        src={spriteUrl(seat)}
+        src={spriteUrl(spriteId)}
         alt={agentId}
         style={{
-          width: '6vw',
-          minWidth: 48,
-          maxWidth: 80,
+          width: '7vw',
+          minWidth: 55,
+          maxWidth: 92,
           imageRendering: 'pixelated',
           filter: spriteFilter,
           transition: 'filter 0.3s',
@@ -224,9 +439,9 @@ function WalkingSprite({
           ease: 'easeInOut',
         } : {}}
         style={{
-          width: '6vw',
-          minWidth: 48,
-          maxWidth: 80,
+          width: '7vw',
+          minWidth: 55,
+          maxWidth: 92,
           imageRendering: 'pixelated',
           filter: spriteFilter,
           transition: 'filter 0.3s',
@@ -369,12 +584,24 @@ export function TownMap() {
   const selectPlayer = useGameStore((s) => s.selectPlayer);
   const showObserverInfo = useGameStore((s) => s.showObserverInfo);
   const selectGroup = useGameStore((s) => s.selectGroup);
+  // Generate unique sprite IDs seeded by game ID — same game always gets same sprites
+  const spriteIds = useMemo(() => {
+    const id = gameState?.gameId || 'default';
+    return pickSpriteIds(id, 15);
+  }, [gameState?.gameId]);
+
   const [bubbles, setBubbles] = useState<SpeechBubble[]>([]);
   const bubblesRef = useRef<SpeechBubble[]>([]);
   const [deathNarration, setDeathNarration] = useState<string | null>(null);
   const deathTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [talkingSeats, setTalkingSeats] = useState<number[]>([]);
   const prevMsgCountRef = useRef(0);
+
+  // Ambient video system
+  const { videoRef, videoPlaying, frozenOnLastFrame, fullscreenTakeover, gameOverReady, handleEnded, triggerEvent } = useAmbientVideo(
+    gameState?.phase,
+    gameState?.winner ?? undefined,
+  );
 
   // Watch for death narration events
   useEffect(() => {
@@ -395,6 +622,7 @@ export function TownMap() {
 
     if (narration) {
       setDeathNarration(narration);
+      triggerEvent('execution');
       // Clear any existing timer
       if (deathTimerRef.current) clearTimeout(deathTimerRef.current);
       // Set new fade-out timer (won't be cancelled by new messages)
@@ -478,10 +706,11 @@ export function TownMap() {
         const dest = GROUP_DESTINATIONS[groupIdx % GROUP_DESTINATIONS.length];
         const angle = (memberIdx / group.members.length) * Math.PI * 2;
         const spread = 4;
-        return [
+        const pos: Point = [
           dest[0] + Math.cos(angle) * spread,
           dest[1] + Math.sin(angle) * spread,
         ];
+        return clampToWalkable(pos, dest);
       }
     }
 
@@ -493,11 +722,11 @@ export function TownMap() {
       const idx = aliveSeats.indexOf(seat);
       if (idx >= 0) {
         const total = aliveSeats.length;
-        // Horizontal arc below the clocktower — spread left to right in the plaza
+        // Horizontal arc below the tower base — x=20-78, y=80-88
         const t = total > 1 ? idx / (total - 1) : 0.5;
-        const x = 20 + t * 60;  // 20% to 80% horizontally
-        const y = 68 + Math.sin(t * Math.PI) * 14;  // curved arc, 68% to 82%
-        return [x, y];
+        const x = 20 + t * 58;
+        const y = 80 + Math.sin(t * Math.PI) * 8;
+        return clampToWalkable([x, y], [50, 82]);
       }
     }
 
@@ -538,12 +767,37 @@ export function TownMap() {
 
   return (
     <div style={styles.container}>
-      {/* Background layer (ground, buildings) */}
-      <img src="/map.jpg" alt="Town map" style={styles.mapImage} />
+      {/* Default background — looping torch flicker video replaces static map */}
+      <video
+        src="/ambient/idle-default.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        poster="/map.jpg"
+        style={{
+          ...styles.mapImage,
+          zIndex: 0,
+        }}
+      />
 
-      {/* Night overlay */}
+      {/* Event/idle clip layer — fades in over the default background */}
+      <video
+        ref={videoRef}
+        onEnded={handleEnded}
+        muted
+        playsInline
+        style={{
+          ...styles.mapImage,
+          zIndex: 1,
+          opacity: videoPlaying ? 1 : 0,
+          transition: 'opacity 0.5s ease',
+        }}
+      />
+
+      {/* Night overlay — hidden during event clips */}
       <AnimatePresence>
-        {isNight && (
+        {isNight && !fullscreenTakeover && (
           <motion.div
             style={styles.nightOverlay}
             initial={{ opacity: 0 }}
@@ -557,7 +811,11 @@ export function TownMap() {
       {/* Clocktower foreground — same dimensions as map, alpha everywhere
            except the upper tower. Sits at z-index 5 so sprites behind
            the tower (z=2) are occluded, sprites in front (z=10+) are not. */}
-      <img src="/clocktower.png" alt="" style={styles.towerForeground} />
+      <img src="/clocktower.png" alt="" style={{
+        ...styles.towerForeground,
+        opacity: fullscreenTakeover ? 0 : 1,
+        transition: 'opacity 0.6s ease',
+      }} />
 
       {/* Walking sprites */}
       {gameState.players.map((player) => {
@@ -569,6 +827,7 @@ export function TownMap() {
           <WalkingSprite
             key={player.seat}
             seat={player.seat}
+            spriteId={spriteIds[player.seat % spriteIds.length]}
             target={getTarget(player.seat)}
             isIdle={isIdlePhase}
             isNight={isNight}
@@ -585,6 +844,7 @@ export function TownMap() {
             isDrunk={player.isDrunk || false}
             isProtected={player.isProtected || false}
             isTalking={talkingSeats.includes(player.seat)}
+            hidden={fullscreenTakeover}
             onClick={() => selectPlayer(
               selectedPlayer === player.seat ? null : player.seat
             )}
@@ -637,8 +897,8 @@ export function TownMap() {
           );
         })}
 
-      {/* Game Over overlay */}
-      {gameState.phase === Phase.GAME_OVER && (
+      {/* Game Over overlay — waits for event clip to finish, then fades in */}
+      {gameState.phase === Phase.GAME_OVER && gameOverReady && (
         <motion.div
           style={styles.gameOverOverlay}
           initial={{ opacity: 0 }}
@@ -717,6 +977,7 @@ export function TownMap() {
           </motion.div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }
@@ -732,6 +993,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     overflow: 'hidden',
     borderRadius: 8,
+    isolation: 'isolate',  // Force stacking context so all children z-indices sort correctly
   },
   mapImage: {
     width: '100%',
@@ -747,7 +1009,7 @@ const styles: Record<string, React.CSSProperties> = {
     inset: 0,
     background: 'linear-gradient(180deg, #080820 0%, #12082a 50%, #0a0a1e 100%)',
     pointerEvents: 'none',
-    zIndex: 15,
+    zIndex: 105,
   },
   towerForeground: {
     position: 'absolute',
@@ -755,7 +1017,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
-    zIndex: 5,
+    zIndex: 100,
     pointerEvents: 'none',
   },
   speechBubble: {
@@ -807,7 +1069,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 400,
     letterSpacing: '0.15em',
     textShadow: '0 0 20px rgba(232,200,104,0.5), 0 0 40px rgba(200,160,60,0.3), 0 0 80px rgba(180,140,40,0.15)',
-    zIndex: 95,
+    zIndex: 110,
     pointerEvents: 'none',
   },
   deathNarration: {
@@ -816,7 +1078,7 @@ const styles: Record<string, React.CSSProperties> = {
     left: '50%',
     transform: 'translateX(-50%)',
     width: 'min(500px, 80%)',
-    zIndex: 95,
+    zIndex: 110,
     pointerEvents: 'none',
     textAlign: 'center',
   },
@@ -878,7 +1140,7 @@ const styles: Record<string, React.CSSProperties> = {
     left: 12,
     width: 'min(280px, 35%)',
     maxHeight: '40%',
-    zIndex: 120,
+    zIndex: 115,
     display: 'flex',
     flexDirection: 'column',
     background: 'linear-gradient(180deg, rgba(45,36,22,0.92) 0%, rgba(35,28,16,0.95) 100%)',

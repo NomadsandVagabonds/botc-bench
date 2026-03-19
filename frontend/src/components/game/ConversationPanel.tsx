@@ -621,6 +621,24 @@ function PlayerRow({ player }: { player: Player }) {
           {player.isAlive ? 'ALIVE' : 'DEAD'}
         </span>
 
+        {/* Ghost vote status for dead players */}
+        {!player.isAlive && (
+          <span
+            style={{
+              fontSize: '0.6rem',
+              fontWeight: 600,
+              padding: '1px 5px',
+              borderRadius: 4,
+              background: player.ghostVoteUsed
+                ? 'rgba(107, 114, 128, 0.15)'
+                : 'rgba(110, 231, 183, 0.15)',
+              color: player.ghostVoteUsed ? '#6B7280' : '#6ee7b7',
+            }}
+          >
+            {player.ghostVoteUsed ? '\uD83D\uDC7B USED' : '\uD83D\uDC7B READY'}
+          </span>
+        )}
+
         {/* Observer-only status indicators */}
         {showObserverInfo && (
           <div style={{ display: 'flex', gap: 3 }}>

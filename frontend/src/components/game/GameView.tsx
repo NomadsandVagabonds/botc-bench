@@ -6,7 +6,7 @@ import { ConversationPanel } from './ConversationPanel.tsx';
 import { PlayerDetailDrawer } from './PlayerDetailDrawer.tsx';
 import { VotingOverlay } from './VotingOverlay.tsx';
 import { DebriefPanel } from './DebriefPanel.tsx';
-import { GameLog } from './GameLog.tsx';
+// GameLog removed — replaced by VotingOverlay in the bottom bar
 import { ReplayScrubber } from './ReplayScrubber.tsx';
 import { MonitorPanel } from './MonitorPanel.tsx';
 import { useGameStore } from '../../stores/gameStore.ts';
@@ -278,7 +278,7 @@ export function GameView() {
         {/* Left: circle + overlays */}
         <div style={styles.mapArea}>
           <TownMap />
-          <VotingOverlay />
+          {/* VotingOverlay moved inside TownMap for correct centering */}
           <PlayerDetailDrawer />
           <DebriefPanel />
 
@@ -331,7 +331,7 @@ export function GameView() {
         </div>
       </div>
 
-      <GameLog />
+      <VotingOverlay />
     </div>
   );
 
@@ -364,6 +364,8 @@ const styles: Record<string, React.CSSProperties> = {
     width: 380,
     flexShrink: 0,
     overflow: 'hidden',
+    background: 'linear-gradient(180deg, #2a2115 0%, #1e180f 100%)',
+    borderLeft: '1px solid #5c4f3a',
   },
   loading: {
     display: 'flex',

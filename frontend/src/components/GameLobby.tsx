@@ -1071,7 +1071,7 @@ function MenuButton({ children, onClick, primary, dim }: {
     minWidth: 240,
     padding: primary ? '10px 48px' : '8px 36px',
     fontFamily: '"Press Start 2P", "Courier New", monospace',
-    fontSize: primary ? '0.85rem' : dim ? '0.6rem' : '0.72rem',
+    fontSize: primary ? '1.1rem' : dim ? '0.8rem' : '0.9rem',
     fontWeight: 400,
     letterSpacing: '0.05em',
     textTransform: 'uppercase',

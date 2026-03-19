@@ -1,22 +1,31 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
- * Title splash screen that displays on first load,
- * then pixelate-dissolves into the lobby.
+ * Title splash screen — plays the intro video, then pixelate-dissolves into the lobby.
  */
 export function SplashScreen({ onComplete }: { onComplete: () => void }) {
-  const [phase, setPhase] = useState<'hold' | 'dissolve' | 'done'>('hold');
+  const [phase, setPhase] = useState<'video' | 'dissolve' | 'done'>('video');
+  const videoRef = useRef<HTMLVideoElement>(null);
 
+  // When video ends, start the dissolve
+  const handleVideoEnd = useCallback(() => {
+    setPhase('dissolve');
+  }, []);
+
+  // Fallback: if video fails to play, hold the last frame / poster briefly then dissolve
   useEffect(() => {
-    // Hold the title for 3 seconds, then start dissolving
-    const holdTimer = setTimeout(() => setPhase('dissolve'), 3000);
-    return () => clearTimeout(holdTimer);
+    const vid = videoRef.current;
+    if (!vid) return;
+    vid.play().catch(() => {
+      // Autoplay blocked — wait 2s on poster then dissolve
+      const timer = setTimeout(() => setPhase('dissolve'), 2000);
+      return () => clearTimeout(timer);
+    });
   }, []);
 
   useEffect(() => {
     if (phase === 'dissolve') {
-      // Dissolve takes 1.5 seconds, then complete
       const dissolveTimer = setTimeout(() => {
         setPhase('done');
         onComplete();
@@ -60,10 +69,14 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
             ease: 'easeIn',
           } : {}}
         >
-          <img
-            src="/title.jpg"
-            alt="BotC Bench"
-            style={styles.image}
+          <video
+            ref={videoRef}
+            src="/ambient/event-intro.mp4"
+            poster="/title.jpg"
+            muted
+            playsInline
+            onEnded={handleVideoEnd}
+            style={styles.video}
           />
         </motion.div>
 
@@ -127,11 +140,10 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  image: {
-    maxWidth: '90vw',
-    maxHeight: '80vh',
+  video: {
+    width: '100%',
+    height: '100%',
     objectFit: 'contain',
-    imageRendering: 'auto',
   },
   pixelOverlay: {
     position: 'absolute',

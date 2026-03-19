@@ -289,7 +289,6 @@ function WalkingSprite({
   const [pathPoints, setPathPoints] = useState<Point[]>([]);
   const [pathIndex, setPathIndex] = useState(0);
   const prevTarget = useRef<Point>(entryPoint);
-  const hasSpawned = useRef(false);
   const [isMoving, setIsMoving] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -598,7 +597,7 @@ export function TownMap() {
   const prevMsgCountRef = useRef(0);
 
   // Ambient video system
-  const { videoRef, videoPlaying, frozenOnLastFrame, fullscreenTakeover, gameOverReady, handleEnded, triggerEvent } = useAmbientVideo(
+  const { videoRef, videoPlaying, fullscreenTakeover, gameOverReady, handleEnded, triggerEvent } = useAmbientVideo(
     gameState?.phase,
     gameState?.winner ?? undefined,
   );

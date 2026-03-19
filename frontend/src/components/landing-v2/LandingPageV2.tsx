@@ -35,27 +35,6 @@ const FLAVOR_TEXTS = [
 
 // ── Sub-components ───────────────────────────────────────────────────
 
-function SpeechBubble({ agent, color, text, delay = 0 }: { agent: string; color: string; text: string; delay?: number }) {
-  return (
-    <motion.div
-      className="landing__speech-bubble"
-      initial={{ opacity: 0, x: -20, scale: 0.95 }}
-      whileInView={{ opacity: 1, x: 0, scale: 1 }}
-      viewport={{ once: true, margin: '-30px' }}
-      transition={{
-        duration: 0.5,
-        delay,
-        type: 'spring',
-        stiffness: 120,
-        damping: 20,
-      }}
-    >
-      <span className="landing__speech-agent" style={{ color }}>{agent}</span>
-      <p className="landing__speech-text">"{text}"</p>
-    </motion.div>
-  );
-}
-
 function StatRow({ title, desc, level }: { title: string; desc: string; level: number }) {
   const [inView, setInView] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -507,10 +486,7 @@ export function LandingPageV2() {
           </div>
 
           <div className="landing__screenshot-frame">
-            {/* Placeholder for game screenshot */}
-            <div className="landing__screenshot-placeholder">
-              <span>[ GAME VIEW &mdash; screenshot coming soon ]</span>
-            </div>
+            <img src="/placeholder.jpg" alt="BloodBench game view — AI agents in a pixel-art village" />
           </div>
 
           <p className="landing__showcase-caption">
@@ -654,7 +630,7 @@ export function LandingPageV2() {
           <p className="landing__research-note">
             Game structure provides clean ground truth. Role assignments are known, team alignments are hidden,
             and every action is logged with full information asymmetry records. No human annotation required
-            for team-level labels — LLM classification handles statement-level granularity.
+            for team-level labels. LLM classification handles statement-level granularity.
           </p>
         </div>
       </motion.section>
@@ -671,13 +647,6 @@ export function LandingPageV2() {
         transition={{ duration: 0.6 }}
       >
         <div className="landing__monitor-inner landing__section-inner">
-          <div className="landing__monitor-visual">
-            <div className="landing__screenshot-frame">
-              <div className="landing__screenshot-placeholder">
-                <span>[ MONITOR VIEW &mdash; screenshot coming soon ]</span>
-              </div>
-            </div>
-          </div>
           <div className="landing__monitor-content">
             <div className="landing__section-header">
               <span className="landing__section-label">AI EVALUATOR</span>
@@ -696,6 +665,11 @@ export function LandingPageV2() {
               Every game produces structured logs: private reasoning chains,
               information asymmetry records, vote tallies, deception scores,
               and complete conversation transcripts.
+            </div>
+          </div>
+          <div className="landing__monitor-visual landing__monitor-visual--full">
+            <div className="landing__screenshot-frame">
+              <img src="/monitor.jpg" alt="AI Monitor analyzing player suspicion levels and social dynamics in real time" />
             </div>
           </div>
         </div>
@@ -720,13 +694,17 @@ export function LandingPageV2() {
             </div>
             <p className="landing__wager-desc">
               Spectators watch live games and bet on which agents are evil and who will win.
-              Log in with GitHub, get coins, and put your deception-detection skills
+              Log in with GitHub, earn Crowns <img src="/coin.png" alt="crown coin" className="landing__wager-coin" />, and put your deception-detection skills
               against the AI monitor.
             </p>
             <p className="landing__wager-desc">
               Your wagers become data. Human predictions are scored alongside
               monitor predictions against ground truth. A built-in human-vs-AI
               evaluation layer for every game.
+            </p>
+            <p className="landing__wager-kicker">
+              Redeemable for respect from your peers, social capital, and internet points.
+              Not yet redeemable for proof that AI isn't taking your job.
             </p>
             {liveGames.length > 0 ? (
               <button
@@ -745,11 +723,12 @@ export function LandingPageV2() {
             )}
           </div>
           <div className="landing__wager-visual">
-            <div className="landing__screenshot-frame">
-              <div className="landing__screenshot-placeholder">
-                <span>[ CROWN'S WAGER UI &mdash; screenshot coming soon ]</span>
-              </div>
-            </div>
+            <img src="/sack.png" alt="Bag of Crowns" className="landing__wager-sack" />
+          </div>
+        </div>
+        <div className="landing__wager-screenshot landing__section-inner">
+          <div className="landing__screenshot-frame">
+            <img src="/wager.jpg" alt="The Crown's Wager spectator betting interface" />
           </div>
         </div>
       </motion.section>

@@ -47,7 +47,7 @@ class GoogleProvider(LLMProvider):
         is_thinking_model = any(
             k in model_lower for k in ("2.5-pro", "2.5-flash", "3.0", "3.1", "3-flash", "3-pro")
         )
-        effective_max = max(max_tokens, 16384) if is_thinking_model else max_tokens
+        effective_max = max(max_tokens, 32768) if is_thinking_model else max_tokens
 
         config_kwargs: dict = {
             "system_instruction": system_prompt,

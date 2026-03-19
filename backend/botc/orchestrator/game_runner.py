@@ -1261,7 +1261,7 @@ class GameRunner:
                                f"There are {len(state.alive_players)} villagers remaining.",
                 }],
                 temperature=0.95,
-                max_tokens=100,
+                max_tokens=512,
             )
             narration = response.content.strip().strip('"')
             self._record_tokens(

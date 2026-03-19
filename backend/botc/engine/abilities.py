@@ -831,13 +831,20 @@ def resolve_chambermaid(state: GameState, player: Player, action: NightAction) -
 
 
 def resolve_exorcist(state: GameState, player: Player, action: NightAction) -> str | None:
-    """Exorcist blocks a chosen Demon from acting tonight."""
+    """Exorcist blocks a chosen Demon from acting tonight.
+
+    May not choose the same player two nights in a row.
+    """
     if should_malfunction(player):
         return None
     if not action.targets:
         return None
 
     target = state.player_at(action.targets[0])
+    # Cannot choose the same player two nights in a row
+    last_target = player.hidden_state.get("exorcist_last_target")
+    if last_target is not None and last_target == target.seat:
+        return None
     if target.role.role_type == RoleType.DEMON:
         target.hidden_state["exorcised_night"] = state.day_number
     player.hidden_state["exorcist_last_target"] = target.seat

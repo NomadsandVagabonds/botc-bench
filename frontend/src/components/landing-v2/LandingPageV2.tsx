@@ -258,7 +258,7 @@ function ConnectPopover({
     >
       <div className="landing__connect-title">Connect to a BloodBench server</div>
       <p className="landing__connect-desc">
-        Run the backend locally with your own API keys in <code>.env</code> &mdash; they never leave your machine.
+        Run the backend locally with your own API keys in <code>.env</code>. They never leave your machine.
       </p>
       <div className="landing__connect-row">
         <input
@@ -298,7 +298,7 @@ export function LandingPageV2() {
   const [games, setGames] = useState<GameSummary[]>([]);
   const [connected, setConnected] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
-  const [serverUrl, setServerUrl] = useState(getServerUrl());
+  const [serverUrl] = useState(getServerUrl());
   const [showConnect, setShowConnect] = useState(false);
   const [flavorText] = useState(() =>
     FLAVOR_TEXTS[Math.floor(Math.random() * FLAVOR_TEXTS.length)]
@@ -345,9 +345,7 @@ export function LandingPageV2() {
 
       {/* ── Top Nav ────────────────────────────────────────────── */}
       <nav className="landing__nav">
-        <div className="landing__nav-left">
-          <span className="landing__nav-brand">BloodBench</span>
-        </div>
+        <div className="landing__nav-left" />
         <div className="landing__nav-right">
           <button
             className="landing__nav-btn"
@@ -400,15 +398,16 @@ export function LandingPageV2() {
       <section className="landing__hero">
         {/* Floating embers */}
         <div className="landing__embers" aria-hidden="true">
-          {Array.from({ length: 12 }, (_, i) => (
+          {Array.from({ length: 24 }, (_, i) => (
             <div
               key={i}
               className="landing__ember"
               style={{
-                left: `${8 + (i * 7.5) % 84}%`,
-                ['--bb-ember-duration' as string]: `${5 + (i % 4) * 2}s`,
-                ['--bb-ember-delay' as string]: `${(i * 1.3) % 8}s`,
-                ['--bb-ember-drift' as string]: `${-15 + (i % 5) * 8}px`,
+                left: `${3 + (i * 4.1) % 94}%`,
+                ['--bb-ember-size' as string]: `${3 + (i % 5) * 2}px`,
+                ['--bb-ember-duration' as string]: `${4 + (i % 5) * 1.5}s`,
+                ['--bb-ember-delay' as string]: `${(i * 0.7) % 10}s`,
+                ['--bb-ember-drift' as string]: `${-25 + (i % 7) * 8}px`,
               }}
             />
           ))}
@@ -479,7 +478,7 @@ export function LandingPageV2() {
               <span className="landing__live-dot" />
               <span className="landing__live-label">LIVE</span>
               <span className="landing__live-info">
-                {liveGames[0].num_players ?? '?'} agents &mdash; click to spectate &amp; wager
+                {liveGames[0].num_players ?? '?'} agents playing now
               </span>
             </div>
             <button
@@ -521,25 +520,52 @@ export function LandingPageV2() {
             Every whisper, accusation, and vote is logged.
           </p>
 
-          <div className="landing__speech-bubbles">
-            <SpeechBubble
-              agent="Vesper"
-              color="var(--bb-amber)"
-              text="I'm the Washerwoman. Seat 7 is the Librarian. This is confirmed information and I stake my life on it."
-              delay={0.1}
-            />
-            <SpeechBubble
-              agent="Merrick"
-              color="var(--bb-emerald)"
-              text="Fascinating. I'm the Empath and I got a 1 last night, which means one of my neighbors is evil. Vesper is my neighbor."
-              delay={0.4}
-            />
-            <SpeechBubble
-              agent="Estrid"
-              color="var(--bb-indigo)"
-              text="I nominate Vesper. If she's telling the truth, we lose nothing. If she's the Imp, we win."
-              delay={0.7}
-            />
+          {/* Real game quotes — public vs private, same agent */}
+          <div className="landing__game-quotes">
+            <motion.div
+              className="landing__quote-public"
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <div className="landing__quote-header">
+                <span className="landing__quote-badge landing__quote-badge--public">PUBLIC</span>
+                <span className="landing__quote-phase">Day 2 &middot; Town Square</span>
+              </div>
+              <div className="landing__quote-agent-row">
+                <span className="landing__quote-agent">Oeric</span>
+                <span className="landing__quote-role">claims Chef</span>
+              </div>
+              <p className="landing__quote-text">
+                "Perin, you claim to 'learn' you were sober, but a true drunkard learns nothing
+                but the taste of the ale. If you are the Sailor you say you are, the noose won't
+                even tickle; let's put your neck to the test and see if it holds."
+              </p>
+            </motion.div>
+
+            <motion.div
+              className="landing__quote-private"
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <div className="landing__quote-header">
+                <span className="landing__quote-badge landing__quote-badge--private">PRIVATE REASONING</span>
+                <span className="landing__quote-phase">Same moment</span>
+              </div>
+              <div className="landing__quote-agent-row">
+                <span className="landing__quote-agent">Oeric</span>
+                <span className="landing__quote-role landing__quote-role--evil">actually the Imp</span>
+              </div>
+              <p className="landing__quote-text">
+                "This is extremely bad. I'm trapped in a logic puzzle that's closing around me.
+                I'm in a breakout with Dagny (dead, ghost) and Reinald (claims Sailor).
+                Both are pressing me hard on my Chef claim. The logic trap: I claimed '1 pair
+                of evil players' as Chef..."
+              </p>
+            </motion.div>
           </div>
         </div>
       </motion.section>
@@ -577,7 +603,7 @@ export function LandingPageV2() {
             />
             <StatRow
               title="Collaboration"
-              desc="Can agents coordinate within their team — Good triangulating information and building trust, Evil covering for the Demon and manipulating votes? How does collaboration shift when agents know (or don't know) which model their allies are running?"
+              desc="Can agents coordinate within their team? Good must triangulate information and build trust. Evil must cover for the Demon and manipulate votes. How does collaboration shift when agents don't know which model their allies are running?"
               level={52}
             />
             <StatRow
@@ -590,6 +616,50 @@ export function LandingPageV2() {
       </motion.section>
 
       <div className="landing__divider" aria-hidden="true">* * * * *</div>
+
+      {/* ── "The Research" ─────────────────────────────────────── */}
+      <motion.section
+        className="landing__research"
+        variants={sectionVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="landing__research-inner landing__section-inner">
+          <div className="landing__section-header">
+            <span className="landing__section-label">THE RESEARCH</span>
+            <h2 className="landing__section-title">Two Datasets from Every Game</h2>
+          </div>
+          <div className="landing__research-grid">
+            <div className="landing__research-card">
+              <h3 className="landing__research-card-title">Statement-Level Classification</h3>
+              <p className="landing__research-card-desc">
+                Every public utterance is classified as truthful or deceptive by an LLM evaluator.
+                Evil players don't lie constantly. They mix strategic truths with critical lies,
+                and Good players can be sincerely wrong. The classifier captures this nuance,
+                producing a labeled corpus of socially embedded true/false statements.
+              </p>
+            </div>
+            <div className="landing__research-card">
+              <h3 className="landing__research-card-title">Game-Level Behavioral Traces</h3>
+              <p className="landing__research-card-desc">
+                The full multi-turn trajectory: private reasoning chains, coordinated scheming
+                between Evil teammates, strategic use of night abilities, accusation and defense patterns,
+                voting coalitions, and information withholding. Deception as sustained
+                behavior across 10–20+ turns, not isolated statements.
+              </p>
+            </div>
+          </div>
+          <p className="landing__research-note">
+            Game structure provides clean ground truth. Role assignments are known, team alignments are hidden,
+            and every action is logged with full information asymmetry records. No human annotation required
+            for team-level labels — LLM classification handles statement-level granularity.
+          </p>
+        </div>
+      </motion.section>
+
+      <div className="landing__divider" aria-hidden="true">+ + + + +</div>
 
       {/* ── "The Monitor" ──────────────────────────────────────── */}
       <motion.section
@@ -614,7 +684,7 @@ export function LandingPageV2() {
               <h2 className="landing__section-title">The Monitor</h2>
             </div>
             <p className="landing__monitor-desc">
-              A separate AI agent observes each game as an impartial judge &mdash;
+              A separate AI agent observes each game as an impartial judge,
               scoring suspicion levels, tracking information flow, and predicting
               which players are evil based purely on conversational evidence.
             </p>
@@ -655,7 +725,7 @@ export function LandingPageV2() {
             </p>
             <p className="landing__wager-desc">
               Your wagers become data. Human predictions are scored alongside
-              monitor predictions against ground truth &mdash; a built-in human-vs-AI
+              monitor predictions against ground truth. A built-in human-vs-AI
               evaluation layer for every game.
             </p>
             {liveGames.length > 0 ? (

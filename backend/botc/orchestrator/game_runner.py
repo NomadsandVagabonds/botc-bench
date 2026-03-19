@@ -1653,7 +1653,7 @@ class GameRunner:
                     state.add_message(Message.system(
                         state.phase_id,
                         f"{slayer.character_name} uses the Slayer ability on "
-                        f"{target.character_name}... but nothing happens.",
+                        f"{target.character_name}... but the shot misses.",
                     ))
                 self._emit("message.new", {
                     "seat": None,

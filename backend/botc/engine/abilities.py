@@ -1592,7 +1592,15 @@ def resolve_slayer_shot(state: GameState, slayer: Player, target: Player) -> boo
     """Slayer publicly chooses a player: if they're the Demon, they die.
 
     Returns True if the target died.
+    Only the actual Slayer (or someone who believes they are the Slayer,
+    e.g. a Drunk who thinks they're the Slayer) can use this ability.
     """
+    # Must actually be the Slayer (or perceive themselves as one, e.g. Drunk)
+    actual_role = slayer.role.id
+    perceived_role = slayer.perceived_role.id if slayer.perceived_role else actual_role
+    if actual_role != "slayer" and perceived_role != "slayer":
+        return False
+
     if slayer.hidden_state.get("slayer_used"):
         return False
 

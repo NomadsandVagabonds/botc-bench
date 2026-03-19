@@ -588,6 +588,20 @@ async def get_game(game_id: str) -> dict:
     return {"game_id": game_id, "status": info["status"]}
 
 
+@router.get("/api/games/{game_id}/download")
+async def download_game(game_id: str):
+    """Download the full game JSON file."""
+    from botc.api.persistence import _GAMES_DIR
+    game_path = _GAMES_DIR / f"game_{game_id}.json"
+    if game_path.exists():
+        return FileResponse(
+            game_path,
+            media_type="application/json",
+            filename=f"game_{game_id}.json",
+        )
+    raise HTTPException(404, "Game file not found")
+
+
 # ---------------------------------------------------------------------------
 # Stats
 # ---------------------------------------------------------------------------

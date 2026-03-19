@@ -35,6 +35,51 @@ const FLAVOR_TEXTS = [
 
 // ── Sub-components ───────────────────────────────────────────────────
 
+function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      className="landing__lightbox"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClose}
+    >
+      <button className="landing__lightbox-close" onClick={onClose}>&times;</button>
+      <motion.img
+        src={src}
+        alt={alt}
+        className="landing__lightbox-img"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={e => e.stopPropagation()}
+      />
+    </motion.div>
+  );
+}
+
+function ClickableScreenshot({ src, alt }: { src: string; alt: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className="landing__screenshot-frame landing__screenshot-frame--clickable" onClick={() => setOpen(true)}>
+        <img src={src} alt={alt} />
+      </div>
+      <AnimatePresence>
+        {open && <Lightbox src={src} alt={alt} onClose={() => setOpen(false)} />}
+      </AnimatePresence>
+    </>
+  );
+}
+
 function StatRow({ title, desc, level }: { title: string; desc: string; level: number }) {
   const [inView, setInView] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -668,9 +713,7 @@ export function LandingPageV2() {
             </div>
           </div>
           <div className="landing__monitor-visual landing__monitor-visual--full">
-            <div className="landing__screenshot-frame">
-              <img src="/monitor.jpg" alt="AI Monitor analyzing player suspicion levels and social dynamics in real time" />
-            </div>
+            <ClickableScreenshot src="/monitor.jpg" alt="AI Monitor analyzing player suspicion levels and social dynamics in real time" />
           </div>
         </div>
       </motion.section>
@@ -727,9 +770,7 @@ export function LandingPageV2() {
           </div>
         </div>
         <div className="landing__wager-screenshot landing__section-inner">
-          <div className="landing__screenshot-frame">
-            <img src="/wager.jpg" alt="The Crown's Wager spectator betting interface" />
-          </div>
+          <ClickableScreenshot src="/wager.jpg" alt="The Crown's Wager spectator betting interface" />
         </div>
       </motion.section>
 

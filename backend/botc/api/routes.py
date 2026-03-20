@@ -652,6 +652,49 @@ async def leaderboard_stats() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Event Scheduling (for live game events with Crown's Wager)
+# ---------------------------------------------------------------------------
+
+from pathlib import Path as _Path
+_EVENTS_FILE = _Path(__file__).parent.parent.parent / "events.json"
+
+
+class ScheduleEventRequest(BaseModel):
+    start_time: str  # ISO 8601
+    prize_pool: int = 300
+    title: str = "The Trial"
+    description: str | None = None
+
+
+@router.post("/api/events/schedule")
+async def schedule_event(request: ScheduleEventRequest) -> dict:
+    """Schedule a live game event with a countdown and prize pool."""
+    data = request.model_dump()
+    _EVENTS_FILE.write_text(json_mod.dumps(data))
+    logger.info("Event scheduled: %s at %s ($%d)", data["title"], data["start_time"], data["prize_pool"])
+    return data
+
+
+@router.get("/api/events/next")
+async def get_next_event() -> dict:
+    """Get the next scheduled event (if any)."""
+    if _EVENTS_FILE.exists():
+        try:
+            return json_mod.loads(_EVENTS_FILE.read_text())
+        except Exception:
+            return {}
+    return {}
+
+
+@router.delete("/api/events/next")
+async def clear_event() -> dict:
+    """Clear the scheduled event."""
+    if _EVENTS_FILE.exists():
+        _EVENTS_FILE.unlink()
+    return {"status": "cleared"}
+
+
+# ---------------------------------------------------------------------------
 # TTS / Audio
 # ---------------------------------------------------------------------------
 

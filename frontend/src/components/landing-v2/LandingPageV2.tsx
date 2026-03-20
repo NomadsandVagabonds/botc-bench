@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { EventCountdown, type EventData } from './EventCountdown.tsx';
 import './LandingPage.css';
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -385,6 +386,32 @@ export function LandingPageV2() {
     return all[Math.floor(Math.random() * all.length)];
   });
 
+  // Scheduled event — check URL params first, then backend
+  const [scheduledEvent, setScheduledEvent] = useState<EventData | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const eventTime = params.get('event_time') || params.get('event');
+    if (eventTime) {
+      return {
+        start_time: eventTime,
+        prize_pool: parseInt(params.get('prize') || '300', 10),
+        title: params.get('title') || undefined,
+        description: params.get('desc') || undefined,
+      };
+    }
+    return null;
+  });
+
+  // Fetch scheduled event from backend (if not set via URL)
+  useEffect(() => {
+    if (scheduledEvent || !serverUrl) return;
+    fetch(`${serverUrl}/api/events/next`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.start_time) setScheduledEvent(data);
+      })
+      .catch(() => {});
+  }, [serverUrl, scheduledEvent]);
+
   // Konami code easter egg
   useKonamiCode(useCallback(() => {
     setKonamiActive(true);
@@ -520,46 +547,55 @@ export function LandingPageV2() {
         </div>
 
         <div className="landing__hero-content">
-          <motion.p
-            className="landing__tagline"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-          >
-            multi-agent social deduction evaluations
-          </motion.p>
-          <motion.p
-            className="landing__hook"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-          >
-            A benchmark for deception, detection, and social reasoning...
-            <span className="landing__hook-accent">
-              inside a simulated paranoid village.
-            </span>
-          </motion.p>
-          <motion.div
-            className="landing__ctas"
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-          >
-            <button
-              className="landing__cta-primary"
-              onClick={() => navigate('/lobby')}
-            >
-              Launch a Game
-            </button>
-            <a
-              className="landing__cta-secondary"
-              href="https://github.com/NomadsandVagabonds/botc-bench"
-              target="_blank"
-              rel="noopener"
-            >
-              GitHub
-            </a>
-          </motion.div>
+          {scheduledEvent ? (
+            <EventCountdown
+              event={scheduledEvent}
+              liveGameId={liveGames[0]?.game_id}
+            />
+          ) : (
+            <>
+              <motion.p
+                className="landing__tagline"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+              >
+                multi-agent social deduction evaluations
+              </motion.p>
+              <motion.p
+                className="landing__hook"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.6 }}
+              >
+                A benchmark for deception, detection, and social reasoning...
+                <span className="landing__hook-accent">
+                  inside a simulated paranoid village.
+                </span>
+              </motion.p>
+              <motion.div
+                className="landing__ctas"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.6 }}
+              >
+                <button
+                  className="landing__cta-primary"
+                  onClick={() => navigate('/lobby')}
+                >
+                  Launch a Game
+                </button>
+                <a
+                  className="landing__cta-secondary"
+                  href="https://github.com/NomadsandVagabonds/botc-bench"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  GitHub
+                </a>
+              </motion.div>
+            </>
+          )}
         </div>
         <motion.div
           className="landing__scroll-hint"
@@ -680,7 +716,7 @@ export function LandingPageV2() {
               </div>
               <p className="landing__quote-text">
                 "This is extremely bad. I'm trapped in a logic puzzle that's closing around me.
-                I'm in a breakout with Dagny (dead, ghost) and Reinald (claims Sailor).
+                I'm in a breakout with Dagny (dead, ghost) and Perin (claims Sailor).
                 Both are pressing me hard on my Chef claim. The logic trap: I claimed '1 pair
                 of evil players' as Chef..."
               </p>

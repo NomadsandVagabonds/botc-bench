@@ -1,0 +1,284 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Event Countdown — Tournament announcement for scheduled games
+   Replaces hero content when an event is scheduled
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.event {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 24px;
+  max-width: 700px;
+  width: 100%;
+}
+
+
+/* ── Label (NEXT TRIAL / TRIAL IMMINENT) ── */
+
+.event__label {
+  font-family: var(--bb-font-pixel);
+  font-size: clamp(10px, 1.5vw, 14px);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--bb-gold);
+}
+
+.event--urgent .event__label {
+  color: var(--bb-crimson-bright);
+  animation: bb-pulse 1.5s ease-in-out infinite;
+  text-shadow: 0 0 12px rgba(231, 76, 60, 0.5);
+}
+
+
+/* ── Title ── */
+
+.event__title {
+  font-family: var(--bb-font-blackletter);
+  font-size: clamp(32px, 5.5vw, 56px);
+  font-weight: 700;
+  color: var(--bb-gold-bright);
+  line-height: 1.15;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+  margin: 0;
+}
+
+
+/* ── Countdown digits ── */
+
+.event__countdown {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(6px, 1.5vw, 12px);
+  margin: 12px 0;
+}
+
+.event__unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.event__digit-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: clamp(52px, 12vw, 84px);
+  height: clamp(52px, 12vw, 84px);
+  background: rgba(10, 8, 6, 0.85);
+  border: 2px solid var(--bb-brown);
+  box-shadow:
+    0 0 0 1px var(--bb-dark),
+    0 0 0 3px rgba(201, 168, 76, 0.1),
+    inset 0 0 24px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+/* Scanline effect on digit boxes */
+.event__digit-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.04) 2px,
+    rgba(0, 0, 0, 0.04) 4px
+  );
+}
+
+.event__digit {
+  font-family: var(--bb-font-pixel);
+  font-size: clamp(22px, 5vw, 36px);
+  color: var(--bb-gold-bright);
+  text-shadow: 0 0 8px rgba(201, 168, 76, 0.4);
+  line-height: 1;
+}
+
+.event--urgent .event__digit {
+  color: var(--bb-crimson-bright);
+  text-shadow: 0 0 12px rgba(231, 76, 60, 0.5);
+}
+
+.event__unit-label {
+  font-family: var(--bb-font-pixel);
+  font-size: 7px;
+  letter-spacing: 2px;
+  color: var(--bb-gold-dim);
+  text-transform: uppercase;
+}
+
+.event__separator {
+  font-family: var(--bb-font-pixel);
+  font-size: clamp(18px, 4vw, 30px);
+  color: var(--bb-gold-dim);
+  margin-top: clamp(12px, 3vw, 22px);
+  animation: bb-pulse 2s ease-in-out infinite;
+  user-select: none;
+}
+
+
+/* ── Prize display ── */
+
+.event__prize {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--bb-font-medieval);
+  font-size: clamp(17px, 2.5vw, 24px);
+  color: var(--bb-gold);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.event__coin {
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 0 8px rgba(201, 168, 76, 0.5));
+}
+
+
+/* ── Instructions text ── */
+
+.event__instructions {
+  font-family: var(--bb-font-body);
+  font-size: clamp(13px, 1.3vw, 16px);
+  color: var(--bb-gold-dim);
+  line-height: 1.55;
+  max-width: 480px;
+  margin: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIVE state — game is running
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.event--live {
+  gap: 20px;
+}
+
+.event__live-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 24px;
+  background: rgba(139, 26, 26, 0.25);
+  border: 1px solid rgba(231, 76, 60, 0.35);
+}
+
+.event__live-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bb-crimson-bright);
+  animation: bb-pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(231, 76, 60, 0.6);
+}
+
+.event__live-text {
+  font-family: var(--bb-font-pixel);
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: var(--bb-crimson-bright);
+  text-shadow: 0 0 8px rgba(231, 76, 60, 0.4);
+}
+
+
+/* ── CTA button ── */
+
+.event__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 44px;
+  font-family: var(--bb-font-pixel);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: none;
+  transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.event__cta--live {
+  background: var(--bb-crimson);
+  color: var(--bb-gold);
+  box-shadow:
+    0 0 0 2px var(--bb-crimson),
+    0 0 0 4px var(--bb-dark),
+    0 0 24px rgba(139, 26, 26, 0.4);
+  animation: event-cta-glow 2s ease-in-out infinite;
+}
+
+.event__cta--live:hover {
+  background: #a52020;
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 2px #a52020,
+    0 0 0 4px var(--bb-dark),
+    0 4px 16px rgba(139, 26, 26, 0.5),
+    0 0 40px rgba(139, 26, 26, 0.3);
+}
+
+.event__cta--live:active {
+  transform: translateY(0);
+}
+
+@keyframes event-cta-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px var(--bb-crimson),
+      0 0 0 4px var(--bb-dark),
+      0 0 20px rgba(139, 26, 26, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px var(--bb-crimson),
+      0 0 0 4px var(--bb-dark),
+      0 0 40px rgba(139, 26, 26, 0.6);
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   URGENT state — < 5 minutes, pulsing red
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.event--urgent .event__digit-box {
+  border-color: rgba(231, 76, 60, 0.4);
+  box-shadow:
+    0 0 0 1px var(--bb-dark),
+    0 0 0 3px rgba(231, 76, 60, 0.15),
+    inset 0 0 20px rgba(139, 26, 26, 0.2);
+  animation: event-urgent-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes event-urgent-pulse {
+  0%, 100% { border-color: rgba(231, 76, 60, 0.3); }
+  50% { border-color: rgba(231, 76, 60, 0.7); }
+}
+
+.event--urgent .event__title {
+  color: var(--bb-crimson-bright);
+  text-shadow: 0 0 20px rgba(231, 76, 60, 0.3);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Reduced motion
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .event__separator,
+  .event--urgent .event__label,
+  .event__live-dot,
+  .event__cta--live,
+  .event--urgent .event__digit-box {
+    animation: none;
+  }
+}

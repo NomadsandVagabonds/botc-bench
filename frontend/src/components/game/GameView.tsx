@@ -115,13 +115,14 @@ export function GameView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, replayMode]);
 
-  // Stop intro audio when paused or when user seeks (replayIndex jumps)
+  // Stop intro audio when paused, user seeks, or speed changes
   useEffect(() => {
-    if (paused && introAudioRef.current) {
+    if (introAudioRef.current && (paused || replayIndex > 5)) {
       introAudioRef.current.pause();
+      introAudioRef.current.src = '';
       introAudioRef.current = null;
     }
-  }, [paused, replayIndex]);
+  }, [paused, replayIndex, speed]);
 
   // Sync game music volume from store
   useEffect(() => {

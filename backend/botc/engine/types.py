@@ -314,7 +314,7 @@ class GameConfig:
         "nomination": "high",
         "accusation": "high",
         "defense": "high",
-        "vote": "high",
+        "vote": "medium",
         "whisper": "medium",
         "default": "medium",
     })

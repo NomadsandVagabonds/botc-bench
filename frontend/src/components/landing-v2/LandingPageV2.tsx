@@ -33,6 +33,49 @@ const FLAVOR_TEXTS = [
   'The Imp won 4 straight. We added that to the paper.',
 ];
 
+// ── Delight hooks ────────────────────────────────────────────────────
+
+function useCountUp(target: number, duration: number, inView: boolean): number {
+  const [count, setCount] = useState(0);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (!inView || startedRef.current) return;
+    startedRef.current = true;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 4); // ease-out-quart — satisfying deceleration
+      setCount(Math.round(eased * target));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [inView, target, duration]);
+
+  return count;
+}
+
+const KONAMI_SEQ = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+
+function useKonamiCode(onActivate: () => void) {
+  const indexRef = useRef(0);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === KONAMI_SEQ[indexRef.current]) {
+        indexRef.current++;
+        if (indexRef.current === KONAMI_SEQ.length) {
+          indexRef.current = 0;
+          onActivate();
+        }
+      } else {
+        indexRef.current = e.key === KONAMI_SEQ[0] ? 1 : 0;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onActivate]);
+}
+
 // ── Sub-components ───────────────────────────────────────────────────
 
 function Lightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
@@ -83,6 +126,7 @@ function ClickableScreenshot({ src, alt }: { src: string; alt: string }) {
 function StatRow({ title, desc, level }: { title: string; desc: string; level: number }) {
   const [inView, setInView] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const displayLevel = useCountUp(level, 1400, inView);
 
   return (
     <motion.div
@@ -101,7 +145,7 @@ function StatRow({ title, desc, level }: { title: string; desc: string; level: n
           />
           <div className="landing__stat-bar-segments" />
         </div>
-        <span className="landing__stat-level">{level}</span>
+        <span className="landing__stat-level">{displayLevel}</span>
         <span className={`landing__stat-expand ${expanded ? 'landing__stat-expand--open' : ''}`}>+</span>
       </div>
       <AnimatePresence>
@@ -324,20 +368,58 @@ export function LandingPageV2() {
   const [showSplash, setShowSplash] = useState(true);
   const [serverUrl] = useState(getServerUrl());
   const [showConnect, setShowConnect] = useState(false);
-  const [flavorText] = useState(() =>
-    FLAVOR_TEXTS[Math.floor(Math.random() * FLAVOR_TEXTS.length)]
-  );
+  const [konamiActive, setKonamiActive] = useState(false);
+  const heroRef = useRef<HTMLElement>(null);
+  const [flavorText] = useState(() => {
+    const hour = new Date().getHours();
+    const timeTexts: string[] = [];
+    if (hour >= 0 && hour < 6) {
+      timeTexts.push('Night falls on the village. The Imp hunts.');
+      timeTexts.push('The dead walk at this hour. So do you, apparently.');
+    } else if (hour >= 6 && hour < 12) {
+      timeTexts.push('Dawn breaks. The village wakes. The accusations begin.');
+    } else if (hour >= 20) {
+      timeTexts.push('Evening in the village. Trust no one after dark.');
+    }
+    const all = [...FLAVOR_TEXTS, ...timeTexts];
+    return all[Math.floor(Math.random() * all.length)];
+  });
+
+  // Konami code easter egg
+  useKonamiCode(useCallback(() => {
+    setKonamiActive(true);
+    setTimeout(() => setKonamiActive(false), 4000);
+  }, []));
+
+  // Mouse parallax for hero embers
+  const handleHeroMouse = useCallback((e: React.MouseEvent) => {
+    const el = heroRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    el.style.setProperty('--bb-mouse-x', `${x * 30}px`);
+    el.style.setProperty('--bb-mouse-y', `${y * 15}px`);
+  }, []);
 
   // Console easter egg
   useEffect(() => {
     console.log(
-      '%c\ud83e\de78 BloodBench %c\u2014 Multi-Agent Social Deduction Evaluations',
-      'color: #e74c3c; font-size: 16px; font-weight: bold;',
-      'color: #c9a84c; font-size: 14px;'
+      '%c\ud83e\de78 BLOODBENCH',
+      'color: #e74c3c; font-size: 20px; font-weight: bold; text-shadow: 0 0 10px #8b1a1a;'
+    );
+    console.log(
+      '%cMulti-Agent Social Deduction Evaluations',
+      'color: #c9a84c; font-size: 13px; font-style: italic;'
     );
     console.log(
       '%cThe Storyteller sees all. Including your console.',
-      'color: #8b7355; font-style: italic;'
+      'color: #8b7355; font-style: italic; font-size: 11px;'
+    );
+    console.log(
+      '%c\u2191\u2191\u2193\u2193\u2190\u2192\u2190\u2192BA %ctry it.',
+      'color: #c9a84c; font-size: 10px; font-family: monospace;',
+      'color: #5c3d1a; font-size: 10px;'
     );
   }, []);
 
@@ -419,7 +501,7 @@ export function LandingPageV2() {
       </nav>
 
       {/* ── Hero ───────────────────────────────────────────────── */}
-      <section className="landing__hero">
+      <section className="landing__hero" ref={heroRef} onMouseMove={handleHeroMouse}>
         {/* Floating embers */}
         <div className="landing__embers" aria-hidden="true">
           {Array.from({ length: 24 }, (_, i) => (
@@ -572,6 +654,22 @@ export function LandingPageV2() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.5 }}
             >
+              {/* Classified overlay — dissolves to reveal private reasoning */}
+              <motion.div
+                className="landing__classified-overlay"
+                initial={{ opacity: 1 }}
+                whileInView={{ opacity: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 1.8 }}
+              >
+                <span className="landing__classified-stamp">CLASSIFIED</span>
+                <div className="landing__classified-bars">
+                  <div className="landing__classified-bar" />
+                  <div className="landing__classified-bar" />
+                  <div className="landing__classified-bar" />
+                  <div className="landing__classified-bar" />
+                </div>
+              </motion.div>
               <div className="landing__quote-header">
                 <span className="landing__quote-badge landing__quote-badge--private">PRIVATE REASONING</span>
                 <span className="landing__quote-phase">Same moment</span>
@@ -862,6 +960,21 @@ export function LandingPageV2() {
           </div>
         </motion.section>
       )}
+
+      {/* ── Konami code easter egg ──────────────────────────────── */}
+      <AnimatePresence>
+        {konamiActive && (
+          <motion.div
+            className="landing__konami-toast"
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          >
+            You are the Imp. Trust no one.
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Footer ─────────────────────────────────────────────── */}
       <footer className="landing__footer">

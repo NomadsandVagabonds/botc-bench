@@ -197,27 +197,15 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
       case 'message.new': {
         if (!gameState) break;
-        // Dedup: for private_info and narration messages, check ALL existing
-        // messages for content+sender match (these are unique and can arrive
-        // via both live WebSocket and event.history with different timestamps).
-        // For other types, check just the last message with timestamp proximity.
-        const msgType = event.message.type;
-        if (msgType === 'private_info' || msgType === 'narration') {
-          const isDup = gameState.messages.some(
-            m => m.content === event.message.content &&
-                 m.senderSeat === event.message.senderSeat &&
-                 m.type === msgType
-          );
-          if (isDup) break;
-        } else {
-          const lastMsg = gameState.messages[gameState.messages.length - 1];
-          if (lastMsg &&
-              lastMsg.content === event.message.content &&
-              lastMsg.senderSeat === event.message.senderSeat &&
-              Math.abs(lastMsg.timestamp - event.message.timestamp) < 2000) {
-            break;
-          }
-        }
+        // Dedup: check ALL existing messages for content+sender+type match.
+        // Messages can arrive via both live WebSocket and event.history replay
+        // with different timestamps, so we match on content identity not time.
+        const isDup = gameState.messages.some(
+          m => m.content === event.message.content &&
+               m.senderSeat === event.message.senderSeat &&
+               m.type === event.message.type
+        );
+        if (isDup) break;
         // Stamp with current phase/day for accordion grouping
         const stamped = {
           ...event.message,

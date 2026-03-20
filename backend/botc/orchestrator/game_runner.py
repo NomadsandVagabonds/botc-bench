@@ -950,7 +950,9 @@ class GameRunner:
 
             for voter_seat, vote_result in zip(vote_tasks.keys(), results):
                 if isinstance(vote_result, Exception):
-                    logger.error("Vote failed for seat %d: %s", voter_seat, vote_result)
+                    logger.error("Vote failed for seat %d: %s — defaulting to NO", voter_seat, vote_result)
+                    process_vote(state, nomination, voter_seat, False)
+                    self._emit("vote.cast", {"seat": voter_seat, "nominee": nomination.nominee_seat, "vote": False})
                     continue
 
                 vote_parsed: ParsedResponse = vote_result

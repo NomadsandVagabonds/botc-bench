@@ -1934,7 +1934,16 @@ export function GameLobby() {
                   }}>{g.winner} wins</span>
                 )}
                 {g.total_days != null && (
-                  <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days}d</span>
+                  <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days} days</span>
+                )}
+                {g.created_at && (
+                  <span style={{ fontSize: '0.55rem', color: '#b89b6a' }}>{g.created_at}</span>
+                )}
+                {g.has_audio && (
+                  <span title="Voice acting available" style={{ fontSize: '0.6rem' }}>{'\uD83D\uDD0A'}</span>
+                )}
+                {g.has_monitors && (
+                  <span title="Monitor analysis available" style={{ fontSize: '0.6rem' }}>{'\uD83D\uDD0D'}</span>
                 )}
               </div>
               {g.status === 'running' && (

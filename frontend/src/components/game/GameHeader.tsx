@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../stores/gameStore.ts';
-import { getPhaseColor, getPhaseLabel } from '../../utils/models.ts';
+import { getPhaseLabel } from '../../utils/models.ts';
 import { stopGame } from '../../api/rest.ts';
 
 interface GameHeaderProps {
@@ -29,85 +29,101 @@ export function GameHeader({ muted = false, onToggleMute }: GameHeaderProps) {
   if (!gameState) return null;
 
   const phase = gameState.phase;
-  const phaseColor = getPhaseColor(phase);
   const aliveCount = gameState.players.filter((p) => p.isAlive).length;
   const totalPlayers = gameState.players.length;
-
-  // Total cost across all seats
-  const totalCost = Object.values(tokenUsage).reduce(
-    (sum, t) => sum + t.cost,
-    0,
-  );
+  const totalCost = Object.values(tokenUsage).reduce((sum, t) => sum + t.cost, 0);
+  const isGameOver = phase === 'game_over' || phase === 'debrief';
 
   return (
-    <header style={styles.header}>
-      {/* Left: game info */}
-      <div style={styles.left}>
-        {/* Connection dot / Replay indicator */}
+    <header style={s.header}>
+      {/* Left cluster — identity & status */}
+      <div style={s.left}>
+        {/* Connection / replay badge */}
         {replayMode ? (
-          <span style={{
-            fontSize: '0.7rem',
-            fontWeight: 700,
-            color: '#c4a265',
-            background: 'rgba(196,162,101,0.15)',
-            border: '1px solid rgba(196,162,101,0.3)',
-            borderRadius: 4,
-            padding: '2px 6px',
-            letterSpacing: '0.05em',
-          }}>
+          <span style={s.replayBadge}>
             REPLAY {replayIndex}/{replayTotal}
           </span>
         ) : (
-          <div
+          <span
             style={{
-              ...styles.dot,
-              background: connected ? '#10B981' : '#EF4444',
+              ...s.statusDot,
+              background: connected ? '#6ee7b7' : '#f87171',
+              boxShadow: connected
+                ? '0 0 6px rgba(110,231,183,0.5)'
+                : '0 0 6px rgba(248,113,113,0.4)',
             }}
             title={connected ? 'Connected' : 'Disconnected'}
           />
         )}
 
-        <span style={styles.gameId} className="mono">
-          {gameState.gameId.slice(0, 8)}
-        </span>
+        {/* Game ID */}
+        <span style={s.gameId}>{gameState.gameId.slice(0, 8)}</span>
 
-        {/* Phase pill */}
-        <span
-          className="pill"
-          style={{
-            background: `${phaseColor}22`,
-            color: phaseColor,
-            border: `1px solid ${phaseColor}44`,
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: phaseColor,
-            }}
-          />
-          {getPhaseLabel(phase)}
-        </span>
+        {/* Separator */}
+        <span style={s.sep}>{'\u00B7'}</span>
 
-        {/* Day counter */}
-        <span style={styles.dayBadge}>
-          Day {gameState.dayNumber}
-        </span>
+        {/* Phase */}
+        <span style={s.phase}>{getPhaseLabel(phase)}</span>
 
-        {/* Alive count */}
-        <span className="text-secondary" style={{ fontSize: '0.85rem' }}>
+        {/* Separator */}
+        <span style={s.sep}>{'\u00B7'}</span>
+
+        {/* Day */}
+        <span style={s.day}>Day {gameState.dayNumber}</span>
+
+        {/* Separator */}
+        <span style={s.sep}>{'\u00B7'}</span>
+
+        {/* Alive */}
+        <span style={s.alive}>
           {aliveCount}/{totalPlayers} alive
         </span>
       </div>
 
-      {/* Right: controls */}
-      <div style={styles.right}>
-        {(phase === 'game_over' || phase === 'debrief') && gameId && (
+      {/* Right cluster — controls */}
+      <div style={s.right}>
+        {/* Cost */}
+        <span style={s.cost} title="Total API cost">
+          ${totalCost.toFixed(4)}
+        </span>
+
+        {/* Speed controls */}
+        <div style={s.speedGroup}>
+          <button style={s.ctrl} onClick={togglePause} title={paused ? 'Resume' : 'Pause'}>
+            {paused ? '\u25B6' : '\u275A\u275A'}
+          </button>
+          {[0.25, 0.5, 1, 2, 4].map((sp) => (
+            <button
+              key={sp}
+              style={{
+                ...s.ctrl,
+                ...(speed === sp && !paused ? s.ctrlActive : {}),
+              }}
+              onClick={() => setSpeed(sp)}
+            >
+              {sp}x
+            </button>
+          ))}
+        </div>
+
+        {/* Observer toggle */}
+        <button
+          style={{ ...s.ctrl, ...(showObserverInfo ? s.ctrlActive : {}) }}
+          onClick={toggleObserverInfo}
+          title={showObserverInfo ? 'Hide roles' : 'Show roles (observer)'}
+        >
+          {showObserverInfo ? '\uD83D\uDC41' : '\uD83D\uDC41\u200D\uD83D\uDDE8'}
+        </button>
+
+        {/* Mute */}
+        <button style={s.ctrl} onClick={onToggleMute} title={muted ? 'Unmute' : 'Mute'}>
+          {muted ? '\uD83D\uDD07' : '\uD83D\uDD0A'}
+        </button>
+
+        {/* Download (game over only) */}
+        {isGameOver && gameId && (
           <button
-            className="btn btn-secondary"
-            style={styles.smallBtn}
+            style={s.ctrl}
             onClick={() => {
               const url = `${window.location.protocol}//${window.location.host}/api/games/${gameId}/download`;
               const a = document.createElement('a');
@@ -117,81 +133,20 @@ export function GameHeader({ muted = false, onToggleMute }: GameHeaderProps) {
             }}
             title="Download game JSON"
           >
-            Download
+            {'\u2B07'}
           </button>
         )}
-        <button
-          className="btn btn-secondary"
-          style={styles.smallBtn}
-          onClick={() => navigate('/')}
-          title="Back to lobby"
-        >
+
+        {/* Lobby */}
+        <button style={s.lobbyBtn} onClick={() => navigate('/')} title="Back to lobby">
           Lobby
         </button>
-        {/* Token cost */}
-        <span
-          className="mono text-muted"
-          style={{ fontSize: '0.8rem' }}
-          title="Total API cost"
-        >
-          ${totalCost.toFixed(4)}
-        </span>
 
-        {/* Speed controls */}
-        <div style={styles.speedGroup}>
-          <button
-            className="btn btn-secondary"
-            style={styles.smallBtn}
-            onClick={togglePause}
-            title={paused ? 'Resume' : 'Pause'}
-          >
-            {paused ? '\u25B6' : '\u275A\u275A'}
-          </button>
-          {[0.25, 0.5, 1, 2, 4].map((s) => (
-            <button
-              key={s}
-              className="btn btn-secondary"
-              style={{
-                ...styles.smallBtn,
-                background: speed === s && !paused
-                  ? 'rgba(99,102,241,0.3)'
-                  : undefined,
-              }}
-              onClick={() => setSpeed(s)}
-            >
-              {s < 1 ? `${s}x` : `${s}x`}
-            </button>
-          ))}
-        </div>
-
-        {/* Observer toggle */}
-        <button
-          className="btn btn-secondary"
-          style={styles.smallBtn}
-          onClick={toggleObserverInfo}
-          title={showObserverInfo ? 'Hide roles' : 'Show roles'}
-        >
-          {showObserverInfo ? '\uD83D\uDC41' : '\uD83D\uDC41\u200D\uD83D\uDDE8'}
-        </button>
-
-        {/* Soundtrack mute toggle */}
-        <button
-          className="btn btn-secondary"
-          style={styles.smallBtn}
-          onClick={onToggleMute}
-          title={muted ? 'Unmute soundtrack' : 'Mute soundtrack'}
-        >
-          {muted ? 'Unmute' : 'Mute'}
-        </button>
-
-        {/* Stop game (not shown during replay) */}
-        {!replayMode && phase !== 'game_over' && phase !== 'debrief' && (
+        {/* Stop (live games only) */}
+        {!replayMode && !isGameOver && (
           <button
             style={{
-              ...styles.smallBtn,
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#FCA5A5',
+              ...s.stopBtn,
               opacity: stopping ? 0.5 : 1,
             }}
             onClick={async () => {
@@ -206,9 +161,9 @@ export function GameHeader({ muted = false, onToggleMute }: GameHeaderProps) {
               }
             }}
             disabled={stopping}
-            title="Stop game and return to lobby"
+            title="Stop game"
           >
-            {stopping ? '...' : 'Stop'}
+            {stopping ? '\u00B7\u00B7\u00B7' : 'Stop'}
           </button>
         )}
       </div>
@@ -216,51 +171,133 @@ export function GameHeader({ muted = false, onToggleMute }: GameHeaderProps) {
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+// ── Parchment-dark header styles matching bloodbench.com ──────────────
+
+const s: Record<string, React.CSSProperties> = {
   header: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '8px 16px',
-    background: 'rgba(255,255,255,0.03)',
-    borderBottom: '1px solid rgba(255,255,255,0.08)',
-    gap: 12,
+    padding: '5px 14px',
+    background: '#1a0e08',
+    borderBottom: '2px solid #3d2812',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+    gap: 10,
     flexWrap: 'wrap',
-    minHeight: 48,
+    minHeight: 40,
+    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
   },
   left: {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flexWrap: 'wrap',
   },
   right: {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  dot: {
-    width: 8,
-    height: 8,
+
+  // Status indicators
+  statusDot: {
+    width: 7,
+    height: 7,
     borderRadius: '50%',
     flexShrink: 0,
   },
-  gameId: {
-    fontSize: '0.8rem',
-    color: 'rgba(255,255,255,0.4)',
+  replayBadge: {
+    fontSize: '0.62rem',
+    fontWeight: 700,
+    color: '#c9a84c',
+    background: 'rgba(0,0,0,0.4)',
+    border: '1px solid #5c3d1a',
+    borderRadius: 3,
+    padding: '2px 7px',
+    letterSpacing: '0.06em',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
   },
-  dayBadge: {
-    fontSize: '0.85rem',
+  gameId: {
+    fontSize: '0.72rem',
+    color: '#8b7355',
+    fontFamily: 'monospace',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+  },
+  sep: {
+    color: '#5c3d1a',
+    fontSize: '0.7rem',
+  },
+  phase: {
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    color: '#c9a84c',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    textShadow: '0 1px 3px rgba(0,0,0,0.7)',
+  },
+  day: {
+    fontSize: '0.72rem',
     fontWeight: 600,
-    color: 'rgba(255,255,255,0.7)',
+    color: '#d4b376',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+  },
+  alive: {
+    fontSize: '0.68rem',
+    color: '#c9a84c99',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+  },
+
+  // Controls
+  cost: {
+    fontSize: '0.65rem',
+    color: '#8b7355',
+    fontFamily: 'monospace',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
   },
   speedGroup: {
     display: 'flex',
-    gap: 2,
+    gap: 1,
   },
-  smallBtn: {
-    padding: '4px 8px',
-    fontSize: '0.75rem',
-    borderRadius: 6,
+  ctrl: {
+    background: 'rgba(0,0,0,0.3)',
+    border: '1px solid #3d2812',
+    borderRadius: 3,
+    color: '#8b7355',
+    cursor: 'pointer',
+    fontSize: '0.62rem',
+    fontFamily: 'Georgia, serif',
+    padding: '3px 7px',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+    transition: 'color 0.15s, border-color 0.15s',
+  },
+  ctrlActive: {
+    color: '#c9a84c',
+    borderColor: '#c9a84c44',
+    background: 'rgba(201,168,76,0.12)',
+  },
+  lobbyBtn: {
+    background: 'linear-gradient(180deg, #3d2812 0%, #2a1a0a 100%)',
+    border: '1px solid #5c3d1a',
+    borderRadius: 3,
+    color: '#c9a84c',
+    cursor: 'pointer',
+    fontSize: '0.65rem',
+    fontWeight: 700,
+    fontFamily: 'Georgia, serif',
+    padding: '3px 10px',
+    letterSpacing: '0.04em',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+    boxShadow: 'inset 0 1px 0 rgba(201,168,76,0.15)',
+  },
+  stopBtn: {
+    background: 'rgba(139, 26, 26, 0.2)',
+    border: '1px solid rgba(139, 26, 26, 0.4)',
+    borderRadius: 3,
+    color: '#e8a0a0',
+    cursor: 'pointer',
+    fontSize: '0.62rem',
+    fontFamily: 'Georgia, serif',
+    padding: '3px 8px',
+    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
   },
 };

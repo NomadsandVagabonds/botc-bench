@@ -86,12 +86,24 @@ function useAmbientVideo(phase: string | undefined, winner: string | undefined) 
     });
   }, []);
 
+  // Shuffle bag — play every clip once before repeating any
+  const shuffleBagRef = useRef<string[]>([]);
+
   const scheduleIdle = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     if (IDLE_CLIPS.length === 0) return;
     const delay = IDLE_MIN_MS + Math.random() * (IDLE_MAX_MS - IDLE_MIN_MS);
     idleTimerRef.current = setTimeout(() => {
-      const clip = IDLE_CLIPS[Math.floor(Math.random() * IDLE_CLIPS.length)];
+      // Refill and shuffle when bag is empty
+      if (shuffleBagRef.current.length === 0) {
+        const bag = [...IDLE_CLIPS];
+        for (let i = bag.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [bag[i], bag[j]] = [bag[j], bag[i]];
+        }
+        shuffleBagRef.current = bag;
+      }
+      const clip = shuffleBagRef.current.pop()!;
       playClip(clip);
     }, delay);
   }, [playClip]);
@@ -357,7 +369,7 @@ function WalkingSprite({
 
   // Idle wandering — when at target and in an idle phase, amble nearby
   useEffect(() => {
-    if (!isIdle || isDead || isNight) return;
+    if (!isIdle || isNight) return;
 
     // Wait 5-12 seconds, then pick a nearby spot to wander to
     const delay = 5000 + Math.random() * 7000 + seat * 800;
@@ -411,7 +423,8 @@ function WalkingSprite({
       }}
       onClick={onClick}
     >
-      {/* DX Terminal sprite — animated GIF when moving, frozen canvas when stationary */}
+      {/* DX Terminal sprite — animated GIF when moving (alive only), frozen canvas otherwise.
+           Dead sprites always show frozen canvas (no feet = ghostly glide). */}
       <img
         ref={imgRef}
         src={spriteUrl(spriteId)}
@@ -423,17 +436,22 @@ function WalkingSprite({
           imageRendering: 'pixelated',
           filter: spriteFilter,
           transition: 'filter 0.3s',
-          display: isMoving ? 'block' : 'none',
+          display: (isMoving && !isDead) ? 'block' : 'none',
         }}
       />
       <motion.canvas
         ref={canvasRef}
-        animate={!isMoving ? {
+        animate={isDead ? {
+          // Ghost: exaggerated floating wobble + vertical bob
+          rotate: [0, -6, 0, 6, 0],
+          y: [0, -9, -3, -12, 0],
+        } : !isMoving ? {
+          // Alive idle: subtle breathing
           rotate: [0, -1.5, 0, 1.5, 0],
           y: [0, -1, 0, -1, 0],
         } : {}}
-        transition={!isMoving ? {
-          duration: 3 + seat * 0.3,
+        transition={(isDead || !isMoving) ? {
+          duration: isDead ? 2 + seat * 0.2 : 3 + seat * 0.3,
           repeat: Infinity,
           ease: 'easeInOut',
         } : {}}
@@ -444,7 +462,7 @@ function WalkingSprite({
           imageRendering: 'pixelated',
           filter: spriteFilter,
           transition: 'filter 0.3s',
-          display: isMoving ? 'none' : 'block',
+          display: (isMoving && !isDead) ? 'none' : 'block',
         }}
       />
 
@@ -721,11 +739,12 @@ export function TownMap() {
       const idx = aliveSeats.indexOf(seat);
       if (idx >= 0) {
         const total = aliveSeats.length;
-        // Horizontal arc below the tower base — x=20-78, y=80-88
+        // Wide arc wrapping around the front of the tower
         const t = total > 1 ? idx / (total - 1) : 0.5;
-        const x = 20 + t * 58;
-        const y = 80 + Math.sin(t * Math.PI) * 8;
-        return clampToWalkable([x, y], [50, 82]);
+        // Spread from left path to right path, curving down in the center
+        const x = 18 + t * 64;  // 18% to 82% — full width of walkable area
+        const y = 62 + Math.sin(t * Math.PI) * 20;  // 62% at edges, 82% at center
+        return clampToWalkable([x, y], [50, 75]);
       }
     }
 

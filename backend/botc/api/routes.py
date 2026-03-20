@@ -111,6 +111,9 @@ class GameResponse(BaseModel):
     status: str
     winner: str | None = None
     total_days: int | None = None
+    created_at: str | None = None     # ISO date string from file timestamp
+    has_audio: bool = False
+    has_monitors: bool = False
 
 
 # Provider name → environment variable name
@@ -516,6 +519,9 @@ async def stop_game(game_id: str) -> dict:
 @router.get("/api/games")
 async def list_games() -> list[GameResponse]:
     """List all games."""
+    from botc.api.persistence import _GAMES_DIR
+    from datetime import datetime
+
     results = []
     for game_id, info in _games.items():
         resp = GameResponse(game_id=game_id, status=info["status"])
@@ -529,6 +535,15 @@ async def list_games() -> list[GameResponse]:
             rd = info["result_data"]
             resp.winner = rd.get("winner")
             resp.total_days = rd.get("total_days")
+
+        # File metadata
+        game_path = _GAMES_DIR / f"game_{game_id}.json"
+        if game_path.exists():
+            mtime = game_path.stat().st_mtime
+            resp.created_at = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+        resp.has_audio = (_GAMES_DIR / f"audio_{game_id}").is_dir()
+        resp.has_monitors = any(_GAMES_DIR.glob(f"monitor_{game_id}_*.json"))
+
         results.append(resp)
     return results
 

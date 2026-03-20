@@ -18,6 +18,9 @@ export interface GameListItem {
   status: string;        // "running" | "completed" | "failed"
   winner: string | null;
   total_days: number | null;
+  created_at: string | null;   // "YYYY-MM-DD"
+  has_audio: boolean;
+  has_monitors: boolean;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────

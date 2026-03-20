@@ -199,6 +199,16 @@ async def check_admin(user: dict = Depends(require_user)):
     return {"is_admin": is_admin}
 
 
+@wager_router.get("/api/wager/auth/me")
+async def get_me(user: dict = Depends(require_user)):
+    """Return the authenticated user's profile. Any GitHub user is valid."""
+    return {
+        "github_id": user.get("github_id"),
+        "github_login": user.get("github_login"),
+        "display_name": user.get("display_name"),
+    }
+
+
 # ═══════════════════════════════════════════════════════════════════
 # GITHUB OAUTH
 # ═══════════════════════════════════════════════════════════════════

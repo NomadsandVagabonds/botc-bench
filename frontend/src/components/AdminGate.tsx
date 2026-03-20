@@ -40,7 +40,7 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     }
 
     const serverUrl = getServerUrl();
-    fetch(`${serverUrl}/api/wager/auth/is-admin`, {
+    fetch(`${serverUrl}/api/wager/auth/me`, {
       headers: { 'X-Wager-Token': token },
     })
       .then(r => {
@@ -55,10 +55,11 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
       })
       .then(data => {
         if (!data) return;
-        if (data.is_admin) {
+        if (data.github_id) {
+          // Any authenticated GitHub user can access
           setAuthorized(true);
         } else {
-          setError('not_admin');
+          setError('not_logged_in');
         }
         setChecking(false);
       })
@@ -99,14 +100,13 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
         background: '#1a1a2e', border: '2px solid #c9a84c', borderRadius: 12,
         padding: '40px 48px', maxWidth: 400, textAlign: 'center', color: '#e8d5a3',
       }}>
-        <h2 style={{ color: '#c9a84c', margin: '0 0 12px', fontSize: 22 }}>Admin Access</h2>
+        <h2 style={{ color: '#c9a84c', margin: '0 0 12px', fontSize: 22 }}>Sign In to Play</h2>
         <p style={{ fontSize: 14, opacity: 0.8, margin: '0 0 24px' }}>
-          {error === 'not_admin'
-            ? 'Your account does not have admin access.'
-            : 'Sign in with GitHub to access the admin panel.'}
+          Sign in with GitHub to start games with your own API keys.
+          Bring your own keys, keep the replays.
         </p>
 
-        {error !== 'not_admin' && (
+        {(
           <button
             onClick={handleGitHubLogin}
             style={{

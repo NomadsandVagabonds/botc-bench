@@ -125,6 +125,19 @@ _PROVIDER_ENV_KEYS: dict[str, str] = {
 }
 
 
+MAX_CONCURRENT_GAMES = 2
+
+
+def _check_concurrent_limit() -> None:
+    """Raise 429 if too many games are already running."""
+    running = sum(1 for info in _games.values() if info.get("status") == "running")
+    if running >= MAX_CONCURRENT_GAMES:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Server limit: {MAX_CONCURRENT_GAMES} concurrent game(s). Please wait for a game to finish.",
+        )
+
+
 def _mark_game_failed(runner: GameRunner, exc: Exception) -> None:
     """Persist failure status so clients can show useful errors."""
     game_id = runner.state.game_id if runner.state else "pending"
@@ -214,6 +227,7 @@ def _save_completed_game(runner: GameRunner, result: GameResult) -> None:
 @router.post("/api/games", response_model=GameResponse)
 async def create_game(request: CreateGameRequest) -> GameResponse:
     """Create and start a new game."""
+    _check_concurrent_limit()
     if len(request.agents) != request.num_players:
         raise HTTPException(
             status_code=422,
@@ -287,6 +301,7 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
     Bridges the gap between /api/games (requires per-agent API keys in the request)
     and /api/games/quick (ignores model choices, round-robins automatically).
     """
+    _check_concurrent_limit()
     if len(request.seat_models) != request.num_players:
         raise HTTPException(
             status_code=422,
@@ -412,6 +427,7 @@ async def quick_game(
 
     Round-robins across available providers (Anthropic, OpenAI, Google).
     """
+    _check_concurrent_limit()
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "")
     openai_key = os.environ.get("OPENAI_API_KEY", "")
     google_key = os.environ.get("GOOGLE_API_KEY", "")

@@ -125,7 +125,7 @@ _PROVIDER_ENV_KEYS: dict[str, str] = {
 }
 
 
-MAX_CONCURRENT_GAMES = 2
+MAX_CONCURRENT_GAMES = 10
 
 
 def _check_concurrent_limit() -> None:

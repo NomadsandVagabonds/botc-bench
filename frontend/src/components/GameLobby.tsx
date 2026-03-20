@@ -1343,6 +1343,33 @@ export function GameLobby() {
   const navigate = useNavigate();
   const lobbyAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Ambient idle video on scroll background
+  const lobbyIdleRef = useRef<HTMLVideoElement>(null);
+  const [lobbyIdlePlaying, setLobbyIdlePlaying] = useState(false);
+  const lobbyIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleLobbyIdle = useCallback(() => {
+    if (lobbyIdleTimerRef.current) clearTimeout(lobbyIdleTimerRef.current);
+    const delay = 80_000 + Math.random() * 40_000; // 80–120s
+    lobbyIdleTimerRef.current = setTimeout(() => {
+      const vid = lobbyIdleRef.current;
+      if (!vid) return;
+      vid.src = '/ambient/idle-options.mp4';
+      vid.load();
+      vid.play().then(() => setLobbyIdlePlaying(true)).catch(() => {});
+    }, delay);
+  }, []);
+
+  const handleLobbyIdleEnd = useCallback(() => {
+    setLobbyIdlePlaying(false);
+    scheduleLobbyIdle(); // schedule next one
+  }, [scheduleLobbyIdle]);
+
+  useEffect(() => {
+    scheduleLobbyIdle();
+    return () => { if (lobbyIdleTimerRef.current) clearTimeout(lobbyIdleTimerRef.current); };
+  }, [scheduleLobbyIdle]);
+
   // Splash screen (only on first visit)
   const [showSplash, setShowSplash] = useState(() => {
     if (sessionStorage.getItem('botc_splash_seen')) return false;
@@ -1975,6 +2002,19 @@ export function GameLobby() {
       {transitioning && <PageTransition onMidpoint={handleTransitionMidpoint} />}
       <div style={st.page}>
         <img src="/scroll_lg.jpg" alt="" style={st.scrollBg} />
+        {/* Ambient idle video — fades in over scroll background after ~90s */}
+        <video
+          ref={lobbyIdleRef}
+          onEnded={handleLobbyIdleEnd}
+          muted
+          playsInline
+          style={{
+            ...st.scrollBg,
+            zIndex: 1,
+            opacity: lobbyIdlePlaying ? 1 : 0,
+            transition: 'opacity 0.6s ease',
+          }}
+        />
         <div style={st.content}>
           {view === 'menu' && menuView}
           {view === 'setup' && setupView}

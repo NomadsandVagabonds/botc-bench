@@ -16,7 +16,7 @@ function getServerUrl(): string {
 export function AdminGate({ children }: { children: React.ReactNode }) {
   const [authorized, setAuthorized] = useState(!isProduction);
   const [checking, setChecking] = useState(isProduction);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isProduction) return;

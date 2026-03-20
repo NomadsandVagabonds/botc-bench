@@ -35,6 +35,7 @@ export function GameView() {
   const introPlayedRef = useRef(false);
   const paused = useGameStore((s) => s.paused);
   const replayIndex = useGameStore((s) => s.replayIndex);
+  const speed = useGameStore((s) => s.speed);
   const [muted, setMuted] = useState(false);
   const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);

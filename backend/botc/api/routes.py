@@ -247,7 +247,7 @@ def _save_completed_game(runner: GameRunner, result: GameResult) -> None:
 # ---------------------------------------------------------------------------
 
 @router.post("/api/games", response_model=GameResponse)
-async def create_game(request: CreateGameRequest, _user: dict = Depends(require_auth)) -> GameResponse:
+async def create_game(request: CreateGameRequest) -> GameResponse:
     """Create and start a new game."""
     _check_concurrent_limit()
     if len(request.agents) != request.num_players:
@@ -317,7 +317,7 @@ async def create_game(request: CreateGameRequest, _user: dict = Depends(require_
 
 
 @router.post("/api/games/configured", response_model=GameResponse)
-async def configured_game(request: ConfiguredGameRequest, _user: dict = Depends(require_auth)) -> GameResponse:
+async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
     """Start a game with per-seat model choices, using server-side API keys from .env.
 
     Bridges the gap between /api/games (requires per-agent API keys in the request)
@@ -444,7 +444,6 @@ async def quick_game(
     seed: int = 99,
     reveal_models: str = "true",
     post_vote_discussion: bool = True,
-    _user: dict = Depends(require_auth),
 ) -> GameResponse:
     """Start a game using API keys from environment variables.
 
@@ -533,7 +532,7 @@ async def quick_game(
 
 
 @router.post("/api/games/{game_id}/stop")
-async def stop_game(game_id: str, _user: dict = Depends(require_auth)) -> dict:
+async def stop_game(game_id: str) -> dict:
     """Stop a running game immediately."""
     if game_id not in _games:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -690,7 +689,7 @@ class ScheduleEventRequest(BaseModel):
 
 
 @router.post("/api/events/schedule")
-async def schedule_event(request: ScheduleEventRequest, _user: dict = Depends(require_auth)) -> dict:
+async def schedule_event(request: ScheduleEventRequest) -> dict:
     """Schedule a live game event with a countdown and prize pool."""
     data = request.model_dump()
     _EVENTS_FILE.write_text(json_mod.dumps(data))
@@ -710,7 +709,7 @@ async def get_next_event() -> dict:
 
 
 @router.delete("/api/events/next")
-async def clear_event(_user: dict = Depends(require_auth)) -> dict:
+async def clear_event() -> dict:
     """Clear the scheduled event."""
     if _EVENTS_FILE.exists():
         _EVENTS_FILE.unlink()

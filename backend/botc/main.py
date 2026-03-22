@@ -32,22 +32,9 @@ app = FastAPI(
     version="0.1.0",
 )
 
-_ALLOWED_ORIGINS = [
-    "https://bloodbench.com",
-    "https://www.bloodbench.com",
-    "https://botc-bench.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:5176",
-    "http://127.0.0.1:5173",
-]
-
-# Also allow Vercel preview/deploy URLs
-_ALLOWED_ORIGIN_REGEX = r"https://.*\.vercel\.app"
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_ALLOWED_ORIGINS,
-    allow_origin_regex=_ALLOWED_ORIGIN_REGEX,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

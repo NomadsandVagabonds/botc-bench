@@ -333,7 +333,14 @@ export const useGameStore = create<GameStore>()((set, get) => ({
             allCurrent.votesAgainst = [...allCurrent.votesAgainst, event.voterSeat];
           }
         }
-        set({ gameState: { ...gameState, nominations: noms, messages: [...gameState.messages, voteMsg] }, allNominations: allNoms });
+        // Update ghost vote status if included in the event
+        let updatedPlayers = gameState.players;
+        if (event.ghost_vote_used === true) {
+          updatedPlayers = gameState.players.map(p =>
+            p.seat === event.voterSeat ? { ...p, ghostVoteUsed: true } : p
+          );
+        }
+        set({ gameState: { ...gameState, players: updatedPlayers, nominations: noms, messages: [...gameState.messages, voteMsg] }, allNominations: allNoms });
         break;
       }
 

@@ -967,10 +967,12 @@ class GameRunner:
                 actually_voted_yes = voter_seat in nomination.votes_for
                 actually_voted_no = voter_seat in nomination.votes_against
                 if actually_voted_yes or actually_voted_no:
+                    voter = state.player_at(voter_seat)
                     self._emit("vote.cast", {
                         "seat": voter_seat,
                         "nominee": nomination.nominee_seat,
                         "vote": actually_voted_yes,
+                        "ghost_vote_used": voter.ghost_vote_used if not voter.is_alive else None,
                     })
 
             # --- Evaluate vote result against threshold and current block ---

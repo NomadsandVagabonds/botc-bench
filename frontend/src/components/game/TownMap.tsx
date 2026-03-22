@@ -43,6 +43,7 @@ const IDLE_CLIPS = [
   '/ambient/idle-merchant2.mp4',
   '/ambient/idle-notdead.mp4',
   '/ambient/idle-sweep.mp4',
+  '/ambient/idle-climb.mp4',
 ];
 
 const EVENT_CLIPS: Record<string, string> = {

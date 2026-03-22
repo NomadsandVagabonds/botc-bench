@@ -29,9 +29,11 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  const token = localStorage.getItem('wager_token');
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { 'X-Wager-Token': token } : {}),
       ...options.headers,
     },
     ...options,

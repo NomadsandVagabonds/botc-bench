@@ -11,7 +11,7 @@ import urllib.request
 import urllib.parse
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -128,6 +128,28 @@ _PROVIDER_ENV_KEYS: dict[str, str] = {
 MAX_CONCURRENT_GAMES = 10
 
 
+async def require_auth(request: Request) -> dict:
+    """Require a valid wager_token for protected endpoints.
+
+    Returns the user dict if authenticated, raises 401 otherwise.
+    On localhost, allows unauthenticated access for local dev.
+    """
+    host = request.headers.get("host", "")
+    if "localhost" in host or "127.0.0.1" in host:
+        return {"github_id": "local", "github_login": "local"}
+
+    token = request.headers.get("X-Wager-Token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    from botc.wager.db import get_db
+    db = get_db()
+    user = db.get_user_by_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return user
+
+
 def _check_concurrent_limit() -> None:
     """Raise 429 if too many games are already running."""
     running = sum(1 for info in _games.values() if info.get("status") == "running")
@@ -225,7 +247,7 @@ def _save_completed_game(runner: GameRunner, result: GameResult) -> None:
 # ---------------------------------------------------------------------------
 
 @router.post("/api/games", response_model=GameResponse)
-async def create_game(request: CreateGameRequest) -> GameResponse:
+async def create_game(request: CreateGameRequest, _user: dict = Depends(require_auth)) -> GameResponse:
     """Create and start a new game."""
     _check_concurrent_limit()
     if len(request.agents) != request.num_players:
@@ -295,7 +317,7 @@ async def create_game(request: CreateGameRequest) -> GameResponse:
 
 
 @router.post("/api/games/configured", response_model=GameResponse)
-async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
+async def configured_game(request: ConfiguredGameRequest, _user: dict = Depends(require_auth)) -> GameResponse:
     """Start a game with per-seat model choices, using server-side API keys from .env.
 
     Bridges the gap between /api/games (requires per-agent API keys in the request)
@@ -422,6 +444,7 @@ async def quick_game(
     seed: int = 99,
     reveal_models: str = "true",
     post_vote_discussion: bool = True,
+    _user: dict = Depends(require_auth),
 ) -> GameResponse:
     """Start a game using API keys from environment variables.
 
@@ -510,7 +533,7 @@ async def quick_game(
 
 
 @router.post("/api/games/{game_id}/stop")
-async def stop_game(game_id: str) -> dict:
+async def stop_game(game_id: str, _user: dict = Depends(require_auth)) -> dict:
     """Stop a running game immediately."""
     if game_id not in _games:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -667,7 +690,7 @@ class ScheduleEventRequest(BaseModel):
 
 
 @router.post("/api/events/schedule")
-async def schedule_event(request: ScheduleEventRequest) -> dict:
+async def schedule_event(request: ScheduleEventRequest, _user: dict = Depends(require_auth)) -> dict:
     """Schedule a live game event with a countdown and prize pool."""
     data = request.model_dump()
     _EVENTS_FILE.write_text(json_mod.dumps(data))
@@ -687,7 +710,7 @@ async def get_next_event() -> dict:
 
 
 @router.delete("/api/events/next")
-async def clear_event() -> dict:
+async def clear_event(_user: dict = Depends(require_auth)) -> dict:
     """Clear the scheduled event."""
     if _EVENTS_FILE.exists():
         _EVENTS_FILE.unlink()
@@ -713,8 +736,12 @@ async def audio_manifest(game_id: str) -> dict:
 async def audio_clip(game_id: str, filename: str) -> FileResponse:
     """Serve an individual audio clip MP3."""
     from botc.tts.generate import GAMES_DIR
-    clip_path = GAMES_DIR / f"audio_{game_id}" / filename
-    if not clip_path.exists() or not filename.endswith(".mp3"):
+    # Sanitize filename to prevent path traversal
+    safe_name = Path(filename).name
+    if not safe_name.endswith(".mp3") or safe_name != filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    clip_path = GAMES_DIR / f"audio_{game_id}" / safe_name
+    if not clip_path.exists():
         raise HTTPException(status_code=404, detail="Audio clip not found")
     return FileResponse(clip_path, media_type="audio/mpeg")
 

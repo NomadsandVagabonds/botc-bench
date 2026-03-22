@@ -1,0 +1,1655 @@
+{
+  "game_id": "655bd7a104ce",
+  "status": "running",
+  "events": [
+    {
+      "type": "game.created",
+      "data": {
+        "game_id": "655bd7a104ce",
+        "players": [
+          {
+            "seat": 0,
+            "agent_id": "mock-0",
+            "character_name": "Odin",
+            "model": "mock-model"
+          },
+          {
+            "seat": 1,
+            "agent_id": "mock-1",
+            "character_name": "Clarimond",
+            "model": "mock-model"
+          },
+          {
+            "seat": 2,
+            "agent_id": "mock-2",
+            "character_name": "Darian",
+            "model": "mock-model"
+          },
+          {
+            "seat": 3,
+            "agent_id": "mock-3",
+            "character_name": "Astrid",
+            "model": "mock-model"
+          },
+          {
+            "seat": 4,
+            "agent_id": "mock-4",
+            "character_name": "Solveig",
+            "model": "mock-model"
+          }
+        ]
+      },
+      "ts": 1773988720.821138
+    },
+    {
+      "type": "game.state",
+      "data": {
+        "game_id": "655bd7a104ce",
+        "phase": "setup",
+        "day_number": 0,
+        "players": [
+          {
+            "seat": 0,
+            "agent_id": "mock-0",
+            "character_name": "Odin",
+            "model_name": "mock-model",
+            "role": "Chef",
+            "role_id": "chef",
+            "role_type": "townsfolk",
+            "alignment": "good",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "You start knowing how many pairs of evil players there are."
+          },
+          {
+            "seat": 1,
+            "agent_id": "mock-1",
+            "character_name": "Clarimond",
+            "model_name": "mock-model",
+            "role": "Scarlet Woman",
+            "role_id": "scarlet_woman",
+            "role_type": "minion",
+            "alignment": "evil",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "If there are 5 or more players alive & the Demon dies, you become the Demon."
+          },
+          {
+            "seat": 2,
+            "agent_id": "mock-2",
+            "character_name": "Darian",
+            "model_name": "mock-model",
+            "role": "Empath",
+            "role_id": "empath",
+            "role_type": "townsfolk",
+            "alignment": "good",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "Each night, you learn how many of your 2 alive neighbours are evil."
+          },
+          {
+            "seat": 3,
+            "agent_id": "mock-3",
+            "character_name": "Astrid",
+            "model_name": "mock-model",
+            "role": "Investigator",
+            "role_id": "investigator",
+            "role_type": "townsfolk",
+            "alignment": "good",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "You start knowing that 1 of 2 players is a particular Minion."
+          },
+          {
+            "seat": 4,
+            "agent_id": "mock-4",
+            "character_name": "Solveig",
+            "model_name": "mock-model",
+            "role": "Imp",
+            "role_id": "imp",
+            "role_type": "demon",
+            "alignment": "evil",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "Each night*, choose a player: they die. If you kill yourself this way, a Minion becomes the Imp."
+          }
+        ],
+        "breakout_groups": [],
+        "nominations": [],
+        "executed_today": null,
+        "winner": null,
+        "demon_bluffs": [
+          "Butler",
+          "Mayor",
+          "Librarian"
+        ],
+        "night_kills": [],
+        "rng_seed": 42
+      },
+      "ts": 1773988720.821144
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "first_night",
+        "day": 0,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.821147
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 3,
+        "name": "Astrid",
+        "role": "Investigator",
+        "role_id": "investigator",
+        "action": "learn_minion",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 0
+      },
+      "ts": 1773988720.8214002
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 0,
+        "name": "Odin",
+        "role": "Chef",
+        "role_id": "chef",
+        "action": "count_evil_pairs",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 0
+      },
+      "ts": 1773988720.8214011
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 2,
+        "name": "Darian",
+        "role": "Empath",
+        "role_id": "empath",
+        "action": "count_evil_neighbours",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 0
+      },
+      "ts": 1773988720.821402
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "You learn that either Clarimond [Seat 1] or Odin [Seat 0] is the Scarlet Woman.",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.821527
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "You learn that there are 0 pairs of evil players sitting adjacent to each other anywhere in the seating circle (this is about the whole circle, not just your neighbours).",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.821528
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "You learn that 1 of your alive neighbours is evil.",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.8215292
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "You are the Demon. Your evil teammates: Clarimond [Seat 1] (Scarlet Woman). Your demon bluffs (not-in-play good roles): Butler, Mayor, Librarian.",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.8215292
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "You are a Minion. The Demon is Solveig [Seat 4]. Evil teammates: Solveig [Seat 4] (Imp).",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.82153
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 1,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.821595
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.822165
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 0,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.822166
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.82225
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 1,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.822251
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.822328
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 2,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.822328
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.822403
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 3,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.822403
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.822478
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 4,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.822479
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 1,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.8224819
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.822598
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 385,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.822644
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.822664
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 382,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.8227
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.822716
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 388,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.822749
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.822764
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 412,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.822797
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.822813
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 445,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.822846
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.822861
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "night",
+        "day": 1,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.823105
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 4,
+        "name": "Solveig",
+        "role": "Imp",
+        "role_id": "imp",
+        "action": "kill",
+        "target_seat": 3,
+        "target_name": "Astrid",
+        "role_choice": null,
+        "effect": "targets Astrid for kill",
+        "day": 1
+      },
+      "ts": 1773988720.823481
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 2,
+        "name": "Darian",
+        "role": "Empath",
+        "role_id": "empath",
+        "action": "count_evil_neighbours",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 1
+      },
+      "ts": 1773988720.823483
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "You learn that 2 of your alive neighbours are evil.",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "night",
+        "day": 1
+      },
+      "ts": 1773988720.8235981
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": null,
+        "agent_id": "storyteller",
+        "model": "mock-model",
+        "input_tokens": 21,
+        "output_tokens": 39,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.823627
+    },
+    {
+      "type": "death",
+      "data": {
+        "seat": 3,
+        "role": "Investigator",
+        "cause": "night_kill",
+        "death_cause": "demon_kill",
+        "death_day": 1,
+        "death_phase": "night"
+      },
+      "ts": 1773988720.8236318
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "<THINK>Observing the situation.</THINK>\n<SAY>I'm watching everyone carefully.</SAY>\n<ACTION>{PASS}</ACTION>\n<MEMORY>Observing. Nothing concrete yet.</MEMORY>",
+        "type": "narration",
+        "phase": "night",
+        "day": 1
+      },
+      "ts": 1773988720.823633
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "You have died. Your role remains hidden from other players. You continue to participate fully in discussions and breakout groups. You cannot nominate. You have exactly 1 ghost vote remaining for the rest of the game \u2014 once you use it, you cannot vote again. You no longer receive night ability information.",
+        "type": "private_info",
+        "phase": "night",
+        "day": 1
+      },
+      "ts": 1773988720.823637
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 2,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.823713
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 2,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.8242922
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.8244622
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 628,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.8245099
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.824533
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 624,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.824576
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.8245928
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 647,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.824634
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.82465
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 750,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.824699
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.824714
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 688,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.8247612
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.824777
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "night",
+        "day": 2,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.825015
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 4,
+        "name": "Solveig",
+        "role": "Imp",
+        "role_id": "imp",
+        "action": "kill",
+        "target_seat": 0,
+        "target_name": "Odin",
+        "role_choice": null,
+        "effect": "targets Odin for kill",
+        "day": 2
+      },
+      "ts": 1773988720.8253639
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 2,
+        "name": "Darian",
+        "role": "Empath",
+        "role_id": "empath",
+        "action": "count_evil_neighbours",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 2
+      },
+      "ts": 1773988720.825366
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "You learn that 2 of your alive neighbours are evil.",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "night",
+        "day": 2
+      },
+      "ts": 1773988720.8254678
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": null,
+        "agent_id": "storyteller",
+        "model": "mock-model",
+        "input_tokens": 20,
+        "output_tokens": 39,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.825492
+    },
+    {
+      "type": "death",
+      "data": {
+        "seat": 0,
+        "role": "Chef",
+        "cause": "night_kill",
+        "death_cause": "demon_kill",
+        "death_day": 2,
+        "death_phase": "night"
+      },
+      "ts": 1773988720.825496
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "<THINK>Observing the situation.</THINK>\n<SAY>I'm watching everyone carefully.</SAY>\n<ACTION>{PASS}</ACTION>\n<MEMORY>Observing. Nothing concrete yet.</MEMORY>",
+        "type": "narration",
+        "phase": "night",
+        "day": 2
+      },
+      "ts": 1773988720.8254972
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "You have died. Your role remains hidden from other players. You continue to participate fully in discussions and breakout groups. You cannot nominate. You have exactly 1 ghost vote remaining for the rest of the game \u2014 once you use it, you cannot vote again. You no longer receive night ability information.",
+        "type": "private_info",
+        "phase": "night",
+        "day": 2
+      },
+      "ts": 1773988720.8255
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 3,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.8255749
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 3,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.826175
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.82636
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 966,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.826414
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.8264341
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 867,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.826485
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.8265018
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 905,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.8265522
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.826568
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 993,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.826617
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.826632
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 930,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.8266811
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.826696
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "night",
+        "day": 3,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.8268921
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 4,
+        "name": "Solveig",
+        "role": "Imp",
+        "role_id": "imp",
+        "action": "kill",
+        "target_seat": 2,
+        "target_name": "Darian",
+        "role_choice": null,
+        "effect": "targets Darian for kill",
+        "day": 3
+      },
+      "ts": 1773988720.82737
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 2,
+        "name": "Darian",
+        "role": "Empath",
+        "role_id": "empath",
+        "action": "count_evil_neighbours",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 3
+      },
+      "ts": 1773988720.827372
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": null,
+        "agent_id": "storyteller",
+        "model": "mock-model",
+        "input_tokens": 21,
+        "output_tokens": 39,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.827499
+    },
+    {
+      "type": "death",
+      "data": {
+        "seat": 2,
+        "role": "Empath",
+        "cause": "night_kill",
+        "death_cause": "demon_kill",
+        "death_day": 3,
+        "death_phase": "night"
+      },
+      "ts": 1773988720.827507
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "<THINK>Observing the situation.</THINK>\n<SAY>I'm watching everyone carefully.</SAY>\n<ACTION>{PASS}</ACTION>\n<MEMORY>Observing. Nothing concrete yet.</MEMORY>",
+        "type": "narration",
+        "phase": "night",
+        "day": 3
+      },
+      "ts": 1773988720.827508
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "You have died. Your role remains hidden from other players. You continue to participate fully in discussions and breakout groups. You cannot nominate. You have exactly 1 ghost vote remaining for the rest of the game \u2014 once you use it, you cannot vote again. You no longer receive night ability information.",
+        "type": "private_info",
+        "phase": "night",
+        "day": 3
+      },
+      "ts": 1773988720.827513
+    },
+    {
+      "type": "game.over",
+      "data": {
+        "winner": "evil",
+        "reason": "Only 2 players remain. Evil wins!"
+      },
+      "ts": 1773988720.827612
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "debrief",
+        "day": 3,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.827615
+    }
+  ],
+  "initial_state": {
+    "game_id": "655bd7a104ce",
+    "phase": "setup",
+    "day_number": 0,
+    "players": [
+      {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "character_name": "Odin",
+        "model_name": "",
+        "role": "Chef",
+        "role_id": "chef",
+        "role_type": "townsfolk",
+        "alignment": "good",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "You start knowing how many pairs of evil players there are."
+      },
+      {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "character_name": "Clarimond",
+        "model_name": "",
+        "role": "Scarlet Woman",
+        "role_id": "scarlet_woman",
+        "role_type": "minion",
+        "alignment": "evil",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "If there are 5 or more players alive & the Demon dies, you become the Demon."
+      },
+      {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "character_name": "Darian",
+        "model_name": "",
+        "role": "Empath",
+        "role_id": "empath",
+        "role_type": "townsfolk",
+        "alignment": "good",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "Each night, you learn how many of your 2 alive neighbours are evil."
+      },
+      {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "character_name": "Astrid",
+        "model_name": "",
+        "role": "Investigator",
+        "role_id": "investigator",
+        "role_type": "townsfolk",
+        "alignment": "good",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "You start knowing that 1 of 2 players is a particular Minion."
+      },
+      {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "character_name": "Solveig",
+        "model_name": "",
+        "role": "Imp",
+        "role_id": "imp",
+        "role_type": "demon",
+        "alignment": "evil",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "Each night*, choose a player: they die. If you kill yourself this way, a Minion becomes the Imp."
+      }
+    ],
+    "breakout_groups": [],
+    "nominations": [],
+    "executed_today": null,
+    "winner": null,
+    "demon_bluffs": [
+      "Butler",
+      "Mayor",
+      "Librarian"
+    ],
+    "night_kills": [],
+    "rng_seed": 42
+  }
+}

@@ -34,6 +34,9 @@ const AVAILABLE_MODELS = [
   { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash (OR)', provider: 'openrouter' },
   { id: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B (OR)', provider: 'openrouter' },
   { id: 'mistralai/mistral-large', label: 'Mistral Large (OR)', provider: 'openrouter' },
+  { id: 'moonshotai/kimi-k2', label: 'Kimi K2 (OR)', provider: 'openrouter' },
+  { id: 'deepseek/deepseek-r1', label: 'DeepSeek R1 (OR)', provider: 'openrouter' },
+  { id: 'qwen/qwen3-235b-a22b', label: 'Qwen3 235B (OR)', provider: 'openrouter' },
 ];
 
 const PROVIDER_COLORS: Record<string, string> = {

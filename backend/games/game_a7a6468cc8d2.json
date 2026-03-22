@@ -1,0 +1,4375 @@
+{
+  "game_id": "a7a6468cc8d2",
+  "status": "running",
+  "events": [
+    {
+      "type": "game.created",
+      "data": {
+        "game_id": "a7a6468cc8d2",
+        "players": [
+          {
+            "seat": 0,
+            "agent_id": "mock-0",
+            "character_name": "Guthrum",
+            "model": "mock-model"
+          },
+          {
+            "seat": 1,
+            "agent_id": "mock-1",
+            "character_name": "Orion",
+            "model": "mock-model"
+          },
+          {
+            "seat": 2,
+            "agent_id": "mock-2",
+            "character_name": "Venetia",
+            "model": "mock-model"
+          },
+          {
+            "seat": 3,
+            "agent_id": "mock-3",
+            "character_name": "Radcliffe",
+            "model": "mock-model"
+          },
+          {
+            "seat": 4,
+            "agent_id": "mock-4",
+            "character_name": "Theron",
+            "model": "mock-model"
+          },
+          {
+            "seat": 5,
+            "agent_id": "mock-5",
+            "character_name": "Vivienne",
+            "model": "mock-model"
+          },
+          {
+            "seat": 6,
+            "agent_id": "mock-6",
+            "character_name": "Abelard",
+            "model": "mock-model"
+          }
+        ]
+      },
+      "ts": 1773988720.72332
+    },
+    {
+      "type": "game.state",
+      "data": {
+        "game_id": "a7a6468cc8d2",
+        "phase": "setup",
+        "day_number": 0,
+        "players": [
+          {
+            "seat": 0,
+            "agent_id": "mock-0",
+            "character_name": "Guthrum",
+            "model_name": "mock-model",
+            "role": "Monk",
+            "role_id": "monk",
+            "role_type": "townsfolk",
+            "alignment": "good",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "Each night*, choose a player (not yourself): they are safe from the Demon tonight."
+          },
+          {
+            "seat": 1,
+            "agent_id": "mock-1",
+            "character_name": "Orion",
+            "model_name": "mock-model",
+            "role": "Spy",
+            "role_id": "spy",
+            "role_type": "minion",
+            "alignment": "evil",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "Each night, you see the Grimoire. You might register as good & as a Townsfolk or Outsider, even if dead."
+          },
+          {
+            "seat": 2,
+            "agent_id": "mock-2",
+            "character_name": "Venetia",
+            "model_name": "mock-model",
+            "role": "Librarian",
+            "role_id": "librarian",
+            "role_type": "townsfolk",
+            "alignment": "good",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "You start knowing that 1 of 2 players is a particular Outsider. (Or that zero are in play.)"
+          },
+          {
+            "seat": 3,
+            "agent_id": "mock-3",
+            "character_name": "Radcliffe",
+            "model_name": "mock-model",
+            "role": "Imp",
+            "role_id": "imp",
+            "role_type": "demon",
+            "alignment": "evil",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "Each night*, choose a player: they die. If you kill yourself this way, a Minion becomes the Imp."
+          },
+          {
+            "seat": 4,
+            "agent_id": "mock-4",
+            "character_name": "Theron",
+            "model_name": "mock-model",
+            "role": "Ravenkeeper",
+            "role_id": "ravenkeeper",
+            "role_type": "townsfolk",
+            "alignment": "good",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "If you die at night, you are woken to choose a player: you learn their character."
+          },
+          {
+            "seat": 5,
+            "agent_id": "mock-5",
+            "character_name": "Vivienne",
+            "model_name": "mock-model",
+            "role": "Mayor",
+            "role_id": "mayor",
+            "role_type": "townsfolk",
+            "alignment": "good",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "If only 3 players live & no execution occurs, your team wins. If you die at night, another player might die instead."
+          },
+          {
+            "seat": 6,
+            "agent_id": "mock-6",
+            "character_name": "Abelard",
+            "model_name": "mock-model",
+            "role": "Undertaker",
+            "role_id": "undertaker",
+            "role_type": "townsfolk",
+            "alignment": "good",
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false,
+            "ghost_vote_used": false,
+            "perceived_role": null,
+            "butler_master": null,
+            "death_cause": null,
+            "death_day": null,
+            "death_phase": null,
+            "ability_text": "Each night*, you learn which character the player that was executed today is."
+          }
+        ],
+        "breakout_groups": [],
+        "nominations": [],
+        "executed_today": null,
+        "winner": null,
+        "demon_bluffs": [
+          "Slayer",
+          "Recluse",
+          "Saint"
+        ],
+        "night_kills": [],
+        "rng_seed": 2
+      },
+      "ts": 1773988720.723328
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "first_night",
+        "day": 0,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.7233322
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 2,
+        "name": "Venetia",
+        "role": "Librarian",
+        "role_id": "librarian",
+        "action": "learn_outsider",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 0
+      },
+      "ts": 1773988720.7235892
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 1,
+        "name": "Orion",
+        "role": "Spy",
+        "role_id": "spy",
+        "action": "see_grimoire",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 0
+      },
+      "ts": 1773988720.723592
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "You learn that zero Outsiders are in play.",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.723719
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "You see the Grimoire:\n  Seat 0: Monk [good]\n  Seat 1: Spy [evil]\n  Seat 2: Librarian [good]\n  Seat 3: Imp [evil]\n  Seat 4: Ravenkeeper [good]\n  Seat 5: Mayor [good]\n  Seat 6: Undertaker [good]",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.7237198
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "You are the Demon. Your evil teammates: Orion [Seat 1] (Spy). Your demon bluffs (not-in-play good roles): Slayer, Recluse, Saint.",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.7237198
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "You are a Minion. The Demon is Radcliffe [Seat 3]. Evil teammates: Radcliffe [Seat 3] (Imp).",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "first_night",
+        "day": 0
+      },
+      "ts": 1773988720.723721
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 1,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.723788
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.72438
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 0,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.724381
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.724459
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 1,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.724459
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.7245362
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 2,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.7245371
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.724611
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 3,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.724611
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.7246878
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 4,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.724689
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.72476
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 5,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.72476
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "I'm watching everyone carefully.",
+        "type": "public",
+        "phase": "day_discussion",
+        "day": 1
+      },
+      "ts": 1773988720.724834
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 6,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.724834
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_breakout",
+        "day": 1,
+        "round": 1,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.72484
+    },
+    {
+      "type": "breakout.formed",
+      "data": {
+        "groups": [
+          {
+            "id": "e0ad27fc3c6d4e68b4589b496f21eb17",
+            "round_number": 1,
+            "members": [
+              0,
+              4
+            ]
+          },
+          {
+            "id": "a2a412814e9d4663bd73a0a14dd2259a",
+            "round_number": 1,
+            "members": [
+              1,
+              5
+            ]
+          },
+          {
+            "id": "9720fcb8023a46beb406a02a60f8895c",
+            "round_number": 1,
+            "members": [
+              2,
+              6
+            ]
+          },
+          {
+            "id": "db66375ae87e4fc7b902d7aa61757f01",
+            "round_number": 1,
+            "members": [
+              3
+            ]
+          }
+        ]
+      },
+      "ts": 1773988720.7254431
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "e0ad27fc3c6d4e68b4589b496f21eb17",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.725606
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 0,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.725606
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "e0ad27fc3c6d4e68b4589b496f21eb17",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.725735
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 4,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.725735
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "e0ad27fc3c6d4e68b4589b496f21eb17",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.725861
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 0,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.725861
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "e0ad27fc3c6d4e68b4589b496f21eb17",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.725984
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 4,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.725984
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "a2a412814e9d4663bd73a0a14dd2259a",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.726122
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 1,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.726123
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "a2a412814e9d4663bd73a0a14dd2259a",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.726249
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 5,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.726249
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "a2a412814e9d4663bd73a0a14dd2259a",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.7263832
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 1,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.7263832
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "a2a412814e9d4663bd73a0a14dd2259a",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.726515
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 5,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.726515
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "9720fcb8023a46beb406a02a60f8895c",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.726648
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 2,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.726648
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "9720fcb8023a46beb406a02a60f8895c",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.726783
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 6,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.726783
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "9720fcb8023a46beb406a02a60f8895c",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.726914
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 2,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.726914
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "9720fcb8023a46beb406a02a60f8895c",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.727072
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 6,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.727072
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "db66375ae87e4fc7b902d7aa61757f01",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.7273128
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 3,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.727314
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "db66375ae87e4fc7b902d7aa61757f01",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.727488
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 3,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.727488
+    },
+    {
+      "type": "whisper.started",
+      "data": {
+        "day": 1
+      },
+      "ts": 1773988720.727533
+    },
+    {
+      "type": "whisper.ended",
+      "data": {
+        "day": 1
+      },
+      "ts": 1773988720.7285602
+    },
+    {
+      "type": "breakout.ended",
+      "data": {},
+      "ts": 1773988720.7285602
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_breakout",
+        "day": 1,
+        "round": 2,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.728576
+    },
+    {
+      "type": "breakout.formed",
+      "data": {
+        "groups": [
+          {
+            "id": "daf34f6045d04d14ad933fead800fd05",
+            "round_number": 2,
+            "members": [
+              0,
+              4
+            ]
+          },
+          {
+            "id": "9f34e0cac54f47a0a0664c737151a39a",
+            "round_number": 2,
+            "members": [
+              1,
+              5
+            ]
+          },
+          {
+            "id": "e25bc943b3ae47fe9b1225f893301a92",
+            "round_number": 2,
+            "members": [
+              2,
+              6
+            ]
+          },
+          {
+            "id": "5e41cccf25714a278d0853bbe6fca9eb",
+            "round_number": 2,
+            "members": [
+              3
+            ]
+          }
+        ]
+      },
+      "ts": 1773988720.729517
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "daf34f6045d04d14ad933fead800fd05",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.72971
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 0,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.729711
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "daf34f6045d04d14ad933fead800fd05",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.729853
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 4,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.729853
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "daf34f6045d04d14ad933fead800fd05",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.729992
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 0,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.729992
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "daf34f6045d04d14ad933fead800fd05",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.730131
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 4,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.730131
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "9f34e0cac54f47a0a0664c737151a39a",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.730277
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 1,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.730277
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "9f34e0cac54f47a0a0664c737151a39a",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.7304
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 5,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.730401
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "9f34e0cac54f47a0a0664c737151a39a",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.730537
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 1,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.730537
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "9f34e0cac54f47a0a0664c737151a39a",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.7306612
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 5,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.7306612
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "e25bc943b3ae47fe9b1225f893301a92",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.730787
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 2,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.730787
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "e25bc943b3ae47fe9b1225f893301a92",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.730911
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 6,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.730911
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "e25bc943b3ae47fe9b1225f893301a92",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.731036
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 2,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.731036
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "e25bc943b3ae47fe9b1225f893301a92",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.731159
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 6,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.731159
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "5e41cccf25714a278d0853bbe6fca9eb",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.731286
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 3,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.731286
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "I'm watching everyone carefully.",
+        "type": "group",
+        "group_id": "5e41cccf25714a278d0853bbe6fca9eb",
+        "phase": "day_breakout",
+        "day": 1
+      },
+      "ts": 1773988720.7314088
+    },
+    {
+      "type": "player.reasoning",
+      "data": {
+        "seat": 3,
+        "reasoning": "Observing the situation."
+      },
+      "ts": 1773988720.73141
+    },
+    {
+      "type": "whisper.started",
+      "data": {
+        "day": 1
+      },
+      "ts": 1773988720.731444
+    },
+    {
+      "type": "whisper.ended",
+      "data": {
+        "day": 1
+      },
+      "ts": 1773988720.73239
+    },
+    {
+      "type": "breakout.ended",
+      "data": {},
+      "ts": 1773988720.73239
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 1,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.732398
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.732627
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 734,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7326982
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.732728
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 831,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.732791
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.7328079
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 785,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.732865
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.7328808
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 767,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.732935
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.732951
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 800,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.733008
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.733025
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 5,
+        "agent_id": "mock-5",
+        "model": "mock-model",
+        "input_tokens": 816,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7330828
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.733099
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 6,
+        "agent_id": "mock-6",
+        "model": "mock-model",
+        "input_tokens": 834,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.733155
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 1
+      },
+      "ts": 1773988720.73317
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "night",
+        "day": 1,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.733675
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 0,
+        "name": "Guthrum",
+        "role": "Monk",
+        "role_id": "monk",
+        "action": "protect",
+        "target_seat": 4,
+        "target_name": "Theron",
+        "role_choice": null,
+        "effect": "protects Theron",
+        "day": 1
+      },
+      "ts": 1773988720.7342348
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 3,
+        "name": "Radcliffe",
+        "role": "Imp",
+        "role_id": "imp",
+        "action": "kill",
+        "target_seat": 5,
+        "target_name": "Vivienne",
+        "role_choice": null,
+        "effect": "targets Vivienne for kill",
+        "day": 1
+      },
+      "ts": 1773988720.734237
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 4,
+        "name": "Theron",
+        "role": "Ravenkeeper",
+        "role_id": "ravenkeeper",
+        "action": "learn_role",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "no action",
+        "day": 1
+      },
+      "ts": 1773988720.7342389
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 6,
+        "name": "Abelard",
+        "role": "Undertaker",
+        "role_id": "undertaker",
+        "action": "learn_executed_role",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 1
+      },
+      "ts": 1773988720.73424
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 1,
+        "name": "Orion",
+        "role": "Spy",
+        "role_id": "spy",
+        "action": "see_grimoire",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 1
+      },
+      "ts": 1773988720.734241
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "You see the Grimoire:\n  Seat 0: Monk [good]\n  Seat 1: Spy [evil]\n  Seat 2: Librarian [good]\n  Seat 3: Imp [evil]\n  Seat 4: Ravenkeeper [good]\n  Seat 5: Mayor [good]\n  Seat 6: Undertaker [good] (DEAD)",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "night",
+        "day": 1
+      },
+      "ts": 1773988720.734385
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": null,
+        "agent_id": "storyteller",
+        "model": "mock-model",
+        "input_tokens": 21,
+        "output_tokens": 39,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.734412
+    },
+    {
+      "type": "death",
+      "data": {
+        "seat": 6,
+        "role": "Undertaker",
+        "cause": "night_kill",
+        "death_cause": "demon_kill",
+        "death_day": 1,
+        "death_phase": "night"
+      },
+      "ts": 1773988720.734417
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "<THINK>Observing the situation.</THINK>\n<SAY>I'm watching everyone carefully.</SAY>\n<ACTION>{PASS}</ACTION>\n<MEMORY>Observing. Nothing concrete yet.</MEMORY>",
+        "type": "narration",
+        "phase": "night",
+        "day": 1
+      },
+      "ts": 1773988720.734418
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "You have died. Your role remains hidden from other players. You continue to participate fully in discussions and breakout groups. You cannot nominate. You have exactly 1 ghost vote remaining for the rest of the game \u2014 once you use it, you cannot vote again. You no longer receive night ability information.",
+        "type": "private_info",
+        "phase": "night",
+        "day": 1
+      },
+      "ts": 1773988720.734422
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 2,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.734495
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_breakout",
+        "day": 2,
+        "round": 1,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.735292
+    },
+    {
+      "type": "breakout.formed",
+      "data": {
+        "groups": [
+          {
+            "id": "8fe0a0579c87479f9ad636d2646a4cc9",
+            "round_number": 1,
+            "members": [
+              0,
+              4
+            ]
+          },
+          {
+            "id": "b33154675f6641f5af91369799e3e288",
+            "round_number": 1,
+            "members": [
+              1,
+              5
+            ]
+          },
+          {
+            "id": "84fb7abe520b48a4a56bc5618fcdeae5",
+            "round_number": 1,
+            "members": [
+              2,
+              6
+            ]
+          },
+          {
+            "id": "fea9b47d925a4379a420e865ea9ba031",
+            "round_number": 1,
+            "members": [
+              3
+            ]
+          }
+        ]
+      },
+      "ts": 1773988720.736066
+    },
+    {
+      "type": "whisper.started",
+      "data": {
+        "day": 2
+      },
+      "ts": 1773988720.7369359
+    },
+    {
+      "type": "whisper.ended",
+      "data": {
+        "day": 2
+      },
+      "ts": 1773988720.737418
+    },
+    {
+      "type": "breakout.ended",
+      "data": {},
+      "ts": 1773988720.737418
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_breakout",
+        "day": 2,
+        "round": 2,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.7374249
+    },
+    {
+      "type": "breakout.formed",
+      "data": {
+        "groups": [
+          {
+            "id": "f8335a0ebe1245309e4ec0d98fdd48b6",
+            "round_number": 2,
+            "members": [
+              0,
+              4
+            ]
+          },
+          {
+            "id": "c9edb31379554356855133ecef3680f5",
+            "round_number": 2,
+            "members": [
+              1,
+              5
+            ]
+          },
+          {
+            "id": "706217aee30d4b2d889b1b72e4af8c06",
+            "round_number": 2,
+            "members": [
+              2,
+              6
+            ]
+          },
+          {
+            "id": "fb37bbaacee245979e0c7245ae35aedd",
+            "round_number": 2,
+            "members": [
+              3
+            ]
+          }
+        ]
+      },
+      "ts": 1773988720.7382421
+    },
+    {
+      "type": "whisper.started",
+      "data": {
+        "day": 2
+      },
+      "ts": 1773988720.7394
+    },
+    {
+      "type": "whisper.ended",
+      "data": {
+        "day": 2
+      },
+      "ts": 1773988720.74017
+    },
+    {
+      "type": "breakout.ended",
+      "data": {},
+      "ts": 1773988720.74017
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 2,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.740181
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.740941
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 1028,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7410471
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.741079
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 1102,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.741151
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.74117
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 1078,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.741236
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.7412522
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 1095,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7413561
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.7413912
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 1087,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.741467
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.741487
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 5,
+        "agent_id": "mock-5",
+        "model": "mock-model",
+        "input_tokens": 1091,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.741554
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.7415712
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 6,
+        "agent_id": "mock-6",
+        "model": "mock-model",
+        "input_tokens": 1129,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.741636
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 2
+      },
+      "ts": 1773988720.741652
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "night",
+        "day": 2,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.7423098
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 0,
+        "name": "Guthrum",
+        "role": "Monk",
+        "role_id": "monk",
+        "action": "protect",
+        "target_seat": 3,
+        "target_name": "Radcliffe",
+        "role_choice": null,
+        "effect": "protects Radcliffe",
+        "day": 2
+      },
+      "ts": 1773988720.743285
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 3,
+        "name": "Radcliffe",
+        "role": "Imp",
+        "role_id": "imp",
+        "action": "kill",
+        "target_seat": 4,
+        "target_name": "Theron",
+        "role_choice": null,
+        "effect": "targets Theron for kill",
+        "day": 2
+      },
+      "ts": 1773988720.743288
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 4,
+        "name": "Theron",
+        "role": "Ravenkeeper",
+        "role_id": "ravenkeeper",
+        "action": "learn_role",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "no action",
+        "day": 2
+      },
+      "ts": 1773988720.743289
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 1,
+        "name": "Orion",
+        "role": "Spy",
+        "role_id": "spy",
+        "action": "see_grimoire",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 2
+      },
+      "ts": 1773988720.743291
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "You see the Grimoire:\n  Seat 0: Monk [good]\n  Seat 1: Spy [evil]\n  Seat 2: Librarian [good]\n  Seat 3: Imp [evil]\n  Seat 4: Ravenkeeper [good] (DEAD)\n  Seat 5: Mayor [good]\n  Seat 6: Undertaker [good] (DEAD)",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "night",
+        "day": 2
+      },
+      "ts": 1773988720.7434509
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": null,
+        "agent_id": "storyteller",
+        "model": "mock-model",
+        "input_tokens": 21,
+        "output_tokens": 39,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.743486
+    },
+    {
+      "type": "death",
+      "data": {
+        "seat": 4,
+        "role": "Ravenkeeper",
+        "cause": "night_kill",
+        "death_cause": "demon_kill",
+        "death_day": 2,
+        "death_phase": "night"
+      },
+      "ts": 1773988720.7434921
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "<THINK>Observing the situation.</THINK>\n<SAY>I'm watching everyone carefully.</SAY>\n<ACTION>{PASS}</ACTION>\n<MEMORY>Observing. Nothing concrete yet.</MEMORY>",
+        "type": "narration",
+        "phase": "night",
+        "day": 2
+      },
+      "ts": 1773988720.743493
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "You have died. Your role remains hidden from other players. You continue to participate fully in discussions and breakout groups. You cannot nominate. You have exactly 1 ghost vote remaining for the rest of the game \u2014 once you use it, you cannot vote again. You no longer receive night ability information.",
+        "type": "private_info",
+        "phase": "night",
+        "day": 2
+      },
+      "ts": 1773988720.743497
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 3,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.743583
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 3,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.7451148
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.745501
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 1127,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.745584
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.7456121
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 1126,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7456782
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.745696
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 1125,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.745754
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.745769
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 1053,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.745823
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.7458382
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 1133,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.745892
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.7459059
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 5,
+        "agent_id": "mock-5",
+        "model": "mock-model",
+        "input_tokens": 1086,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.745961
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.745976
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 6,
+        "agent_id": "mock-6",
+        "model": "mock-model",
+        "input_tokens": 1132,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.74603
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 3
+      },
+      "ts": 1773988720.746044
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "night",
+        "day": 3,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.746429
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 0,
+        "name": "Guthrum",
+        "role": "Monk",
+        "role_id": "monk",
+        "action": "protect",
+        "target_seat": 3,
+        "target_name": "Radcliffe",
+        "role_choice": null,
+        "effect": "protects Radcliffe",
+        "day": 3
+      },
+      "ts": 1773988720.747287
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 3,
+        "name": "Radcliffe",
+        "role": "Imp",
+        "role_id": "imp",
+        "action": "kill",
+        "target_seat": 2,
+        "target_name": "Venetia",
+        "role_choice": null,
+        "effect": "targets Venetia for kill",
+        "day": 3
+      },
+      "ts": 1773988720.7472901
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 1,
+        "name": "Orion",
+        "role": "Spy",
+        "role_id": "spy",
+        "action": "see_grimoire",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 3
+      },
+      "ts": 1773988720.7472918
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "You see the Grimoire:\n  Seat 0: Monk [good]\n  Seat 1: Spy [evil]\n  Seat 2: Librarian [good] (DEAD)\n  Seat 3: Imp [evil]\n  Seat 4: Ravenkeeper [good] (DEAD)\n  Seat 5: Mayor [good]\n  Seat 6: Undertaker [good] (DEAD)",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "night",
+        "day": 3
+      },
+      "ts": 1773988720.747457
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": null,
+        "agent_id": "storyteller",
+        "model": "mock-model",
+        "input_tokens": 21,
+        "output_tokens": 39,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7474968
+    },
+    {
+      "type": "death",
+      "data": {
+        "seat": 2,
+        "role": "Librarian",
+        "cause": "night_kill",
+        "death_cause": "demon_kill",
+        "death_day": 3,
+        "death_phase": "night"
+      },
+      "ts": 1773988720.747502
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "<THINK>Observing the situation.</THINK>\n<SAY>I'm watching everyone carefully.</SAY>\n<ACTION>{PASS}</ACTION>\n<MEMORY>Observing. Nothing concrete yet.</MEMORY>",
+        "type": "narration",
+        "phase": "night",
+        "day": 3
+      },
+      "ts": 1773988720.747503
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "You have died. Your role remains hidden from other players. You continue to participate fully in discussions and breakout groups. You cannot nominate. You have exactly 1 ghost vote remaining for the rest of the game \u2014 once you use it, you cannot vote again. You no longer receive night ability information.",
+        "type": "private_info",
+        "phase": "night",
+        "day": 3
+      },
+      "ts": 1773988720.7475069
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 4,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.747616
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 4,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.748868
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 4
+      },
+      "ts": 1773988720.749655
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 1144,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.749729
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 4
+      },
+      "ts": 1773988720.749753
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 1140,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7498088
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 4
+      },
+      "ts": 1773988720.749824
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 1159,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.749877
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 4
+      },
+      "ts": 1773988720.749891
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 1131,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.749943
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 4
+      },
+      "ts": 1773988720.749957
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 1159,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.750012
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 4
+      },
+      "ts": 1773988720.750025
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 5,
+        "agent_id": "mock-5",
+        "model": "mock-model",
+        "input_tokens": 1131,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.750082
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 4
+      },
+      "ts": 1773988720.7500951
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 6,
+        "agent_id": "mock-6",
+        "model": "mock-model",
+        "input_tokens": 1146,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.750147
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 4
+      },
+      "ts": 1773988720.750161
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "night",
+        "day": 4,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.7505019
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 0,
+        "name": "Guthrum",
+        "role": "Monk",
+        "role_id": "monk",
+        "action": "protect",
+        "target_seat": 1,
+        "target_name": "Orion",
+        "role_choice": null,
+        "effect": "protects Orion",
+        "day": 4
+      },
+      "ts": 1773988720.7514932
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 3,
+        "name": "Radcliffe",
+        "role": "Imp",
+        "role_id": "imp",
+        "action": "kill",
+        "target_seat": 5,
+        "target_name": "Vivienne",
+        "role_choice": null,
+        "effect": "targets Vivienne for kill",
+        "day": 4
+      },
+      "ts": 1773988720.751495
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 1,
+        "name": "Orion",
+        "role": "Spy",
+        "role_id": "spy",
+        "action": "see_grimoire",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 4
+      },
+      "ts": 1773988720.751498
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "You see the Grimoire:\n  Seat 0: Monk [good]\n  Seat 1: Spy [evil]\n  Seat 2: Librarian [good] (DEAD)\n  Seat 3: Imp [evil]\n  Seat 4: Ravenkeeper [good] (DEAD)\n  Seat 5: Mayor [good]\n  Seat 6: Undertaker [good] (DEAD)",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "night",
+        "day": 4
+      },
+      "ts": 1773988720.751641
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 5,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.751721
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 5,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.752856
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 5
+      },
+      "ts": 1773988720.753281
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 1100,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.753359
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 5
+      },
+      "ts": 1773988720.753385
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 1171,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7534552
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 5
+      },
+      "ts": 1773988720.753472
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 1162,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.753539
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 5
+      },
+      "ts": 1773988720.753556
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 1133,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.753621
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 5
+      },
+      "ts": 1773988720.753637
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 1162,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7537
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 5
+      },
+      "ts": 1773988720.753716
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 5,
+        "agent_id": "mock-5",
+        "model": "mock-model",
+        "input_tokens": 1133,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.753782
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 5
+      },
+      "ts": 1773988720.7537978
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 6,
+        "agent_id": "mock-6",
+        "model": "mock-model",
+        "input_tokens": 1149,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7538629
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 5
+      },
+      "ts": 1773988720.753879
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "night",
+        "day": 5,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.754265
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 0,
+        "name": "Guthrum",
+        "role": "Monk",
+        "role_id": "monk",
+        "action": "protect",
+        "target_seat": 5,
+        "target_name": "Vivienne",
+        "role_choice": null,
+        "effect": "protects Vivienne",
+        "day": 5
+      },
+      "ts": 1773988720.7549791
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 3,
+        "name": "Radcliffe",
+        "role": "Imp",
+        "role_id": "imp",
+        "action": "kill",
+        "target_seat": 0,
+        "target_name": "Guthrum",
+        "role_choice": null,
+        "effect": "targets Guthrum for kill",
+        "day": 5
+      },
+      "ts": 1773988720.75498
+    },
+    {
+      "type": "night.action",
+      "data": {
+        "seat": 1,
+        "name": "Orion",
+        "role": "Spy",
+        "role_id": "spy",
+        "action": "see_grimoire",
+        "target_seat": null,
+        "target_name": null,
+        "role_choice": null,
+        "effect": "receives information",
+        "day": 5
+      },
+      "ts": 1773988720.754983
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "You see the Grimoire:\n  Seat 0: Monk [good] (DEAD)\n  Seat 1: Spy [evil]\n  Seat 2: Librarian [good] (DEAD)\n  Seat 3: Imp [evil]\n  Seat 4: Ravenkeeper [good] (DEAD)\n  Seat 5: Mayor [good]\n  Seat 6: Undertaker [good] (DEAD)",
+        "type": "private_info",
+        "group_id": null,
+        "phase": "night",
+        "day": 5
+      },
+      "ts": 1773988720.7551029
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": null,
+        "agent_id": "storyteller",
+        "model": "mock-model",
+        "input_tokens": 21,
+        "output_tokens": 39,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7551308
+    },
+    {
+      "type": "death",
+      "data": {
+        "seat": 0,
+        "role": "Monk",
+        "cause": "night_kill",
+        "death_cause": "demon_kill",
+        "death_day": 5,
+        "death_phase": "night"
+      },
+      "ts": 1773988720.755136
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "<THINK>Observing the situation.</THINK>\n<SAY>I'm watching everyone carefully.</SAY>\n<ACTION>{PASS}</ACTION>\n<MEMORY>Observing. Nothing concrete yet.</MEMORY>",
+        "type": "narration",
+        "phase": "night",
+        "day": 5
+      },
+      "ts": 1773988720.755136
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "You have died. Your role remains hidden from other players. You continue to participate fully in discussions and breakout groups. You cannot nominate. You have exactly 1 ghost vote remaining for the rest of the game \u2014 once you use it, you cannot vote again. You no longer receive night ability information.",
+        "type": "private_info",
+        "phase": "night",
+        "day": 5
+      },
+      "ts": 1773988720.75514
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "day_discussion",
+        "day": 6,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.755211
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "nominations",
+        "day": 6,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.756351
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": null,
+        "content": "Nominations are now open. Each living player may nominate one other player for execution. Each player can only be nominated once today. After a nomination, the accuser speaks, then the accused defends, then everyone votes. The player with the most votes (minimum 50% of living players) will be executed at day's end. Ties result in no execution.",
+        "type": "system",
+        "phase": "nominations",
+        "day": 6
+      },
+      "ts": 1773988720.75675
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "model": "mock-model",
+        "input_tokens": 1168,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7568178
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 0,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 6
+      },
+      "ts": 1773988720.7568371
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "model": "mock-model",
+        "input_tokens": 1158,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.756901
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 1,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 6
+      },
+      "ts": 1773988720.756917
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "model": "mock-model",
+        "input_tokens": 1167,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7569852
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 2,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 6
+      },
+      "ts": 1773988720.757
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "model": "mock-model",
+        "input_tokens": 1138,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.7570639
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 3,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 6
+      },
+      "ts": 1773988720.757081
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "model": "mock-model",
+        "input_tokens": 1138,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.757144
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 4,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 6
+      },
+      "ts": 1773988720.757159
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 5,
+        "agent_id": "mock-5",
+        "model": "mock-model",
+        "input_tokens": 1138,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.757225
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 5,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 6
+      },
+      "ts": 1773988720.75724
+    },
+    {
+      "type": "agent.tokens",
+      "data": {
+        "seat": 6,
+        "agent_id": "mock-6",
+        "model": "mock-model",
+        "input_tokens": 1154,
+        "output_tokens": 11,
+        "cost_usd": 0.0,
+        "total_cost_usd": 0.0
+      },
+      "ts": 1773988720.757306
+    },
+    {
+      "type": "message.new",
+      "data": {
+        "seat": 6,
+        "content": "They are suspicious and should be investigated.",
+        "type": "public",
+        "phase": "nominations",
+        "day": 6
+      },
+      "ts": 1773988720.757322
+    },
+    {
+      "type": "game.over",
+      "data": {
+        "winner": "good",
+        "reason": "3 players remain with no execution. The Mayor wins for Good!"
+      },
+      "ts": 1773988720.757427
+    },
+    {
+      "type": "phase.change",
+      "data": {
+        "phase": "debrief",
+        "day": 6,
+        "player_statuses": [
+          {
+            "seat": 0,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 1,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 2,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 3,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 4,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 5,
+            "is_alive": true,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          },
+          {
+            "seat": 6,
+            "is_alive": false,
+            "is_poisoned": false,
+            "is_drunk": false,
+            "is_protected": false
+          }
+        ]
+      },
+      "ts": 1773988720.75743
+    }
+  ],
+  "initial_state": {
+    "game_id": "a7a6468cc8d2",
+    "phase": "setup",
+    "day_number": 0,
+    "players": [
+      {
+        "seat": 0,
+        "agent_id": "mock-0",
+        "character_name": "Guthrum",
+        "model_name": "",
+        "role": "Monk",
+        "role_id": "monk",
+        "role_type": "townsfolk",
+        "alignment": "good",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "Each night*, choose a player (not yourself): they are safe from the Demon tonight."
+      },
+      {
+        "seat": 1,
+        "agent_id": "mock-1",
+        "character_name": "Orion",
+        "model_name": "",
+        "role": "Spy",
+        "role_id": "spy",
+        "role_type": "minion",
+        "alignment": "evil",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "Each night, you see the Grimoire. You might register as good & as a Townsfolk or Outsider, even if dead."
+      },
+      {
+        "seat": 2,
+        "agent_id": "mock-2",
+        "character_name": "Venetia",
+        "model_name": "",
+        "role": "Librarian",
+        "role_id": "librarian",
+        "role_type": "townsfolk",
+        "alignment": "good",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "You start knowing that 1 of 2 players is a particular Outsider. (Or that zero are in play.)"
+      },
+      {
+        "seat": 3,
+        "agent_id": "mock-3",
+        "character_name": "Radcliffe",
+        "model_name": "",
+        "role": "Imp",
+        "role_id": "imp",
+        "role_type": "demon",
+        "alignment": "evil",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "Each night*, choose a player: they die. If you kill yourself this way, a Minion becomes the Imp."
+      },
+      {
+        "seat": 4,
+        "agent_id": "mock-4",
+        "character_name": "Theron",
+        "model_name": "",
+        "role": "Ravenkeeper",
+        "role_id": "ravenkeeper",
+        "role_type": "townsfolk",
+        "alignment": "good",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "If you die at night, you are woken to choose a player: you learn their character."
+      },
+      {
+        "seat": 5,
+        "agent_id": "mock-5",
+        "character_name": "Vivienne",
+        "model_name": "",
+        "role": "Mayor",
+        "role_id": "mayor",
+        "role_type": "townsfolk",
+        "alignment": "good",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "If only 3 players live & no execution occurs, your team wins. If you die at night, another player might die instead."
+      },
+      {
+        "seat": 6,
+        "agent_id": "mock-6",
+        "character_name": "Abelard",
+        "model_name": "",
+        "role": "Undertaker",
+        "role_id": "undertaker",
+        "role_type": "townsfolk",
+        "alignment": "good",
+        "is_alive": true,
+        "is_poisoned": false,
+        "is_drunk": false,
+        "is_protected": false,
+        "ghost_vote_used": false,
+        "perceived_role": null,
+        "butler_master": null,
+        "death_cause": null,
+        "death_day": null,
+        "death_phase": null,
+        "ability_text": "Each night*, you learn which character the player that was executed today is."
+      }
+    ],
+    "breakout_groups": [],
+    "nominations": [],
+    "executed_today": null,
+    "winner": null,
+    "demon_bluffs": [
+      "Slayer",
+      "Recluse",
+      "Saint"
+    ],
+    "night_kills": [],
+    "rng_seed": 2
+  }
+}

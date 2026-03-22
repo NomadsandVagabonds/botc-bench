@@ -40,9 +40,13 @@ _ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
+# Also allow Vercel preview/deploy URLs
+_ALLOWED_ORIGIN_REGEX = r"https://.*\.vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=_ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

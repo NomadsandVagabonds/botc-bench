@@ -870,6 +870,53 @@ export function TownMap() {
         );
       })}
 
+      {/* Executioner — looms behind the player currently on the block */}
+      <AnimatePresence>
+        {gameState.onTheBlock && (() => {
+          const blockSeat = gameState.onTheBlock!.seat;
+          const blockTarget = getTarget(blockSeat);
+          const exeZ = spriteZIndex(blockTarget[0], blockTarget[1]) - 1;
+          return (
+            <motion.div
+              key="executioner"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.5 }}
+              style={{
+                position: 'absolute',
+                left: `${blockTarget[0] + 3}%`,
+                top: `${blockTarget[1] - 2}%`,
+                x: '-50%',
+                y: '-50%',
+                zIndex: exeZ,
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.7))',
+              }}
+            >
+              <motion.img
+                src="/exe.png"
+                alt="Executioner"
+                animate={{
+                  y: [0, -2, 0, -2, 0],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+                style={{
+                  width: '8vw',
+                  minWidth: 60,
+                  maxWidth: 100,
+                  imageRendering: 'pixelated',
+                }}
+              />
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
       {/* Speech bubbles */}
       <AnimatePresence>
         {bubbles.map((bubble) => {

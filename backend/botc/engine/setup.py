@@ -20,9 +20,39 @@ from .types import (
     ROLE_DISTRIBUTION,
 )
 
-# Path to the medieval name bank
+# Path to the medieval name bank (fallback)
 _NAMES_PATH = Path(__file__).parent.parent / "scripts" / "data" / "names.json"
 _NAME_BANK: list[str] | None = None
+
+# Character table: sprite_id -> (name, gender)
+_CHARACTERS_PATH = Path(__file__).parent.parent / "scripts" / "data" / "characters.json"
+_CHARACTER_TABLE: dict[int, dict] | None = None
+
+# Sprite IDs — must match frontend TownMap.tsx SPRITE_IDS exactly
+_SPRITE_IDS = [
+    1160, 1161, 1162, 1163, 1164,
+    2045, 2046, 2047, 2048, 2049,
+    3312, 3313, 3314, 3315,
+    4501, 4502, 4503, 4504,
+    5678, 5679, 5680, 5681,
+    6234, 6235, 6236,
+    7890, 7891, 7892,
+    8456, 8457, 8458,
+    9123, 9124, 9125,
+    10567, 10568, 10569,
+    11234, 11235, 11236,
+    12890, 12891, 12892,
+    13456, 13457,
+    14012, 14013,
+    15678, 15679,
+    16234, 16235,
+    17681, 17682, 17683, 17684, 17685,
+    17890, 17891,
+    18456, 18457,
+    19123, 19124,
+    20567, 20568,
+    21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000,
+]
 
 
 def _load_name_bank() -> list[str]:
@@ -33,6 +63,66 @@ def _load_name_bank() -> list[str]:
             data = json.load(f)
         _NAME_BANK = data["names"]
     return _NAME_BANK
+
+
+def _load_character_table() -> dict[int, dict]:
+    """Load the character table mapping sprite_id -> {name, gender}."""
+    global _CHARACTER_TABLE
+    if _CHARACTER_TABLE is None:
+        with open(_CHARACTERS_PATH) as f:
+            data = json.load(f)
+        _CHARACTER_TABLE = {c["sprite_id"]: c for c in data["characters"]}
+    return _CHARACTER_TABLE
+
+
+def _pick_sprite_ids(game_id: str, count: int) -> list[int]:
+    """Pick N unique sprite IDs using a game-specific seed.
+
+    Must match frontend pickSpriteIds() exactly for sprite-name consistency.
+    Uses the same djb2 hash + mulberry32 PRNG as the frontend.
+    """
+    # djb2 hash (matches frontend's signed 32-bit behavior)
+    hash_val = 0
+    for ch in game_id:
+        hash_val = ((hash_val << 5) - hash_val + ord(ch)) & 0xFFFFFFFF
+    # Convert to signed 32-bit like JavaScript's |0
+    if hash_val >= 0x80000000:
+        hash_val -= 0x100000000
+
+    # mulberry32 PRNG (matches frontend seededRandom exactly)
+    # All operations must emulate JavaScript's 32-bit signed integer behavior
+    t = [hash_val & 0xFFFFFFFF]  # mutable container for closure
+
+    def _to_signed32(x: int) -> int:
+        x &= 0xFFFFFFFF
+        return x - 0x100000000 if x >= 0x80000000 else x
+
+    def _unsigned_rshift(x: int, n: int) -> int:
+        """JavaScript's >>> operator (unsigned right shift)."""
+        return (x & 0xFFFFFFFF) >> n
+
+    def rng_next() -> float:
+        t[0] = _to_signed32(t[0] + 0x6D2B79F5)
+        r = _imul(t[0] ^ _unsigned_rshift(t[0], 15), 1 | t[0])
+        r = _to_signed32(r + _imul(r ^ _unsigned_rshift(r, 7), 61 | r)) ^ r
+        return _unsigned_rshift(r ^ _unsigned_rshift(r, 14), 0) / 4294967296
+
+    # Fisher-Yates shuffle and pick (matches frontend)
+    pool = list(_SPRITE_IDS)
+    for i in range(len(pool) - 1, 0, -1):
+        j = int(rng_next() * (i + 1))
+        pool[i], pool[j] = pool[j], pool[i]
+    return pool[:count]
+
+
+def _imul(a: int, b: int) -> int:
+    """Emulate JavaScript's Math.imul (32-bit integer multiplication)."""
+    a &= 0xFFFFFFFF
+    b &= 0xFFFFFFFF
+    result = (a * b) & 0xFFFFFFFF
+    if result >= 0x80000000:
+        result -= 0x100000000
+    return result
 
 
 def create_game(config: GameConfig, agent_ids: list[str]) -> GameState:
@@ -72,9 +162,23 @@ def create_game(config: GameConfig, agent_ids: list[str]) -> GameState:
         # Shuffle and assign to seats
         rng.shuffle(roles)
 
-    # Assign character names from the name bank (no repeats within a game)
-    name_bank = _load_name_bank()
-    character_names = rng.sample(name_bank, num_players)
+    # Generate game ID now so we can use it for sprite selection
+    game_id = uuid.uuid4().hex[:12]
+
+    # Assign character names from sprite-linked character table
+    # The sprite selection must match the frontend's pickSpriteIds() exactly
+    char_table = _load_character_table()
+    sprite_ids = _pick_sprite_ids(game_id, num_players)
+    character_names: list[str] = []
+    for seat in range(num_players):
+        sid = sprite_ids[seat % len(sprite_ids)]
+        char = char_table.get(sid)
+        if char:
+            character_names.append(char["name"])
+        else:
+            # Fallback to random name bank if sprite not in character table
+            name_bank = _load_name_bank()
+            character_names.append(rng.choice(name_bank))
 
     # Create players
     players: list[Player] = []
@@ -113,7 +217,7 @@ def create_game(config: GameConfig, agent_ids: list[str]) -> GameState:
     _assign_evil_twin_pair(players, rng)
 
     state = GameState(
-        game_id=uuid.uuid4().hex[:12],
+        game_id=game_id,
         config=config,
         players=players,
         phase=GamePhase.SETUP,

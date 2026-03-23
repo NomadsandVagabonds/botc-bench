@@ -109,16 +109,19 @@ def assign_voice(
     role_type: str,
     used_voices: set[str],
     rng=None,
+    gender: str | None = None,
 ) -> str:
     """Pick a voice ID for a character based on alignment, role, and gender.
 
     Avoids reusing voices already assigned in this game.
+    If gender is not provided, it is inferred from the character name.
     """
     import random
     if rng is None:
         rng = random
 
-    gender = infer_gender(character_name)
+    if gender is None:
+        gender = infer_gender(character_name)
     is_demon = role_type == "demon"
 
     # Pick the right pool

@@ -631,7 +631,10 @@ export function TownMap() {
     gameState?.winner ?? undefined,
   );
 
-  // Watch for death narration events
+  // Watch for death narration events — queued to show after accusation overlay clears
+  const pendingNarrationRef = useRef<string | null>(null);
+  const narrationDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!gameState?.messages.length) return;
     const latest = gameState.messages[gameState.messages.length - 1];
@@ -649,17 +652,32 @@ export function TownMap() {
     }
 
     if (narration) {
-      setDeathNarration(narration);
-      triggerEvent('execution');
-      // Clear any existing timer
-      if (deathTimerRef.current) clearTimeout(deathTimerRef.current);
-      // Set new fade-out timer (won't be cancelled by new messages)
-      deathTimerRef.current = setTimeout(() => {
-        setDeathNarration(null);
-        deathTimerRef.current = null;
-      }, 8000);
+      pendingNarrationRef.current = narration;
+      // Clear any existing delay timer
+      if (narrationDelayRef.current) clearTimeout(narrationDelayRef.current);
     }
   }, [gameState?.messages.length]);
+
+  // Poll: show pending narration only when accusation overlay is gone
+  // The AccusationOverlay manages its own display lifetime (typewriter + linger),
+  // so we check the store's activeSpeech as a proxy — it clears on nomination.result
+  const activeSpeechForNarration = useGameStore((s) => s.activeSpeech);
+  useEffect(() => {
+    if (pendingNarrationRef.current && !activeSpeechForNarration) {
+      const narration = pendingNarrationRef.current;
+      pendingNarrationRef.current = null;
+      // Extra delay to let the overlay exit animation finish
+      narrationDelayRef.current = setTimeout(() => {
+        setDeathNarration(narration);
+        triggerEvent('execution');
+        if (deathTimerRef.current) clearTimeout(deathTimerRef.current);
+        deathTimerRef.current = setTimeout(() => {
+          setDeathNarration(null);
+          deathTimerRef.current = null;
+        }, 8000);
+      }, 2000);
+    }
+  }, [activeSpeechForNarration, gameState?.messages.length]);
 
   // Speech bubbles + talking indicator from new messages
   const msgCount = gameState?.messages.length ?? 0;

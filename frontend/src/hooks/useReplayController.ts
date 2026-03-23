@@ -166,8 +166,8 @@ export function useReplayController() {
       runningRef.current = false;
       return;
     }
-    // Pause while accusation/defense overlay is visible
-    if (store.accusationOverlayVisible) {
+    // Pause while accusation/defense overlay or death card is visible
+    if (store.accusationOverlayVisible || store.deathCardVisible) {
       runningRef.current = false;
       return;
     }
@@ -223,15 +223,16 @@ export function useReplayController() {
     }
   };
 
-  // Resume when accusation overlay clears
+  // Resume when accusation overlay or death card clears
   const overlayVisible = useGameStore((s) => s.accusationOverlayVisible);
+  const deathCardVisible = useGameStore((s) => s.deathCardVisible);
   useEffect(() => {
-    if (!overlayVisible && replayMode && !paused && speed > 0 && !runningRef.current && audioReadyRef.current) {
+    if (!overlayVisible && !deathCardVisible && replayMode && !paused && speed > 0 && !runningRef.current && audioReadyRef.current) {
       runningRef.current = true;
-      timerRef.current = setTimeout(step, 500); // brief pause after overlay exits
+      timerRef.current = setTimeout(step, 500);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overlayVisible, replayMode, paused, speed]);
+  }, [overlayVisible, deathCardVisible, replayMode, paused, speed]);
 
   // Start/stop the chain when play state changes
   useEffect(() => {

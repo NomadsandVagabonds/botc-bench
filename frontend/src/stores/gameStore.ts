@@ -79,6 +79,7 @@ export interface GameStore {
     content: string;
   } | null;
   accusationOverlayVisible: boolean;  // true while AccusationOverlay is actually rendering on screen
+  deathCardVisible: boolean;  // true while DeathCardOverlay is showing
 
   // Live monitor streaming
   liveMonitor: {
@@ -141,7 +142,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   theatricalEventQueue: [],
   theatricalMode: false,
   theatricalHold: false,
-  activeSpeech: null, accusationOverlayVisible: false,
+  activeSpeech: null, accusationOverlayVisible: false, deathCardVisible: false,
   liveMonitor: null,
 
   // ── Connection ──────────────────────────────────────────────────
@@ -1159,7 +1160,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       replayInitialState: null,
       theatricalEventQueue: [],
       theatricalMode: false, theatricalHold: false,
-      activeSpeech: null, accusationOverlayVisible: false,
+      activeSpeech: null, accusationOverlayVisible: false, deathCardVisible: false,
       liveMonitor: null,
     }),
 }));

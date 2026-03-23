@@ -73,7 +73,7 @@ export function useTheatricalPacer() {
 
   const drain = useCallback(() => {
     const store = useGameStore.getState();
-    if (store.theatricalEventQueue.length === 0 || store.replayMode || !store.theatricalMode || store.theatricalHold || store.accusationOverlayVisible) {
+    if (store.theatricalEventQueue.length === 0 || store.replayMode || !store.theatricalMode || store.theatricalHold || store.accusationOverlayVisible || store.deathCardVisible) {
       drainingRef.current = false;
       return;
     }
@@ -96,15 +96,16 @@ export function useTheatricalPacer() {
 
   const theatricalHold = useGameStore((s) => s.theatricalHold);
   const overlayVisible = useGameStore((s) => s.accusationOverlayVisible);
+  const deathCardVisible = useGameStore((s) => s.deathCardVisible);
 
   // Start draining when queue grows and we're not already draining
-  // Also restart when overlay clears (it pauses the drain loop)
+  // Also restart when overlay/death card clears
   useEffect(() => {
-    if (queueLength > 0 && !drainingRef.current && theatricalMode && !replayMode && !theatricalHold && !overlayVisible) {
+    if (queueLength > 0 && !drainingRef.current && theatricalMode && !replayMode && !theatricalHold && !overlayVisible && !deathCardVisible) {
       drainingRef.current = true;
       timerRef.current = setTimeout(drain, 300);
     }
-  }, [queueLength, theatricalMode, replayMode, theatricalHold, overlayVisible, drain]);
+  }, [queueLength, theatricalMode, replayMode, theatricalHold, overlayVisible, deathCardVisible, drain]);
 
   // Clear timer when entering replay mode or on unmount
   useEffect(() => {

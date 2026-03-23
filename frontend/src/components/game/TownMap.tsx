@@ -5,6 +5,7 @@ import type { Message } from '../../types/game.ts';
 import { getProviderColor, shortModelName } from '../../utils/models.ts';
 import { AnimatePresence, motion } from 'framer-motion';
 import AccusationOverlay from './AccusationOverlay.tsx';
+import { DeathCardOverlay } from './DeathCardOverlay.tsx';
 import { BlockOverlay } from './BlockOverlay.tsx';
 import {
   findPath,
@@ -1047,6 +1048,14 @@ export function TownMap({ showStoryteller = false }: { showStoryteller?: boolean
       {gameState && (
         <BlockOverlay
           onTheBlock={gameState.onTheBlock ?? null}
+          players={gameState.players}
+          spriteIds={spriteIds}
+        />
+      )}
+
+      {/* Death card overlay (funeral scenes) */}
+      {gameState && (
+        <DeathCardOverlay
           players={gameState.players}
           spriteIds={spriteIds}
         />

@@ -166,6 +166,11 @@ export function useReplayController() {
       runningRef.current = false;
       return;
     }
+    // Pause while accusation/defense overlay is visible
+    if (store.accusationOverlayVisible) {
+      runningRef.current = false;
+      return;
+    }
 
     // Play intro before any events
     if (!introPlayedRef.current && introClipRef.current) {
@@ -217,6 +222,16 @@ export function useReplayController() {
       runningRef.current = false;
     }
   };
+
+  // Resume when accusation overlay clears
+  const overlayVisible = useGameStore((s) => s.accusationOverlayVisible);
+  useEffect(() => {
+    if (!overlayVisible && replayMode && !paused && speed > 0 && !runningRef.current && audioReadyRef.current) {
+      runningRef.current = true;
+      timerRef.current = setTimeout(step, 500); // brief pause after overlay exits
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayVisible, replayMode, paused, speed]);
 
   // Start/stop the chain when play state changes
   useEffect(() => {

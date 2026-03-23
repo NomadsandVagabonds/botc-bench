@@ -369,7 +369,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
         }
         // Update ghost vote status if included in the event
         let updatedPlayers = gameState.players;
-        if (event.ghost_vote_used === true) {
+        if ((event as any).ghost_vote_used === true) {
           updatedPlayers = gameState.players.map(p =>
             p.seat === event.voterSeat ? { ...p, ghostVoteUsed: true } : p
           );

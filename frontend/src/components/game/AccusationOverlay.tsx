@@ -7,7 +7,7 @@
  * clears activeSpeech or pushes a new one.
  */
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGameStore } from '../../stores/gameStore.ts';
 

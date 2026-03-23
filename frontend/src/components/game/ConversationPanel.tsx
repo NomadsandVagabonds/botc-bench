@@ -4,6 +4,7 @@ import { useGameStore } from '../../stores/gameStore.ts';
 import { getProviderColor, shortModelName, getPhaseLabel, getPhaseColor, getRoleTypeColor } from '../../utils/models.ts';
 import type { Message, Player, Phase, NightActionEntry } from '../../types/game.ts';
 import { MessageType } from '../../types/game.ts';
+import { pickSpriteIds } from '../../data/characters.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -92,9 +93,16 @@ function ClickablePlayerName({
   showRole?: boolean;
 }) {
   const selectPlayer = useGameStore((s) => s.selectPlayer);
+  const gameState = useGameStore((s) => s.gameState);
   const [hovered, setHovered] = useState(false);
   const providerColor = getProviderColor(sender.modelName || sender.agentId);
   const isEvil = sender.alignment === 'evil';
+
+  const spriteId = useMemo(() => {
+    if (!gameState) return null;
+    const ids = pickSpriteIds(gameState.gameId || 'default', gameState.players.length);
+    return ids[sender.seat % ids.length];
+  }, [gameState?.gameId, gameState?.players.length, sender.seat]);
 
   return (
     <span
@@ -106,6 +114,20 @@ function ClickablePlayerName({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {spriteId && (
+        <img
+          src={`/final_avatars/avatar_${spriteId}.png`}
+          alt=""
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 3,
+            objectFit: 'cover',
+            flexShrink: 0,
+            border: `1px solid ${providerColor}44`,
+          }}
+        />
+      )}
       <span
         style={{
           width: 8,

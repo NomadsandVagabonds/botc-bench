@@ -772,8 +772,8 @@ export function TownMap() {
         const t = total > 1 ? idx / (total - 1) : 0.5;
         // Spread from left path to right path, curving down in the center
         const x = 18 + t * 64;  // 18% to 82% — full width of walkable area
-        const y = 62 + Math.sin(t * Math.PI) * 20;  // 62% at edges, 82% at center
-        return clampToWalkable([x, y], [50, 75]);
+        const y = 72 + Math.sin(t * Math.PI) * 14;  // 72% at edges, 86% at center — below the tower
+        return clampToWalkable([x, y], [50, 82]);
       }
     }
 

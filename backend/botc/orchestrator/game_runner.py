@@ -577,6 +577,29 @@ class GameRunner:
             if action is not None:
                 actions[seat] = action
 
+        # Demon must kill every night (not first night).  If the LLM
+        # failed to provide a target, pick a random alive non-Demon player.
+        if not first_night:
+            demon = state.demon()
+            if demon and demon.is_alive and demon.seat not in actions:
+                eligible = [
+                    p for p in state.alive_players
+                    if p.seat != demon.seat
+                ]
+                if eligible:
+                    forced_target = state.rng.choice(eligible)
+                    actions[demon.seat] = NightAction(
+                        actor_seat=demon.seat,
+                        role_id=demon.role.id,
+                        targets=[forced_target.seat],
+                    )
+                    logger.warning(
+                        "Demon at seat %d provided no kill target; "
+                        "forcing random kill on seat %d (%s)",
+                        demon.seat, forced_target.seat,
+                        forced_target.character_name,
+                    )
+
         return actions
 
     async def _run_discussion(self, state: GameState) -> None:
@@ -869,6 +892,23 @@ class GameRunner:
 
             # --- Virgin ability may have caused an execution ---
             if state.executed_today is not None:
+                virgin_victim = state.player_at(state.executed_today)
+                self._emit("execution", {
+                    "seat": state.executed_today,
+                    "role": virgin_victim.role.name,
+                    "cause": "virgin",
+                    "death_cause": virgin_victim.death_cause,
+                    "death_day": virgin_victim.death_day,
+                    "death_phase": virgin_victim.death_phase,
+                })
+                self._emit("death", {
+                    "seat": state.executed_today,
+                    "cause": "virgin",
+                    "death_cause": virgin_victim.death_cause,
+                    "death_day": virgin_victim.death_day,
+                    "death_phase": virgin_victim.death_phase,
+                })
+                self._send_death_notification(virgin_victim, state)
                 result = check_win_conditions(state)
                 if result:
                     state.winner = result.alignment

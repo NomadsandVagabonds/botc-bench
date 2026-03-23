@@ -42,9 +42,15 @@ def process_nomination(
     ))
 
     # Witch curse: if this player nominates while cursed, they die immediately.
-    # The nomination itself still stands.
+    # The nomination itself still stands.  Per BotC rules, the Witch curse
+    # does NOT apply when only 3 players are alive.
     cursed_today = nominator.hidden_state.get("witch_cursed_day") == state.day_number
-    if nominator.hidden_state.pop("witch_cursed", False) and cursed_today and nominator.is_alive:
+    if (
+        nominator.hidden_state.pop("witch_cursed", False)
+        and cursed_today
+        and nominator.is_alive
+        and len(state.alive_players) > 3
+    ):
         nominator.hidden_state.pop("witch_cursed_by", None)
         nominator.hidden_state.pop("witch_cursed_day", None)
         nominator.is_alive = False

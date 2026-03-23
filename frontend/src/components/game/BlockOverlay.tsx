@@ -43,7 +43,6 @@ interface BlockOverlayProps {
 
 const DISPLAY_MS = 3000;
 const FADE_IN_MS = 0.3;
-const FADE_OUT_MS = 0.5;
 
 export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayProps) {
   const [visible, setVisible] = useState(false);

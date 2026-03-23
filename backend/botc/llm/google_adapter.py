@@ -31,13 +31,20 @@ class GoogleProvider(LLMProvider):
         start = time.perf_counter()
 
         # Convert the message list into google-genai Content objects.
+        # Content may be a plain string or an array of content blocks
+        # (used for prompt caching on other providers) — flatten to text.
         contents: list[types.Content] = []
         for msg in messages:
             role = "model" if msg["role"] == "assistant" else "user"
+            content = msg["content"]
+            if isinstance(content, list):
+                text = "\n\n".join(block["text"] for block in content)
+            else:
+                text = content
             contents.append(
                 types.Content(
                     role=role,
-                    parts=[types.Part.from_text(text=msg["content"])],
+                    parts=[types.Part.from_text(text=text)],
                 )
             )
 

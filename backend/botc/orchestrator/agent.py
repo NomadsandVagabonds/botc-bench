@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from botc.comms.context_manager import build_agent_context
+from botc.comms.context_manager import build_agent_context, build_agent_context_parts
 from botc.engine.types import GameState, Player
 from botc.llm.prompt_builder import build_system_prompt
 from botc.llm.provider import AgentConfig, LLMProvider, LLMResponse, ProviderFactory
@@ -67,10 +67,18 @@ class Agent:
         if self._system_prompt is None or self._prompt_alive_state != self.player.is_alive:
             self.initialize(state)
 
-        context = build_agent_context(self.player, state)
+        shared, personal = build_agent_context_parts(self.player, state)
 
-        # Single-message conversation: just the current context
-        messages = [{"role": "user", "content": context}]
+        # Two content blocks: shared prefix (cacheable across agents in
+        # the same phase) + per-player suffix.  Each provider adapter
+        # translates the "cache" marker into its native format.
+        messages = [{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": shared, "cache": True},
+                {"type": "text", "text": personal},
+            ],
+        }]
 
         # Call LLM with phase-appropriate token budget and reasoning effort
         response: LLMResponse = await self.provider.complete_with_retry(

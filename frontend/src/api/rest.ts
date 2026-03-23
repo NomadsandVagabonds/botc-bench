@@ -158,9 +158,23 @@ export async function listGames(): Promise<GameListItem[]> {
     }
   }
 
-  // Server configured — try backend first, fall back to GitHub
+  // Server configured — try backend, merge with GitHub for saved replays
   try {
-    return await request<GameListItem[]>('/api/games');
+    const backendGames = await request<GameListItem[]>('/api/games');
+    // If backend returns games, also merge GitHub games that aren't on the server
+    // (Railway wipes disk on redeploy, but games are saved to GitHub)
+    try {
+      const ghGames = await listGamesFromGitHub();
+      const backendIds = new Set(backendGames.map(g => g.game_id));
+      const merged = [
+        ...backendGames,
+        ...ghGames.filter(g => !backendIds.has(g.game_id)),
+      ];
+      console.log(`[listGames] ${backendGames.length} from server + ${merged.length - backendGames.length} from GitHub`);
+      return merged;
+    } catch {
+      return backendGames; // GitHub failed, just use backend
+    }
   } catch (err) {
     console.log('[listGames] Backend unavailable, falling back to GitHub:', (err as Error)?.message);
     try {

@@ -104,7 +104,7 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: FADE_IN_MS, exit: { duration: FADE_OUT_MS } }}
+          transition={{ duration: FADE_IN_MS }}
         >
           <motion.img
             src={`/final_executions/execution_${displayData.spriteId}.png`}

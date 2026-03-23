@@ -2,15 +2,15 @@
  * BlockOverlay — dramatic full-screen flash when a player is put "on the block"
  *
  * Shows their execution portrait with "X is ON THE BLOCK" text for 3 seconds,
- * then fades out. Waits for the accusation/defense overlay to clear first.
+ * then fades out. The theatrical pacer ensures this only triggers after
+ * the accusation/defense overlays have finished.
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useGameStore } from '../../stores/gameStore.ts';
 import type { Player, OnTheBlock } from '../../types/game.ts';
 
-// ── Asset check (same pattern as AccusationOverlay) ─────────────────
+// ── Asset check ─────────────────────────────────────────────────────
 
 const execCache = new Map<number, boolean>();
 
@@ -45,22 +45,17 @@ interface BlockOverlayProps {
 const DISPLAY_MS = 3000;
 const FADE_IN_MS = 0.3;
 
-interface PendingBlock {
-  name: string;
-  spriteId: number;
-  voteCount: number;
-  key: string;
-}
-
 export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayProps) {
   const [visible, setVisible] = useState(false);
-  const [displayData, setDisplayData] = useState<PendingBlock | null>(null);
+  const [displayData, setDisplayData] = useState<{
+    name: string;
+    spriteId: number;
+    voteCount: number;
+  } | null>(null);
   const lastShownRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingRef = useRef<PendingBlock | null>(null);
-  const overlayVisible = useGameStore((s) => s.accusationOverlayVisible);
 
-  // Build pending data when onTheBlock changes
+  // Show when onTheBlock transitions to a new value
   useEffect(() => {
     if (!onTheBlock) {
       lastShownRef.current = null;
@@ -75,47 +70,21 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
     if (!player) return;
 
     const spriteId = spriteIds[player.seat % spriteIds.length];
-    const pending: PendingBlock = {
+
+    setDisplayData({
       name: player.characterName || player.agentId || `Seat ${player.seat}`,
       spriteId,
       voteCount: onTheBlock.voteCount,
-      key,
-    };
+    });
+    setVisible(true);
 
-    // If accusation overlay is still rendering, queue for later
-    if (overlayVisible) {
-      pendingRef.current = pending;
-    } else {
-      pendingRef.current = null;
-      setDisplayData(pending);
-      setVisible(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setVisible(false), DISPLAY_MS);
+
+    return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setVisible(false), DISPLAY_MS);
-    }
-  }, [onTheBlock, players, spriteIds, overlayVisible]);
-
-  // When accusation overlay finishes rendering, show any pending block
-  useEffect(() => {
-    if (!overlayVisible && pendingRef.current) {
-      const pending = pendingRef.current;
-      pendingRef.current = null;
-      // Delay to let overlay exit animation finish
-      setTimeout(() => {
-        setDisplayData(pending);
-        setVisible(true);
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => setVisible(false), DISPLAY_MS);
-      }, 1500);
-    }
-  }, [overlayVisible]);
-
-  // No force-clear on game_over — let the 3s display timer finish naturally.
-  // The game-over overlay delays 4s before showing, giving the block overlay time.
-
-  // Cleanup
-  useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
+    };
+  }, [onTheBlock, players, spriteIds]);
 
   const spriteId = displayData?.spriteId ?? null;
   const assetExists = useExecutionAsset(spriteId);

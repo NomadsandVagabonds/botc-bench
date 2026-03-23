@@ -34,12 +34,12 @@ _RECALL_MAX_RESULTS = 10
 # Game state summary (public knowledge)
 # ---------------------------------------------------------------------------
 
-def build_game_state_summary(player: Player, state: GameState) -> str:
-    """Summarise the public game state from this player's perspective.
+def build_game_state_summary(state: GameState) -> str:
+    """Summarise the public game state (identical for all agents).
 
-    Separates alive and dead players into distinct lists for clarity.
     Includes: day/night, phase, player rosters, ghost votes,
-    recent executions/deaths.
+    recent executions/deaths.  No per-player content so this block
+    is cacheable across all agents in the same phase.
     """
     lines: list[str] = []
 
@@ -218,7 +218,9 @@ def build_recent_messages(
     if omitted > 0:
         lines.insert(
             0,
-            f"[... {omitted} earlier message(s) omitted — use {{RECALL: query}} to search ...]",
+            f"[{omitted} earlier message(s) not shown. "
+            "Use {RECALL: query} in your <ACTION> to search them — "
+            "e.g. {RECALL: what did Seat 3 claim?}]",
         )
 
     return "\n".join(lines).strip()
@@ -551,25 +553,26 @@ def _nomination_turn_instructions(player: Player, state: GameState) -> str:
 # Full prompt assembly
 # ---------------------------------------------------------------------------
 
-def build_agent_context(player: Player, state: GameState) -> str:
-    """Assemble the complete context block sent to an agent's LLM call.
+def build_agent_context_parts(player: Player, state: GameState) -> tuple[str, str]:
+    """Split context into shared prefix (cacheable) and per-player suffix.
 
-    Structured for optimal prompt caching: shared context first (identical
-    across all agents in the same phase), then per-player content last.
-    Anthropic's prefix-based caching reuses the shared prefix across agents.
+    The shared prefix is identical across all agents in the same phase
+    (modulo visibility differences in recent messages).  Putting it first
+    enables prefix-based prompt caching on Anthropic and automatic prefix
+    caching on OpenAI/OpenRouter.
     """
-    sections = [
-        # Shared context (cacheable prefix across all agents in same phase)
+    shared = "\n".join([
         "=== GAME STATE ===",
-        build_game_state_summary(player, state),
+        build_game_state_summary(state),
         "",
         "=== RECENT MESSAGES ===",
         build_recent_messages(player, state),
         "",
         "=== CURRENT PHASE INSTRUCTIONS ===",
         build_phase_instructions(player, state),
-        "",
-        # Per-player context (varies per agent — breaks cache prefix here)
+    ])
+
+    personal = "\n".join([
         "=== YOUR PRIVATE INFORMATION ===",
         build_private_knowledge(player),
         "",
@@ -580,8 +583,19 @@ def build_agent_context(player: Player, state: GameState) -> str:
         f"You are Seat {player.seat} ({player.character_name}).",
         "Your notes above are your running summary. Update them each turn via <MEMORY>.",
         "Use {RECALL: query} in your ACTION to search past conversations you witnessed.",
-    ]
-    return "\n".join(sections)
+    ])
+
+    return shared, personal
+
+
+def build_agent_context(player: Player, state: GameState) -> str:
+    """Assemble the complete context block sent to an agent's LLM call.
+
+    Structured for optimal prompt caching: shared context first (identical
+    across all agents in the same phase), then per-player content last.
+    """
+    shared, personal = build_agent_context_parts(player, state)
+    return shared + "\n\n" + personal
 
 
 # ---------------------------------------------------------------------------

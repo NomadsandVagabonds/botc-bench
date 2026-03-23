@@ -147,8 +147,16 @@ GAME PHASES:
 - Instead you see: your own <MEMORY> notes + the last few messages.
 - Your <MEMORY> notes are your lifeline — update them EVERY turn with key facts,
   claims, suspicions, and plans. If you don't write it down, you'll forget it.
-- Use {{RECALL: query}} in your ACTION to search past conversations you witnessed.
-  You'll be re-prompted with the search results so you can take your real action.
+
+RECALL — SEARCH PAST CONVERSATIONS:
+  Use {{RECALL: query}} in your <ACTION> to search conversations you witnessed.
+  You'll be re-prompted with matching messages, then you take your real action.
+  RECALL does NOT skip your turn — you still speak and act after seeing results.
+  USE IT when you need to:
+    - Verify a claim: {{RECALL: what role did Seat 3 claim?}}
+    - Check accusations: {{RECALL: who accused Seat 5?}}
+    - Review a previous day: {{RECALL: night information shared on day 2}}
+  If earlier messages were omitted from your view, RECALL is the way to find them.
 
 STRATEGY NOTES:
 {_build_strategy_tips(player, state)}
@@ -662,7 +670,7 @@ def build_pre_nomination_prompt(player: Player, state: GameState) -> str:
     )
 
     context_parts = [
-        build_game_state_summary(player, state),
+        build_game_state_summary(state),
         "",
         "=== YOUR NOTES ===",
         build_self_notes(player),

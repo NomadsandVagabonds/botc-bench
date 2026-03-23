@@ -42,8 +42,20 @@ class OpenAIProvider(LLMProvider):
     ) -> LLMResponse:
         start = time.perf_counter()
 
+        # Process messages: strip custom cache markers, keep content blocks.
+        # OpenAI/OpenRouter auto-cache long prefixes; structuring shared
+        # content first maximises automatic cache hits.
+        processed = []
+        for msg in messages:
+            content = msg["content"]
+            if isinstance(content, list):
+                blocks = [{"type": b["type"], "text": b["text"]} for b in content]
+                processed.append({"role": msg["role"], "content": blocks})
+            else:
+                processed.append(msg)
+
         # Prepend system prompt as the first message.
-        full_messages = [{"role": "system", "content": system_prompt}] + messages
+        full_messages = [{"role": "system", "content": system_prompt}] + processed
 
         # o-series models (o1, o3, o4) and gpt-5 require max_completion_tokens
         # instead of max_tokens, and don't support temperature.

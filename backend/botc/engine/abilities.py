@@ -199,8 +199,7 @@ def on_player_death(state: GameState, player: Player) -> None:
         if len(candidates) >= 2:
             a, b = state.rng.sample(candidates, 2)
             a.role, b.role = b.role, a.role
-            a.alignment = a.role.alignment
-            b.alignment = b.role.alignment
+            # Alignment stays with the player, NOT the role (per BotC rules)
             state.add_message(Message.system(
                 state.phase_id,
                 f"The Barber's death causes a sudden swap: {_player_label(state, a.seat)} and {_player_label(state, b.seat)} exchange characters.",
@@ -224,6 +223,20 @@ def on_player_death(state: GameState, player: Player) -> None:
             if p.poisoned_by == player.seat:
                 p.is_poisoned = False
                 p.poisoned_by = None
+
+    # Pukka death: clear lingering poison on the last target
+    if player.role.id == "pukka":
+        for p in state.players:
+            if p.hidden_state.pop("pukka_poisoned", False):
+                p.is_poisoned = False
+
+    # Philosopher death: clear the drunk effect they caused
+    if player.role.id == "philosopher" or player.hidden_state.get("philosopher_gained_role"):
+        for p in state.players:
+            if p.hidden_state.get("philosopher_drunk_by") == player.seat:
+                p.hidden_state.pop("philosopher_drunk", False)
+                p.hidden_state.pop("philosopher_drunk_by", None)
+                p.is_poisoned = False
 
     if player.role.id == "moonchild" and not player.hidden_state.get("moonchild_triggered"):
         player.hidden_state["moonchild_triggered"] = True
@@ -346,6 +359,10 @@ def _resolve_standard_demon_kill(state: GameState, target_seat: int, *, _bounced
     When _bounced=True, skip Mayor bounce to prevent infinite recursion.
     """
     target = state.player_at(target_seat)
+
+    # Already dead — targeting a dead player is a no-op
+    if not target.is_alive:
+        return []
 
     # Soldier is safe from Demon
     if target.role.id == "soldier" and not target.is_poisoned:
@@ -1462,6 +1479,7 @@ def resolve_philosopher(state: GameState, player: Player, action: NightAction) -
         return "You cannot choose Philosopher."
 
     player.hidden_state["philosopher_used"] = True
+    player.hidden_state["philosopher_gained_role"] = True
     player.role = chosen_role
 
     # If that character is in play, one such player becomes drunk.
@@ -1469,6 +1487,7 @@ def resolve_philosopher(state: GameState, player: Player, action: NightAction) -
     if in_play:
         target = state.rng.choice(in_play)
         target.hidden_state["philosopher_drunk"] = True
+        target.hidden_state["philosopher_drunk_by"] = player.seat
         target.is_poisoned = True
 
     return f"You gain the ability of {player.role.name}."
@@ -1645,12 +1664,21 @@ def resolve_slayer_shot(state: GameState, slayer: Player, target: Player) -> boo
 # ---------------------------------------------------------------------------
 
 def check_scarlet_woman(state: GameState) -> None:
-    """If the Demon dies with 5+ alive players, Scarlet Woman becomes Demon."""
+    """If the Demon dies with 5+ alive players, Scarlet Woman becomes Demon.
+
+    Per official BotC rules, the 5-player threshold counts the dying Demon
+    (i.e. the number of players alive at the moment of death, before the
+    death is fully resolved).  Since ``resolve_execution`` sets
+    ``is_alive = False`` before calling this function, we add 1 to
+    compensate for the just-killed Demon.
+    """
     demon = state.demon()
     if demon is not None and demon.is_alive:
         return
 
-    if len(state.alive_players) < 5:
+    # +1 because the Demon was marked dead before this check runs
+    alive_count = len(state.alive_players) + 1
+    if alive_count < 5:
         return
 
     scarlet_women = [
@@ -1661,9 +1689,23 @@ def check_scarlet_woman(state: GameState) -> None:
         return
 
     sw = scarlet_women[0]
-    from .roles import load_script
-    script = load_script(state.config.script)
-    sw.role = script.roles["imp"]
+
+    # Find the dead demon's role so SW becomes the correct demon type.
+    # (Previously hardcoded to "imp", which crashes in BMR/S&V scripts.)
+    dead_demon = next(
+        (p for p in state.players
+         if p.role.role_type == RoleType.DEMON and not p.is_alive),
+        None,
+    )
+    if dead_demon:
+        sw.role = dead_demon.role
+    else:
+        # Fallback: use the first demon role defined in the script
+        from .roles import load_script
+        script = load_script(state.config.script)
+        demon_roles = [r for r in script.roles.values() if r.role_type == RoleType.DEMON]
+        if demon_roles:
+            sw.role = demon_roles[0]
     # Alignment stays evil
 
 

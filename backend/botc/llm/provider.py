@@ -105,9 +105,9 @@ class LLMProvider(ABC):
             except Exception as exc:
                 last_exc = exc
                 if attempt < max_retries - 1:
-                    # Longer delays for rate limits
                     is_rate_limit = "429" in str(exc) or "rate_limit" in str(exc).lower()
-                    delay = (15 if is_rate_limit else 2) * (2 ** attempt)
+                    base = 5 if is_rate_limit else 1
+                    delay = min(base * (2 ** attempt), 30)  # cap at 30s
                     logger.warning(
                         "LLM call failed (attempt %d/%d): %s — retrying in %ds",
                         attempt + 1,

@@ -34,6 +34,24 @@ class AnthropicProvider(LLMProvider):
     ) -> LLMResponse:
         start = time.perf_counter()
 
+        # Process messages: translate content-block cache markers into
+        # Anthropic's cache_control format.  This lets the shared context
+        # prefix (game state, recent messages, phase instructions) be
+        # cached across parallel agent calls in the same phase.
+        processed_messages = []
+        for msg in messages:
+            content = msg["content"]
+            if isinstance(content, list):
+                blocks = []
+                for block in content:
+                    b: dict = {"type": block["type"], "text": block["text"]}
+                    if block.get("cache"):
+                        b["cache_control"] = {"type": "ephemeral"}
+                    blocks.append(b)
+                processed_messages.append({"role": msg["role"], "content": blocks})
+            else:
+                processed_messages.append(msg)
+
         kwargs: dict = {
             "model": self.config.model,
             "max_tokens": max_tokens,
@@ -42,7 +60,7 @@ class AnthropicProvider(LLMProvider):
                 "text": system_prompt,
                 "cache_control": {"type": "ephemeral"},
             }],
-            "messages": messages,
+            "messages": processed_messages,
         }
 
         # Extended thinking models (Sonnet 4+, Opus 4+) support a thinking budget.

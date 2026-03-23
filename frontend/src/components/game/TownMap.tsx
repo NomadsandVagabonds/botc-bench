@@ -905,7 +905,7 @@ export function TownMap() {
         {gameState.onTheBlock && (() => {
           const blockSeat = gameState.onTheBlock!.seat;
           const blockTarget = getTarget(blockSeat);
-          const exeZ = spriteZIndex(blockTarget[0], blockTarget[1]) - 1;
+          const exeZ = Math.max(spriteZIndex(blockTarget[0], blockTarget[1]) - 1, 101);
           return (
             <motion.div
               key="executioner"

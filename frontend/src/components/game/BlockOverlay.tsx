@@ -135,7 +135,7 @@ const styles: Record<string, React.CSSProperties> = {
   backdrop: {
     position: 'absolute',
     inset: 0,
-    zIndex: 80,
+    zIndex: 107,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',

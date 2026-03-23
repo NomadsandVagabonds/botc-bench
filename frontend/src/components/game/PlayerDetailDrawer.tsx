@@ -4,6 +4,7 @@ import { useGameStore } from '../../stores/gameStore.ts';
 import type { ReasoningEntry } from '../../stores/gameStore.ts';
 import { getProviderColor, getRoleTypeColor, getPhaseLabel, getPhaseColor } from '../../utils/models.ts';
 import type { Player } from '../../types/game.ts';
+import { pickSpriteIds } from '../../data/characters.ts';
 
 // ── Status pills ──────────────────────────────────────────────────────
 
@@ -184,6 +185,12 @@ export function PlayerDetailDrawer() {
     [gameState?.players, selectedSeat],
   );
 
+  const spriteId = useMemo(() => {
+    if (selectedSeat === null || !gameState) return null;
+    const ids = pickSpriteIds(gameState.gameId || 'default', gameState.players.length);
+    return ids[selectedSeat % ids.length];
+  }, [selectedSeat, gameState?.gameId, gameState?.players.length]);
+
   const reasoningEntries: ReasoningEntry[] = selectedSeat !== null
     ? (playerReasoning[selectedSeat] ?? [])
     : [];
@@ -203,20 +210,22 @@ export function PlayerDetailDrawer() {
           {/* Header */}
           <div style={styles.header}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  background: getProviderColor(player.modelName || player.agentId),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                }}
-              >
-                {player.seat}
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: 8,
+                overflow: 'hidden',
+                flexShrink: 0,
+                background: 'rgba(0,0,0,0.3)',
+                border: `2px solid ${getProviderColor(player.modelName || player.agentId)}`,
+              }}>
+                {spriteId && (
+                  <img
+                    src={`/final_avatars/avatar_${spriteId}.png`}
+                    alt={player.characterName || ''}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                )}
               </div>
               <div>
                 <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>

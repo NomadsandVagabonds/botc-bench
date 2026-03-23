@@ -88,3 +88,32 @@ export const CHARACTER_BY_ID = new Map(CHARACTERS.map(c => [c.spriteId, c]));
 
 /** Sorted alphabetically for dropdown display */
 export const CHARACTERS_SORTED = [...CHARACTERS].sort((a, b) => a.name.localeCompare(b.name));
+
+/** All sprite IDs — must match TownMap.tsx SPRITE_IDS and backend _SPRITE_IDS exactly */
+export const SPRITE_IDS = CHARACTERS.map(c => c.spriteId);
+
+/** Seeded PRNG (mulberry32) — deterministic sprite selection per game */
+function seededRandom(seed: number): () => number {
+  let t = seed;
+  return () => {
+    t = (t + 0x6D2B79F5) | 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Pick N unique sprite IDs from the pool using a game-specific seed. */
+export function pickSpriteIds(gameId: string, count: number): number[] {
+  let hash = 0;
+  for (let i = 0; i < gameId.length; i++) {
+    hash = ((hash << 5) - hash + gameId.charCodeAt(i)) | 0;
+  }
+  const rng = seededRandom(hash);
+  const pool = [...SPRITE_IDS];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}

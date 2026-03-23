@@ -58,7 +58,7 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
   const lastShownRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<PendingBlock | null>(null);
-  const activeSpeech = useGameStore((s) => s.activeSpeech);
+  const overlayVisible = useGameStore((s) => s.accusationOverlayVisible);
 
   // Build pending data when onTheBlock changes
   useEffect(() => {
@@ -82,8 +82,8 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
       key,
     };
 
-    // If accusation overlay is active, queue for later
-    if (activeSpeech) {
+    // If accusation overlay is still rendering, queue for later
+    if (overlayVisible) {
       pendingRef.current = pending;
     } else {
       pendingRef.current = null;
@@ -92,11 +92,11 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setVisible(false), DISPLAY_MS);
     }
-  }, [onTheBlock, players, spriteIds, activeSpeech]);
+  }, [onTheBlock, players, spriteIds, overlayVisible]);
 
-  // When accusation overlay clears, show any pending block
+  // When accusation overlay finishes rendering, show any pending block
   useEffect(() => {
-    if (!activeSpeech && pendingRef.current) {
+    if (!overlayVisible && pendingRef.current) {
       const pending = pendingRef.current;
       pendingRef.current = null;
       // Delay to let overlay exit animation finish
@@ -107,7 +107,7 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
         timerRef.current = setTimeout(() => setVisible(false), DISPLAY_MS);
       }, 1500);
     }
-  }, [activeSpeech]);
+  }, [overlayVisible]);
 
   // No force-clear on game_over — let the 3s display timer finish naturally.
   // The game-over overlay delays 4s before showing, giving the block overlay time.

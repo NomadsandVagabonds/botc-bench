@@ -163,6 +163,12 @@ export default function AccusationOverlayController({ players, spriteIds }: Accu
     }
   }, [current, queue]);
 
+  // Track visibility in store so other overlays (BlockOverlay, death narration) can wait
+  const isRendering = !!(current && !dismissed);
+  useEffect(() => {
+    useGameStore.setState({ accusationOverlayVisible: isRendering });
+  }, [isRendering]);
+
   // Called when typewriter finishes — start linger timer
   const handleTypewriterComplete = useCallback(() => {
     if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current);
@@ -177,6 +183,7 @@ export default function AccusationOverlayController({ players, spriteIds }: Accu
   useEffect(() => {
     return () => {
       if (lingerTimerRef.current) clearTimeout(lingerTimerRef.current);
+      useGameStore.setState({ accusationOverlayVisible: false });
     };
   }, []);
 

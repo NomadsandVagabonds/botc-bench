@@ -659,12 +659,10 @@ export function TownMap({ showStoryteller = false }: { showStoryteller?: boolean
     }
   }, [gameState?.messages.length]);
 
-  // Poll: show pending narration only when accusation overlay is gone
-  // The AccusationOverlay manages its own display lifetime (typewriter + linger),
-  // so we check the store's activeSpeech as a proxy — it clears on nomination.result
-  const activeSpeechForNarration = useGameStore((s) => s.activeSpeech);
+  // Show pending narration only when accusation overlay is fully gone
+  const accusationOverlayVisible = useGameStore((s) => s.accusationOverlayVisible);
   useEffect(() => {
-    if (pendingNarrationRef.current && !activeSpeechForNarration) {
+    if (pendingNarrationRef.current && !accusationOverlayVisible) {
       const narration = pendingNarrationRef.current;
       pendingNarrationRef.current = null;
       // Extra delay to let the overlay exit animation finish
@@ -678,7 +676,7 @@ export function TownMap({ showStoryteller = false }: { showStoryteller?: boolean
         }, 8000);
       }, 2000);
     }
-  }, [activeSpeechForNarration, gameState?.messages.length]);
+  }, [accusationOverlayVisible, gameState?.messages.length]);
 
   // Speech bubbles + talking indicator from new messages
   const msgCount = gameState?.messages.length ?? 0;

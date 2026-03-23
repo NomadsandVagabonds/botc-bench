@@ -606,7 +606,7 @@ interface SpeechBubble {
 // Main TownMap
 // ---------------------------------------------------------------------------
 
-export function TownMap() {
+export function TownMap({ showStoryteller = false }: { showStoryteller?: boolean } = {}) {
   const gameState = useGameStore((s) => s.gameState);
   const selectedPlayer = useGameStore((s) => s.selectedPlayer);
   const selectPlayer = useGameStore((s) => s.selectPlayer);
@@ -1052,6 +1052,38 @@ export function TownMap() {
           spriteIds={spriteIds}
         />
       )}
+
+      {/* Storyteller intro overlay */}
+      <AnimatePresence>
+        {showStoryteller && (
+          <motion.div
+            key="storyteller"
+            initial={{ opacity: 0, x: -60 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -60 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: '2%',
+              zIndex: 108,
+              height: '75%',
+              pointerEvents: 'none',
+              filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.6))',
+            }}
+          >
+            <img
+              src="/storyteller.png"
+              alt="The Storyteller"
+              style={{
+                height: '100%',
+                width: 'auto',
+                objectFit: 'contain',
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Death narration (storyteller flavor text) */}
       <AnimatePresence>

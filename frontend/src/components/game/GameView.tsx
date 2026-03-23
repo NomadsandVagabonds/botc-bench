@@ -132,6 +132,7 @@ export function GameView() {
   const speed = useGameStore((s) => s.speed);
   const [muted, setMuted] = useState(false);
   const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
+  const [showStoryteller, setShowStoryteller] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [allMonitorResults, setAllMonitorResults] = useState<MonitorResult[]>([]);
   const [selectedMonitorId, setSelectedMonitorId] = useState<string | null>(null);
@@ -196,6 +197,7 @@ export function GameView() {
     const intro = new Audio('/intro.mp3');
     intro.volume = masterVolume * voiceVolume;
     introAudioRef.current = intro;
+    setShowStoryteller(true);
     intro.play().catch(() => {
       const unlock = () => {
         intro.volume = masterVolume * voiceVolume;
@@ -204,9 +206,13 @@ export function GameView() {
       };
       window.addEventListener('pointerdown', unlock, { once: true });
     });
-    intro.onended = () => { introAudioRef.current = null; };
+    intro.onended = () => {
+      introAudioRef.current = null;
+      // Keep storyteller visible a moment after audio ends
+      setTimeout(() => setShowStoryteller(false), 2000);
+    };
 
-    return () => { intro.pause(); intro.src = ''; introAudioRef.current = null; };
+    return () => { intro.pause(); intro.src = ''; introAudioRef.current = null; setShowStoryteller(false); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, replayMode]);
 
@@ -373,7 +379,7 @@ export function GameView() {
       <div style={styles.body}>
         {/* Left: circle + overlays */}
         <div style={styles.mapArea}>
-          <TownMap />
+          <TownMap showStoryteller={showStoryteller} />
           {/* VotingOverlay moved inside TownMap for correct centering */}
           <PlayerDetailDrawer />
           <DebriefPanel />

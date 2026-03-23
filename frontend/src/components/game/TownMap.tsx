@@ -163,8 +163,9 @@ function useAmbientVideo(phase: string | undefined, winner: string | undefined) 
         setGameOverReady(false);
         playClip(EVENT_CLIPS[eventKey], true, true);
       } else {
-        // No event clip — show overlay immediately
-        setGameOverReady(true);
+        // No event clip — delay to let block overlay finish (3s display + fade)
+        setGameOverReady(false);
+        setTimeout(() => setGameOverReady(true), 4000);
       }
     } else if (eventKey && EVENT_CLIPS[eventKey]) {
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);

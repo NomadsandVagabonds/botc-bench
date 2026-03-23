@@ -59,7 +59,6 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<PendingBlock | null>(null);
   const activeSpeech = useGameStore((s) => s.activeSpeech);
-  const gamePhase = useGameStore((s) => s.gameState?.phase);
 
   // Build pending data when onTheBlock changes
   useEffect(() => {
@@ -110,13 +109,8 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
     }
   }, [activeSpeech]);
 
-  // Clear on game over
-  useEffect(() => {
-    if (gamePhase === 'game_over') {
-      setVisible(false);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    }
-  }, [gamePhase]);
+  // No force-clear on game_over — let the 3s display timer finish naturally.
+  // The game-over overlay delays 4s before showing, giving the block overlay time.
 
   // Cleanup
   useEffect(() => {

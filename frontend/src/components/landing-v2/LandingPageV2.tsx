@@ -497,14 +497,6 @@ export function LandingPageV2() {
               Lobby
             </button>
           )}
-          {connected && (
-            <button
-              className="landing__nav-btn landing__nav-btn--admin"
-              onClick={() => navigate('/admin')}
-            >
-              Admin
-            </button>
-          )}
           <a
             className="landing__nav-btn"
             href="https://github.com/NomadsandVagabonds/botc-bench"

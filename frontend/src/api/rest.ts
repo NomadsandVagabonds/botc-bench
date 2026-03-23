@@ -141,8 +141,16 @@ export async function listGames(): Promise<GameListItem[]> {
   // Try backend first, fall back to GitHub for saved game replays
   try {
     return await request<GameListItem[]>('/api/games');
-  } catch {
-    return listGamesFromGitHub();
+  } catch (err) {
+    console.log('[listGames] Backend unavailable, falling back to GitHub:', (err as Error)?.message);
+    try {
+      const games = await listGamesFromGitHub();
+      console.log(`[listGames] GitHub returned ${games.length} games`);
+      return games;
+    } catch (ghErr) {
+      console.warn('[listGames] GitHub fallback also failed:', ghErr);
+      return [];
+    }
   }
 }
 

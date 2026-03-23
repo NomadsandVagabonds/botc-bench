@@ -2002,9 +2002,9 @@ export function GameLobby() {
       <MenuButton primary onClick={() => setView('setup')}>Start Game</MenuButton>
       <MenuButton onClick={() => setView('options')}>Options</MenuButton>
       <MenuButton onClick={() => setView('leaderboard')}>Leaderboard</MenuButton>
-      {games.length > 0 && (
-        <MenuButton onClick={() => setView('games')}>Past Games ({games.length})</MenuButton>
-      )}
+      <MenuButton onClick={() => setView('games')}>
+        Past Games{games.length > 0 ? ` (${games.length})` : ''}
+      </MenuButton>
       <MenuButton dim onClick={() => window.close()}>Quit</MenuButton>
     </div>
   );

@@ -1318,7 +1318,7 @@ class GameRunner:
                 system_prompt=agent._system_prompt or "",
                 messages=[{"role": "user", "content": prompt_text}],
                 temperature=agent.llm_config.temperature,
-                max_tokens=300,
+                max_tokens=state.config.phase_max_tokens.get(effort_key, 4096),
                 reasoning_effort=self._phase_effort(effort_key),
             )
             self._record_tokens(
@@ -1357,7 +1357,7 @@ class GameRunner:
                         {"role": "user", "content": re_prompt},
                     ],
                     temperature=agent.llm_config.temperature,
-                    max_tokens=300,
+                    max_tokens=state.config.phase_max_tokens.get(effort_key, 4096),
                 )
                 self._record_tokens(
                     agent_id=agent.agent_id,

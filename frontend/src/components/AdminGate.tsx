@@ -40,9 +40,13 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
     }
 
     const serverUrl = getServerUrl();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
     fetch(`${serverUrl}/api/wager/auth/me`, {
       headers: { 'X-Wager-Token': token },
+      signal: controller.signal,
     })
+      .finally(() => clearTimeout(timeout))
       .then(r => {
         if (r.status === 401) {
           // Token is stale (DB was wiped on redeploy) — clear and show login

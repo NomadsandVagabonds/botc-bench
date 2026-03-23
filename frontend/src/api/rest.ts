@@ -141,8 +141,24 @@ export async function createConfiguredGame(
   });
 }
 
+/** True when no explicit server URL has been configured (localStorage or env var). */
+const hasConfiguredServer = !!(localStorage.getItem('bloodbench_server_url') || import.meta.env.VITE_API_URL);
+
 export async function listGames(): Promise<GameListItem[]> {
-  // Try backend first, fall back to GitHub for saved game replays
+  // If no server configured, go straight to GitHub — don't waste 3s on localhost timeout
+  if (!hasConfiguredServer) {
+    console.log('[listGames] No server configured, loading from GitHub');
+    try {
+      const games = await listGamesFromGitHub();
+      console.log(`[listGames] GitHub returned ${games.length} games`);
+      return games;
+    } catch (ghErr) {
+      console.warn('[listGames] GitHub failed:', ghErr);
+      return [];
+    }
+  }
+
+  // Server configured — try backend first, fall back to GitHub
   try {
     return await request<GameListItem[]>('/api/games');
   } catch (err) {

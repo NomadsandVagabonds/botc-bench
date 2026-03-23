@@ -2018,7 +2018,13 @@ export function GameLobby() {
       </div>
       {gamesError && <div style={st.errorBox}>{gamesError}</div>}
       {gamesLoading ? (
-        <div style={{ textAlign: 'center', color: '#8b7355', padding: 12, fontSize: '0.8rem' }}>Loading...</div>
+        <div style={{ textAlign: 'center', color: '#8b7355', padding: 12, fontSize: '0.8rem' }}>Loading games...</div>
+      ) : games.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#8b7355', padding: 20, fontSize: '0.75rem', lineHeight: 1.6 }}>
+          No games found.{gamesError ? ` (${gamesError})` : ' Checking GitHub...'}
+          <br />
+          <button style={{ ...st.smallBtn, marginTop: 8 }} onClick={() => void fetchGames()}>Retry</button>
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
           {games.map((g) => (

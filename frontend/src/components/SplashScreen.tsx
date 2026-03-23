@@ -143,9 +143,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   video: {
     width: '100%',
-    minHeight: '100%',
-    objectFit: 'cover',
-    objectPosition: 'center center',
+    height: '100%',
+    objectFit: 'contain',
   },
   pixelOverlay: {
     position: 'absolute',

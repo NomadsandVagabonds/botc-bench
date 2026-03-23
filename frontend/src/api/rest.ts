@@ -30,6 +30,8 @@ async function request<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = localStorage.getItem('wager_token');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
@@ -37,7 +39,9 @@ async function request<T>(
       ...options.headers,
     },
     ...options,
+    signal: controller.signal,
   });
+  clearTimeout(timeout);
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');

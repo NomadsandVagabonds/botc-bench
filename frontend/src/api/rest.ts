@@ -137,7 +137,45 @@ export async function createConfiguredGame(
 }
 
 export async function listGames(): Promise<GameListItem[]> {
-  return request<GameListItem[]>('/api/games');
+  // Try backend first, fall back to GitHub for saved game replays
+  try {
+    return await request<GameListItem[]>('/api/games');
+  } catch {
+    return listGamesFromGitHub();
+  }
+}
+
+/** Fetch game list from GitHub repo (public, no auth needed). */
+const GITHUB_GAMES_API = 'https://api.github.com/repos/NomadsandVagabonds/botc-bench/contents/backend/games';
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/NomadsandVagabonds/botc-bench/main/backend/games';
+
+async function listGamesFromGitHub(): Promise<GameListItem[]> {
+  const res = await fetch(GITHUB_GAMES_API);
+  if (!res.ok) return [];
+  const files: Array<{ name: string }> = await res.json();
+  // Parse game IDs from filenames like "game_abc123.json"
+  return files
+    .filter(f => f.name.startsWith('game_') && f.name.endsWith('.json'))
+    .map(f => {
+      const gameId = f.name.replace('game_', '').replace('.json', '');
+      return {
+        game_id: gameId,
+        status: 'completed',
+        winner: null,        // unknown until loaded
+        total_days: null,
+        created_at: null,
+        has_audio: false,
+        has_monitors: false,
+      };
+    });
+}
+
+/** Load a full game JSON from GitHub for replay. */
+export async function loadGameFromGitHub(gameId: string): Promise<any> {
+  const url = `${GITHUB_RAW_BASE}/game_${gameId}.json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Game ${gameId} not found on GitHub`);
+  return res.json();
 }
 
 export async function getGame(id: string): Promise<GameState> {

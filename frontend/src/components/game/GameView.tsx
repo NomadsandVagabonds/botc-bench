@@ -13,7 +13,7 @@ import { useGameStore } from '../../stores/gameStore.ts';
 import { useWebSocket } from '../../hooks/useWebSocket.ts';
 import { useReplayController } from '../../hooks/useReplayController.ts';
 import { useTheatricalPacer } from '../../hooks/useTheatricalPacer.ts';
-import { getGameStatus, listMonitors } from '../../api/rest.ts';
+import { getGameStatus, listMonitors, loadGameFromGitHub } from '../../api/rest.ts';
 import type { MonitorResult } from '../../types/monitor.ts';
 
 export function GameView() {
@@ -29,6 +29,98 @@ export function GameView() {
   useTheatricalPacer();
   const gameState = useGameStore((s) => s.gameState);
   const replayMode = useGameStore((s) => s.replayMode);
+  const startReplay = useGameStore((s) => s.startReplay);
+  const githubAttemptedRef = useRef(false);
+
+  // GitHub fallback: if WebSocket hasn't delivered game state after 3s, try loading from GitHub
+  useEffect(() => {
+    if (!gameId || githubAttemptedRef.current) return;
+    const timer = setTimeout(() => {
+      const store = useGameStore.getState();
+      if (store.gameState || store.replayMode) return; // WS already connected
+      githubAttemptedRef.current = true;
+      console.log('[game] WebSocket unavailable, trying GitHub fallback...');
+      loadGameFromGitHub(gameId).then((data) => {
+        if (!data.initial_state || !data.events) {
+          console.warn('[game] GitHub game JSON missing initial_state or events');
+          return;
+        }
+        // Normalize initial_state into a game.state event
+        const initialEvent = { type: 'game.state' as const, state: data.initial_state };
+        // Normalize events (they're already in the right format from the backend)
+        const events = data.events
+          .filter((e: any) => e.type !== 'game.created')
+          .map((e: any) => {
+            // Backend saves raw events; normalizeEvent in useWebSocket handles
+            // snake_case -> camelCase etc. For GitHub replay we need to do
+            // minimal normalization here.
+            if (e.type === 'message.new') {
+              let msgType = e.data?.type ?? 'public';
+              if (msgType === 'group') msgType = 'breakout';
+              if (msgType === 'public_speech') msgType = 'public';
+              return {
+                type: 'message.new',
+                message: {
+                  id: crypto.randomUUID(),
+                  type: msgType,
+                  phaseId: '',
+                  senderSeat: e.data?.seat ?? null,
+                  content: e.data?.content ?? '',
+                  groupId: e.data?.group_id ?? null,
+                  timestamp: e.timestamp ?? Date.now(),
+                  ...(e.data?.phase != null ? { phase: e.data.phase } : {}),
+                  ...(e.data?.day != null ? { dayNumber: e.data.day } : {}),
+                  ...(e.data?.internal ? { internal: e.data.internal } : {}),
+                },
+              };
+            }
+            if (e.type === 'phase.change') {
+              return { type: 'phase.change', phase: e.data?.phase, dayNumber: e.data?.day, playerStatuses: e.data?.player_statuses };
+            }
+            if (e.type === 'nomination.start') {
+              return { type: 'nomination.start', nominatorSeat: e.data?.nominator, nomineeSeat: e.data?.nominee };
+            }
+            if (e.type === 'vote.cast') {
+              return { type: 'vote.cast', voterSeat: e.data?.seat, nomineeSeat: e.data?.nominee, vote: e.data?.vote };
+            }
+            if (e.type === 'nomination.result') {
+              return {
+                type: 'nomination.result',
+                nomination: {
+                  nominatorSeat: e.data?.nominator,
+                  nomineeSeat: e.data?.nominee,
+                  votesFor: e.data?.votes_for ?? [],
+                  votesAgainst: e.data?.votes_against ?? [],
+                  passed: e.data?.passed ?? false,
+                  outcome: e.data?.outcome ?? null,
+                },
+                onTheBlock: e.data?.on_the_block,
+                onTheBlockVotes: e.data?.on_the_block_votes,
+              };
+            }
+            if (e.type === 'execution') {
+              return { type: 'execution', seat: e.data?.seat, role: e.data?.role, deathCause: e.data?.death_cause, deathDay: e.data?.death_day, deathPhase: e.data?.death_phase };
+            }
+            if (e.type === 'death') {
+              return { type: 'death', seat: e.data?.seat, cause: e.data?.cause, deathDay: e.data?.death_day, deathPhase: e.data?.death_phase };
+            }
+            if (e.type === 'game.over') {
+              return { type: 'game.over', winner: e.data?.winner, winCondition: e.data?.win_condition };
+            }
+            if (e.type === 'debrief.message') {
+              return { type: 'debrief.message', ...e.data };
+            }
+            // Pass through other events as-is
+            return { type: e.type, ...e.data };
+          });
+        console.log(`[game] Loaded ${events.length} events from GitHub, entering replay`);
+        startReplay(initialEvent, events);
+      }).catch((err) => {
+        console.warn('[game] GitHub fallback failed:', err);
+      });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [gameId, startReplay]);
   const masterVolume = useGameStore((s) => s.masterVolume);
   const musicVolume = useGameStore((s) => s.musicVolume);
   const voiceVolume = useGameStore((s) => s.voiceVolume);

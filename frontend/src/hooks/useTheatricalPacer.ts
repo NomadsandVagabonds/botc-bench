@@ -73,7 +73,7 @@ export function useTheatricalPacer() {
 
   const drain = useCallback(() => {
     const store = useGameStore.getState();
-    if (store.theatricalEventQueue.length === 0 || store.replayMode || !store.theatricalMode) {
+    if (store.theatricalEventQueue.length === 0 || store.replayMode || !store.theatricalMode || store.theatricalHold) {
       drainingRef.current = false;
       return;
     }
@@ -94,13 +94,15 @@ export function useTheatricalPacer() {
     }
   }, []);
 
+  const theatricalHold = useGameStore((s) => s.theatricalHold);
+
   // Start draining when queue grows and we're not already draining
   useEffect(() => {
-    if (queueLength > 0 && !drainingRef.current && theatricalMode && !replayMode) {
+    if (queueLength > 0 && !drainingRef.current && theatricalMode && !replayMode && !theatricalHold) {
       drainingRef.current = true;
       timerRef.current = setTimeout(drain, 300);
     }
-  }, [queueLength, theatricalMode, replayMode, drain]);
+  }, [queueLength, theatricalMode, replayMode, theatricalHold, drain]);
 
   // Clear timer when entering replay mode or on unmount
   useEffect(() => {

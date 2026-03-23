@@ -2,11 +2,12 @@
  * BlockOverlay — dramatic full-screen flash when a player is put "on the block"
  *
  * Shows their execution portrait with "X is ON THE BLOCK" text for 3 seconds,
- * then fades out. Triggered by onTheBlock transitioning from null → value.
+ * then fades out. Waits for the accusation/defense overlay to clear first.
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useGameStore } from '../../stores/gameStore.ts';
 import type { Player, OnTheBlock } from '../../types/game.ts';
 
 // ── Asset check (same pattern as AccusationOverlay) ─────────────────
@@ -44,17 +45,23 @@ interface BlockOverlayProps {
 const DISPLAY_MS = 3000;
 const FADE_IN_MS = 0.3;
 
+interface PendingBlock {
+  name: string;
+  spriteId: number;
+  voteCount: number;
+  key: string;
+}
+
 export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayProps) {
   const [visible, setVisible] = useState(false);
-  const [displayData, setDisplayData] = useState<{
-    name: string;
-    spriteId: number;
-    voteCount: number;
-  } | null>(null);
-  const lastShownRef = useRef<string | null>(null); // "seat-voteCount" to prevent re-triggers
+  const [displayData, setDisplayData] = useState<PendingBlock | null>(null);
+  const lastShownRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef<PendingBlock | null>(null);
+  const activeSpeech = useGameStore((s) => s.activeSpeech);
+  const gamePhase = useGameStore((s) => s.gameState?.phase);
 
-  // Detect onTheBlock transitions
+  // Build pending data when onTheBlock changes
   useEffect(() => {
     if (!onTheBlock) {
       lastShownRef.current = null;
@@ -62,36 +69,63 @@ export function BlockOverlay({ onTheBlock, players, spriteIds }: BlockOverlayPro
     }
 
     const key = `${onTheBlock.seat}-${onTheBlock.voteCount}`;
-    if (key === lastShownRef.current) return; // already shown this one
+    if (key === lastShownRef.current) return;
     lastShownRef.current = key;
 
     const player = players.find(p => p.seat === onTheBlock.seat);
     if (!player) return;
 
     const spriteId = spriteIds[player.seat % spriteIds.length];
-
-    setDisplayData({
+    const pending: PendingBlock = {
       name: player.characterName || player.agentId || `Seat ${player.seat}`,
       spriteId,
       voteCount: onTheBlock.voteCount,
-    });
-    setVisible(true);
-
-    // Auto-dismiss
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      setVisible(false);
-    }, DISPLAY_MS);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      key,
     };
-  }, [onTheBlock, players, spriteIds]);
+
+    // If accusation overlay is active, queue for later
+    if (activeSpeech) {
+      pendingRef.current = pending;
+    } else {
+      pendingRef.current = null;
+      setDisplayData(pending);
+      setVisible(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setVisible(false), DISPLAY_MS);
+    }
+  }, [onTheBlock, players, spriteIds, activeSpeech]);
+
+  // When accusation overlay clears, show any pending block
+  useEffect(() => {
+    if (!activeSpeech && pendingRef.current) {
+      const pending = pendingRef.current;
+      pendingRef.current = null;
+      // Delay to let overlay exit animation finish
+      setTimeout(() => {
+        setDisplayData(pending);
+        setVisible(true);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setVisible(false), DISPLAY_MS);
+      }, 1500);
+    }
+  }, [activeSpeech]);
+
+  // Clear on game over
+  useEffect(() => {
+    if (gamePhase === 'game_over') {
+      setVisible(false);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    }
+  }, [gamePhase]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   const spriteId = displayData?.spriteId ?? null;
   const assetExists = useExecutionAsset(spriteId);
 
-  // Don't render if no asset
   if (!displayData || assetExists === false) return null;
 
   return (
@@ -141,7 +175,6 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     background: 'rgba(0, 0, 0, 0.88)',
-    // Red vignette
     boxShadow: 'inset 0 0 120px rgba(139, 26, 26, 0.3)',
     pointerEvents: 'none',
   },

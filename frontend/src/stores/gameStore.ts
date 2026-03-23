@@ -67,6 +67,7 @@ export interface GameStore {
   // Theatrical pacing (live games only — buffers ALL events, not just messages)
   theatricalEventQueue: ServerEvent[];
   theatricalMode: boolean;
+  theatricalHold: boolean;  // pause draining (e.g. during intro narration)
   enqueueTheatrical: (event: ServerEvent) => void;
   drainTheatricalEvent: () => ServerEvent | null;
 
@@ -138,6 +139,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   replayInitialState: null,
   theatricalEventQueue: [],
   theatricalMode: false,
+  theatricalHold: false,
   activeSpeech: null,
   liveMonitor: null,
 
@@ -1092,7 +1094,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       paused: true, // Start paused so user can hit play
       speed: 1,
       theatricalEventQueue: [],
-      theatricalMode: false,
+      theatricalMode: false, theatricalHold: false,
     });
   },
 
@@ -1155,7 +1157,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       replayTotal: 0,
       replayInitialState: null,
       theatricalEventQueue: [],
-      theatricalMode: false,
+      theatricalMode: false, theatricalHold: false,
       activeSpeech: null,
       liveMonitor: null,
     }),

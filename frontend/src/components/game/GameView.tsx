@@ -198,6 +198,8 @@ export function GameView() {
     intro.volume = masterVolume * voiceVolume;
     introAudioRef.current = intro;
     setShowStoryteller(true);
+    // Hold theatrical pacing until intro finishes
+    useGameStore.setState({ theatricalHold: true });
     intro.play().catch(() => {
       const unlock = () => {
         intro.volume = masterVolume * voiceVolume;
@@ -208,11 +210,18 @@ export function GameView() {
     });
     intro.onended = () => {
       introAudioRef.current = null;
-      // Keep storyteller visible a moment after audio ends
-      setTimeout(() => setShowStoryteller(false), 2000);
+      // Keep storyteller visible a moment after audio ends, then release theatrical hold
+      setTimeout(() => {
+        setShowStoryteller(false);
+        useGameStore.setState({ theatricalHold: false });
+      }, 2000);
     };
 
-    return () => { intro.pause(); intro.src = ''; introAudioRef.current = null; setShowStoryteller(false); };
+    return () => {
+      intro.pause(); intro.src = ''; introAudioRef.current = null;
+      setShowStoryteller(false);
+      useGameStore.setState({ theatricalHold: false });
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState, replayMode]);
 

@@ -380,11 +380,18 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
                 status_code=422,
                 detail=f"seat_roles has {len(request.seat_roles)} entries, need {request.num_players}",
             )
-        # Validate all role IDs exist and distribution is correct
+        # Validate role IDs exist and distribution is correct
+        # Support partial assignment: empty strings ('') mean "random for this seat"
+        has_random = any(r == '' for r in request.seat_roles)
         try:
-            from botc.engine.setup import _resolve_assigned_roles
             script_data = load_script(request.script)
-            _resolve_assigned_roles(request.num_players, request.seat_roles, script_data)
+            if has_random:
+                from botc.engine.setup import _resolve_partial_roles
+                import random as _rng
+                _resolve_partial_roles(request.num_players, request.seat_roles, script_data, _rng.Random(0))
+            else:
+                from botc.engine.setup import _resolve_assigned_roles
+                _resolve_assigned_roles(request.num_players, request.seat_roles, script_data)
         except (ValueError, FileNotFoundError) as e:
             raise HTTPException(status_code=422, detail=str(e))
 

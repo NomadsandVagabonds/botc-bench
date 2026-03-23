@@ -4,6 +4,7 @@ import { listGames, createConfiguredGame, getModelStats, getAudioManifest, gener
 import type { GameListItem, SeatModelConfig, ModelStatsResponse } from '../api/rest.ts';
 import type { MonitorResult } from '../types/monitor.ts';
 import { useGameStore } from '../stores/gameStore.ts';
+import { CHARACTERS_SORTED } from '../data/characters.ts';
 import { SplashScreen } from './SplashScreen.tsx';
 import { PageTransition } from './PageTransition.tsx';
 
@@ -139,39 +140,93 @@ function validateRoleAssignment(seatRoles: string[], playerCount: number, script
   if (!roles) return ['Role assignment is only available for Trouble Brewing.'];
   const assigned = seatRoles.slice(0, playerCount);
   const warnings: string[] = [];
-  const unassigned = assigned.filter((r) => r === '').length;
-  if (unassigned > 0) { warnings.push(`${unassigned} seat(s) have no role assigned.`); return warnings; }
+  const randomCount = assigned.filter((r) => r === '').length;
+
+  // Check duplicates among assigned roles
   const seen = new Set<string>();
-  for (const id of assigned) { if (seen.has(id)) { const role = roles.find((r) => r.id === id); warnings.push(`Duplicate: ${role?.name ?? id}`); } seen.add(id); }
+  for (const id of assigned) {
+    if (!id) continue;
+    if (seen.has(id)) { const role = roles.find((r) => r.id === id); warnings.push(`Duplicate: ${role?.name ?? id}`); }
+    seen.add(id);
+  }
+
+  // Count assigned roles by type
   const counts = { townsfolk: 0, outsider: 0, minion: 0, demon: 0 };
-  for (const id of assigned) { const role = roles.find((r) => r.id === id); if (role) counts[role.type]++; }
+  for (const id of assigned) { if (!id) continue; const role = roles.find((r) => r.id === id); if (role) counts[role.type]++; }
   const hasBaron = assigned.includes('baron');
   const expected = getExpectedDistribution(playerCount, hasBaron);
-  if (counts.demon !== expected.d) warnings.push(`Need exactly ${expected.d} Demon (have ${counts.demon}).`);
-  if (counts.minion !== expected.m) warnings.push(`Need exactly ${expected.m} Minion(s) (have ${counts.minion}).`);
-  if (counts.townsfolk !== expected.t) warnings.push(`Need ${expected.t} Townsfolk (have ${counts.townsfolk}).`);
-  if (counts.outsider !== expected.o) warnings.push(`Need ${expected.o} Outsider(s) (have ${counts.outsider}).`);
+
+  // Only warn about over-assignment (under-assignment is fine — random fills the gap)
+  if (counts.demon > expected.d) warnings.push(`Too many Demons (${counts.demon} > ${expected.d}).`);
+  if (counts.minion > expected.m) warnings.push(`Too many Minions (${counts.minion} > ${expected.m}).`);
+  if (counts.townsfolk > expected.t) warnings.push(`Too many Townsfolk (${counts.townsfolk} > ${expected.t}).`);
+  if (counts.outsider > expected.o) warnings.push(`Too many Outsiders (${counts.outsider} > ${expected.o}).`);
+
+  // Info message for random seats (not an error)
+  if (randomCount > 0 && randomCount < playerCount) {
+    warnings.push(`${randomCount} seat(s) will be randomly assigned.`);
+  }
   return warnings;
 }
 
-// ── Seat rows ───────────────────────────────────────────────────────
+// ── Character select (shared by both seat row types) ────────────────
 
-function SeatRow({ seat, model, onChange }: { seat: number; model: string; onChange: (m: string) => void }) {
-  const selected = AVAILABLE_MODELS.find((m) => m.id === model);
-  const color = selected ? PROVIDER_COLORS[selected.provider] : '#6B7280';
+function CharacterSelect({ spriteId, usedCharacters, onChange }: {
+  spriteId: number | null;
+  usedCharacters: Set<number>;
+  onChange: (id: number | null) => void;
+}) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <div style={{ width: 20, height: 20, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, color: '#1a0e04', flexShrink: 0 }}>{seat}</div>
-      <select value={model} onChange={(e) => onChange(e.target.value)} style={st.select}>
-        {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 40%' }}>
+      {spriteId != null && (
+        <img
+          src={`/sprites/sprite_${spriteId}.gif`}
+          alt=""
+          style={{ width: 28, height: 28, imageRendering: 'pixelated' as any, flexShrink: 0 }}
+        />
+      )}
+      <select
+        value={spriteId ?? ''}
+        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+        style={{ ...st.select, flex: 1, fontSize: '0.65rem', padding: '3px 4px' }}
+      >
+        <option value="">-- random --</option>
+        {CHARACTERS_SORTED.map((c) => {
+          const taken = usedCharacters.has(c.spriteId) && c.spriteId !== spriteId;
+          return (
+            <option key={c.spriteId} value={c.spriteId} disabled={taken} style={{ color: taken ? '#aaa' : undefined }}>
+              {c.name}{taken ? ' (taken)' : ''}
+            </option>
+          );
+        })}
       </select>
     </div>
   );
 }
 
-function AssignedSeatRow({ seat, model, roleId, scriptId, usedRoles, onModelChange, onRoleChange }: {
-  seat: number; model: string; roleId: string; scriptId: string; usedRoles: Set<string>;
-  onModelChange: (m: string) => void; onRoleChange: (r: string) => void;
+// ── Seat rows ───────────────────────────────────────────────────────
+
+function SeatRow({ seat, model, spriteId, usedCharacters, onChange, onCharChange }: {
+  seat: number; model: string; spriteId: number | null; usedCharacters: Set<number>;
+  onChange: (m: string) => void; onCharChange: (id: number | null) => void;
+}) {
+  const selected = AVAILABLE_MODELS.find((m) => m.id === model);
+  const color = selected ? PROVIDER_COLORS[selected.provider] : '#6B7280';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ width: 20, height: 20, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, color: '#1a0e04', flexShrink: 0 }}>{seat}</div>
+      <select value={model} onChange={(e) => onChange(e.target.value)} style={{ ...st.select, flex: '1 1 45%' }}>
+        {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+      </select>
+      <CharacterSelect spriteId={spriteId} usedCharacters={usedCharacters} onChange={onCharChange} />
+    </div>
+  );
+}
+
+function AssignedSeatRow({ seat, model, roleId, scriptId, spriteId, usedRoles, usedCharacters, onModelChange, onRoleChange, onCharChange }: {
+  seat: number; model: string; roleId: string; scriptId: string; spriteId: number | null;
+  usedRoles: Set<string>; usedCharacters: Set<number>;
+  onModelChange: (m: string) => void; onRoleChange: (r: string) => void; onCharChange: (id: number | null) => void;
 }) {
   const selected = AVAILABLE_MODELS.find((m) => m.id === model);
   const modelColor = selected ? PROVIDER_COLORS[selected.provider] : '#6B7280';
@@ -183,17 +238,18 @@ function AssignedSeatRow({ seat, model, roleId, scriptId, usedRoles, onModelChan
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <div style={{ width: 18, height: 18, borderRadius: '50%', background: modelColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 700, color: '#1a0e04', flexShrink: 0 }}>{seat}</div>
-      <select value={model} onChange={(e) => onModelChange(e.target.value)} style={{ ...st.select, flex: '1 1 45%', fontSize: '0.7rem', padding: '3px 4px' }}>
+      <select value={model} onChange={(e) => onModelChange(e.target.value)} style={{ ...st.select, flex: '1 1 30%', fontSize: '0.7rem', padding: '3px 4px' }}>
         {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
       </select>
-      <select value={roleId} onChange={(e) => onRoleChange(e.target.value)} style={{ ...st.select, flex: '1 1 45%', fontSize: '0.7rem', padding: '3px 4px', borderLeft: `3px solid ${roleColor}` }}>
-        <option value="">-- role --</option>
+      <select value={roleId} onChange={(e) => onRoleChange(e.target.value)} style={{ ...st.select, flex: '1 1 30%', fontSize: '0.7rem', padding: '3px 4px', borderLeft: `3px solid ${roleColor}` }}>
+        <option value="">-- random --</option>
         {Array.from(grouped.entries()).map(([type, typeRoles]) => (
           <optgroup key={type} label={ROLE_TYPE_LABELS[type]}>
             {typeRoles.map((r) => { const taken = usedRoles.has(r.id) && r.id !== roleId; return <option key={r.id} value={r.id} disabled={taken} style={{ color: taken ? '#aaa' : undefined }}>{r.name}{taken ? ' (taken)' : ''}</option>; })}
           </optgroup>
         ))}
       </select>
+      <CharacterSelect spriteId={spriteId} usedCharacters={usedCharacters} onChange={onCharChange} />
     </div>
   );
 }
@@ -1407,6 +1463,7 @@ export function GameLobby() {
   const [script, setScript] = useState(SCRIPTS[0].value);
   const [seatModels, setSeatModels] = useState<string[]>(Array(15).fill(AVAILABLE_MODELS[0].id));
   const [seatRoles, setSeatRoles] = useState<string[]>(Array(15).fill(''));
+  const [seatCharacters, setSeatCharacters] = useState<(number | null)[]>(Array(15).fill(null));
   const [roleMode, setRoleMode] = useState<'random' | 'assigned'>('random');
   const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_OPTIONS });
 
@@ -1484,6 +1541,9 @@ export function GameLobby() {
   const handleRoleChange = useCallback((seat: number, role: string) => {
     setSeatRoles((prev) => { const next = [...prev]; next[seat] = role; return next; });
   }, []);
+  const handleCharacterChange = useCallback((seat: number, spriteId: number | null) => {
+    setSeatCharacters((prev) => { const next = [...prev]; next[seat] = spriteId; return next; });
+  }, []);
   const fillAllWith = useCallback((model: string) => { setSeatModels(Array(15).fill(model)); }, []);
 
   const usedRoles = useMemo(() => {
@@ -1491,6 +1551,12 @@ export function GameLobby() {
     for (let i = 0; i < playerCount; i++) { if (seatRoles[i]) set.add(seatRoles[i]); }
     return set;
   }, [seatRoles, playerCount]);
+
+  const usedCharacters = useMemo(() => {
+    const set = new Set<number>();
+    for (let i = 0; i < playerCount; i++) { if (seatCharacters[i] != null) set.add(seatCharacters[i]!); }
+    return set;
+  }, [seatCharacters, playerCount]);
 
   const roleWarnings = useMemo(() => {
     if (roleMode !== 'assigned') return [];
@@ -1521,9 +1587,13 @@ export function GameLobby() {
 
   const handleStart = useCallback(async () => {
     setStarting(true); setStartError(null);
-    if (roleMode === 'assigned' && roleWarnings.length > 0) {
-      setStartError('Fix role assignment errors before starting.');
-      setStarting(false); return;
+    // For assigned mode, only block on critical errors (over-assigned types), not missing roles
+    if (roleMode === 'assigned') {
+      const criticalWarnings = roleWarnings.filter(w => w.includes('Too many') || w.includes('Duplicate'));
+      if (criticalWarnings.length > 0) {
+        setStartError('Fix role assignment errors before starting.');
+        setStarting(false); return;
+      }
     }
     try {
       const seed = options.seed ? Number(options.seed) : Math.floor(Math.random() * 100_000);
@@ -1533,11 +1603,15 @@ export function GameLobby() {
       });
       // Include client-provided API keys if any (BYOK mode)
       const hasClientKeys = Object.keys(clientKeys).length > 0;
+      // Character assignments: only include if any are manually picked
+      const charSlice = seatCharacters.slice(0, playerCount);
+      const hasCharPicks = charSlice.some(c => c != null);
       const result = await createConfiguredGame({
         script,
         num_players: playerCount,
         seat_models: seatModelConfigs,
         seat_roles: roleMode === 'assigned' ? seatRoles.slice(0, playerCount) : undefined,
+        ...(hasCharPicks ? { seat_characters: charSlice } : {}),
         seed,
         max_days: options.maxDays,
         reveal_models: options.revealModels,
@@ -1552,7 +1626,7 @@ export function GameLobby() {
       else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab or server .env.');
       else setStartError(msg);
     } finally { setStarting(false); }
-  }, [playerCount, script, seatModels, seatRoles, roleMode, roleWarnings, options, clientKeys, navigate]);
+  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate]);
 
   const isAssignedAvailable = script in SCRIPT_ROLES;
 
@@ -1626,12 +1700,12 @@ export function GameLobby() {
 
         {/* Right: Seats */}
         <div>
-          <label style={st.label}>Seat Assignments {roleMode === 'assigned' && '(Model + Role)'}</label>
+          <label style={st.label}>Seat Assignments {roleMode === 'assigned' ? '(Model + Role + Character)' : '(Model + Character)'}</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 320, overflowY: 'auto' }}>
             {roleMode === 'random' ? (
-              Array.from({ length: playerCount }, (_, i) => <SeatRow key={i} seat={i} model={seatModels[i]} onChange={(m) => handleModelChange(i, m)} />)
+              Array.from({ length: playerCount }, (_, i) => <SeatRow key={i} seat={i} model={seatModels[i]} spriteId={seatCharacters[i]} usedCharacters={usedCharacters} onChange={(m) => handleModelChange(i, m)} onCharChange={(c) => handleCharacterChange(i, c)} />)
             ) : (
-              Array.from({ length: playerCount }, (_, i) => <AssignedSeatRow key={i} seat={i} model={seatModels[i]} roleId={seatRoles[i]} scriptId={script} usedRoles={usedRoles} onModelChange={(m) => handleModelChange(i, m)} onRoleChange={(r) => handleRoleChange(i, r)} />)
+              Array.from({ length: playerCount }, (_, i) => <AssignedSeatRow key={i} seat={i} model={seatModels[i]} roleId={seatRoles[i]} scriptId={script} spriteId={seatCharacters[i]} usedRoles={usedRoles} usedCharacters={usedCharacters} onModelChange={(m) => handleModelChange(i, m)} onRoleChange={(r) => handleRoleChange(i, r)} onCharChange={(c) => handleCharacterChange(i, c)} />)
             )}
           </div>
         </div>

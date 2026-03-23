@@ -60,7 +60,8 @@ export interface ConfiguredGameRequest {
   script: string;
   num_players: number;
   seat_models: SeatModelConfig[];
-  seat_roles?: string[];  // optional pre-assigned role IDs per seat
+  seat_roles?: string[];  // optional pre-assigned role IDs per seat ('' = random for that seat)
+  seat_characters?: (number | null)[];  // sprite IDs per seat, null = auto-assign
   seed?: number;
   max_days?: number;
   reveal_models?: string; // "true" | "false" | "scramble"

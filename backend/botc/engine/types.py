@@ -289,7 +289,8 @@ class GameConfig:
     max_days: int = 20  # Safety cap
     reveal_models: str = "true"  # "true" = show real models, "false" = hide, "scramble" = show randomized fake models
     share_stats: bool = False  # When True (and reveal_models=True), inject historical model stats into prompts
-    seat_roles: list[str] | None = None  # Pre-assigned role IDs per seat (None = random)
+    seat_roles: list[str] | None = None  # Pre-assigned role IDs per seat (None = random, '' = random for that seat)
+    seat_characters: list[int | None] | None = None  # Sprite IDs per seat (None entries = auto-assign)
     speech_style: str | None = None  # Optional speech style directive injected into agent prompts
     phase_max_tokens: dict[str, int] = field(default_factory=lambda: {
         "discussion": 4096,

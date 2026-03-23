@@ -97,7 +97,8 @@ class ConfiguredGameRequest(BaseModel):
     script: str = "trouble_brewing"
     num_players: int = 10
     seat_models: list[SeatModelConfig]  # one per player
-    seat_roles: list[str] | None = None  # optional pre-assigned role IDs per seat
+    seat_roles: list[str] | None = None  # optional pre-assigned role IDs per seat ('' = random for that seat)
+    seat_characters: list[int | None] | None = None  # optional sprite IDs per seat
     seed: int | None = None
     max_days: int = 50
     reveal_models: str = "true"  # "true" | "false" | "scramble"
@@ -406,6 +407,7 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
         reveal_models=request.reveal_models,
         share_stats=request.share_stats,
         seat_roles=request.seat_roles,
+        seat_characters=request.seat_characters,
         speech_style=request.speech_style,
     )
 

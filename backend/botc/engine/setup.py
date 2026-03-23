@@ -154,9 +154,14 @@ def create_game(config: GameConfig, agent_ids: list[str]) -> GameState:
     # Load script
     script = load_script(config.script)
 
-    # Determine role composition — assigned or random
+    # Determine role composition — assigned, partially assigned, or random
     if config.seat_roles is not None:
-        roles = _resolve_assigned_roles(num_players, config.seat_roles, script)
+        # Check if any seats are left as random (empty string)
+        has_random = any(r == '' for r in config.seat_roles)
+        if has_random:
+            roles = _resolve_partial_roles(num_players, config.seat_roles, script, rng)
+        else:
+            roles = _resolve_assigned_roles(num_players, config.seat_roles, script)
     else:
         roles = _select_roles(num_players, script, rng)
         # Shuffle and assign to seats
@@ -165,18 +170,32 @@ def create_game(config: GameConfig, agent_ids: list[str]) -> GameState:
     # Generate game ID now so we can use it for sprite selection
     game_id = uuid.uuid4().hex[:12]
 
-    # Assign character names from sprite-linked character table
-    # The sprite selection must match the frontend's pickSpriteIds() exactly
+    # Assign character sprites — user-picked or deterministic from game_id
     char_table = _load_character_table()
-    sprite_ids = _pick_sprite_ids(game_id, num_players)
+    if config.seat_characters is not None:
+        # User specified some characters; fill None entries from remaining pool
+        sprite_ids_list = list(config.seat_characters)
+        # Pad if needed
+        while len(sprite_ids_list) < num_players:
+            sprite_ids_list.append(None)
+        used = {s for s in sprite_ids_list if s is not None}
+        available = [s for s in _SPRITE_IDS if s not in used]
+        rng.shuffle(available)
+        for i in range(num_players):
+            if sprite_ids_list[i] is None:
+                sprite_ids_list[i] = available.pop()
+        sprite_ids = sprite_ids_list
+    else:
+        sprite_ids = _pick_sprite_ids(game_id, num_players)
+
+    # Look up character names from sprite IDs
     character_names: list[str] = []
     for seat in range(num_players):
-        sid = sprite_ids[seat % len(sprite_ids)]
+        sid = sprite_ids[seat]
         char = char_table.get(sid)
         if char:
             character_names.append(char["name"])
         else:
-            # Fallback to random name bank if sprite not in character table
             name_bank = _load_name_bank()
             character_names.append(rng.choice(name_bank))
 
@@ -389,6 +408,103 @@ def _resolve_assigned_roles(
         seen.add(rid)
 
     return roles
+
+
+def _resolve_partial_roles(
+    num_players: int,
+    seat_roles: list[str],
+    script: ScriptData,
+    rng: random.Random,
+) -> list[RoleDefinition]:
+    """Resolve partially-assigned roles: some seats have role IDs, others are '' (random).
+
+    Assigned seats keep their role. Random seats get filled from the remaining
+    required distribution.
+    """
+    if len(seat_roles) != num_players:
+        raise ValueError(
+            f"seat_roles has {len(seat_roles)} entries, need {num_players}"
+        )
+
+    # Separate assigned and random seats
+    assigned: dict[int, RoleDefinition] = {}
+    random_seats: list[int] = []
+    for i, role_id in enumerate(seat_roles):
+        if role_id:
+            role_def = script.roles.get(role_id)
+            if role_def is None:
+                raise ValueError(f"Unknown role '{role_id}' for script '{script.script_id}'")
+            assigned[i] = role_def
+        else:
+            random_seats.append(i)
+
+    if not random_seats:
+        # All assigned — use the strict validator
+        return _resolve_assigned_roles(num_players, seat_roles, script)
+
+    # Get the required distribution
+    base_t, base_o, n_minions, n_demons = ROLE_DISTRIBUTION[num_players]
+
+    # Account for Baron if assigned
+    baron_in_play = any(r.id == "baron" for r in assigned.values())
+    n_townsfolk = base_t - (2 if baron_in_play else 0)
+    n_outsiders = base_o + (2 if baron_in_play else 0)
+
+    # Count what's already assigned by type
+    assigned_counts = {rt: 0 for rt in RoleType}
+    assigned_ids = set()
+    for role in assigned.values():
+        assigned_counts[role.role_type] += 1
+        assigned_ids.add(role.id)
+
+    # Figure out how many of each type we still need
+    need = {
+        RoleType.DEMON: n_demons - assigned_counts[RoleType.DEMON],
+        RoleType.MINION: n_minions - assigned_counts[RoleType.MINION],
+        RoleType.OUTSIDER: n_outsiders - assigned_counts[RoleType.OUTSIDER],
+        RoleType.TOWNSFOLK: n_townsfolk - assigned_counts[RoleType.TOWNSFOLK],
+    }
+
+    # Validate no type is over-assigned
+    for rt, count in need.items():
+        if count < 0:
+            raise ValueError(f"Too many {rt.value} roles assigned ({assigned_counts[rt]} > {assigned_counts[rt] + count})")
+
+    # Select remaining roles randomly (excluding already-assigned role IDs)
+    remaining: list[RoleDefinition] = []
+    for rt, count in [(RoleType.DEMON, need[RoleType.DEMON]),
+                      (RoleType.MINION, need[RoleType.MINION]),
+                      (RoleType.OUTSIDER, need[RoleType.OUTSIDER]),
+                      (RoleType.TOWNSFOLK, need[RoleType.TOWNSFOLK])]:
+        if count <= 0:
+            continue
+        pool = {
+            RoleType.DEMON: list(script.demons),
+            RoleType.MINION: list(script.minions),
+            RoleType.OUTSIDER: list(script.outsiders),
+            RoleType.TOWNSFOLK: list(script.townsfolk),
+        }[rt]
+        available = [r for r in pool if r.id not in assigned_ids]
+        rng.shuffle(available)
+        selected = available[:count]
+        if len(selected) < count:
+            raise ValueError(f"Not enough {rt.value} roles in script to fill {count} seats")
+        for r in selected:
+            assigned_ids.add(r.id)
+        remaining.extend(selected)
+
+    rng.shuffle(remaining)
+
+    # Build the final roles list
+    roles: list[RoleDefinition | None] = [None] * num_players
+    for seat, role in assigned.items():
+        roles[seat] = role
+    ri = 0
+    for seat in random_seats:
+        roles[seat] = remaining[ri]
+        ri += 1
+
+    return roles  # type: ignore[return-value]
 
 
 def _pick_drunk_perceived_role(

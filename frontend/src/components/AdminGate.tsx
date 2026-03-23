@@ -64,7 +64,8 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
         setChecking(false);
       })
       .catch(() => {
-        setError('server_error');
+        // Server unreachable — allow read-only access (GitHub replay fallback)
+        setAuthorized(true);
         setChecking(false);
       });
   }, []);

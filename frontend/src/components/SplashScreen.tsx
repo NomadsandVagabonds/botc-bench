@@ -139,11 +139,13 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   video: {
     width: '100%',
-    height: '100%',
-    objectFit: 'contain',
+    minHeight: '100%',
+    objectFit: 'cover',
+    objectPosition: 'center center',
   },
   pixelOverlay: {
     position: 'absolute',

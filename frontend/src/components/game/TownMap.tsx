@@ -5,6 +5,7 @@ import type { Message } from '../../types/game.ts';
 import { getProviderColor, shortModelName } from '../../utils/models.ts';
 import { AnimatePresence, motion } from 'framer-motion';
 import AccusationOverlay from './AccusationOverlay.tsx';
+import { BlockOverlay } from './BlockOverlay.tsx';
 import {
   findPath,
   spriteZIndex,
@@ -1020,6 +1021,15 @@ export function TownMap() {
       {/* Accusation/Defense dramatic overlay */}
       {gameState && (
         <AccusationOverlay
+          players={gameState.players}
+          spriteIds={spriteIds}
+        />
+      )}
+
+      {/* "ON THE BLOCK" execution portrait flash */}
+      {gameState && (
+        <BlockOverlay
+          onTheBlock={gameState.onTheBlock ?? null}
           players={gameState.players}
           spriteIds={spriteIds}
         />

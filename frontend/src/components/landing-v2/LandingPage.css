@@ -1454,9 +1454,11 @@
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 0;        /* prevent flex child from overflowing */
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .landing__splash-video {

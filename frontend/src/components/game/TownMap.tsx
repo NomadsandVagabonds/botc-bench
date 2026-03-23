@@ -622,62 +622,14 @@ export function TownMap({ showStoryteller = false }: { showStoryteller?: boolean
 
   const [bubbles, setBubbles] = useState<SpeechBubble[]>([]);
   const bubblesRef = useRef<SpeechBubble[]>([]);
-  const [deathNarration, setDeathNarration] = useState<string | null>(null);
-  const deathTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [talkingSeats, setTalkingSeats] = useState<number[]>([]);
   const prevMsgCountRef = useRef(0);
 
   // Ambient video system
-  const { videoRef, videoPlaying, fullscreenTakeover, gameOverReady, aboveTower, handleEnded, triggerEvent } = useAmbientVideo(
+  const { videoRef, videoPlaying, fullscreenTakeover, gameOverReady, aboveTower, handleEnded } = useAmbientVideo(
     gameState?.phase,
     gameState?.winner ?? undefined,
   );
-
-  // Watch for death narration events — queued to show after accusation overlay clears
-  const pendingNarrationRef = useRef<string | null>(null);
-  const narrationDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!gameState?.messages.length) return;
-    const latest = gameState.messages[gameState.messages.length - 1];
-
-    let narration: string | null = null;
-
-    if (latest.type === 'narration' ||
-        (latest.type === 'system' && latest.content.includes('narration:'))) {
-      narration = latest.content.replace('narration:', '').trim();
-    } else if (latest.type === 'system' &&
-        (latest.content.includes('died') ||
-         latest.content.includes('EXECUTED') ||
-         latest.content.includes('dead'))) {
-      narration = latest.content;
-    }
-
-    if (narration) {
-      pendingNarrationRef.current = narration;
-      // Clear any existing delay timer
-      if (narrationDelayRef.current) clearTimeout(narrationDelayRef.current);
-    }
-  }, [gameState?.messages.length]);
-
-  // Show pending narration only when accusation overlay is fully gone
-  const accusationOverlayVisible = useGameStore((s) => s.accusationOverlayVisible);
-  useEffect(() => {
-    if (pendingNarrationRef.current && !accusationOverlayVisible) {
-      const narration = pendingNarrationRef.current;
-      pendingNarrationRef.current = null;
-      // Extra delay to let the overlay exit animation finish
-      narrationDelayRef.current = setTimeout(() => {
-        setDeathNarration(narration);
-        triggerEvent('execution');
-        if (deathTimerRef.current) clearTimeout(deathTimerRef.current);
-        deathTimerRef.current = setTimeout(() => {
-          setDeathNarration(null);
-          deathTimerRef.current = null;
-        }, 8000);
-      }, 2000);
-    }
-  }, [accusationOverlayVisible, gameState?.messages.length]);
 
   // Speech bubbles + talking indicator from new messages
   const msgCount = gameState?.messages.length ?? 0;
@@ -1093,21 +1045,6 @@ export function TownMap({ showStoryteller = false }: { showStoryteller?: boolean
         )}
       </AnimatePresence>
 
-      {/* Death narration (storyteller flavor text) */}
-      <AnimatePresence>
-        {deathNarration && (
-          <motion.div
-            style={styles.deathNarration}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.8 }}
-          >
-            <div style={styles.deathNarrationText}>{deathNarration}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Night action log — parchment-style scrollable log */}
       <AnimatePresence>
         {isNight && showObserverInfo && nightMessages.length > 0 && (
@@ -1223,28 +1160,6 @@ const styles: Record<string, React.CSSProperties> = {
     textShadow: '0 0 20px rgba(232,200,104,0.5), 0 0 40px rgba(200,160,60,0.3), 0 0 80px rgba(180,140,40,0.15)',
     zIndex: 110,
     pointerEvents: 'none',
-  },
-  deathNarration: {
-    position: 'absolute',
-    bottom: '15%',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: 'min(500px, 80%)',
-    zIndex: 110,
-    pointerEvents: 'none',
-    textAlign: 'center',
-  },
-  deathNarrationText: {
-    fontFamily: 'Georgia, "Palatino Linotype", "Book Antiqua", serif',
-    fontStyle: 'italic',
-    fontSize: 'clamp(13px, 1.5vw, 17px)',
-    lineHeight: 1.5,
-    color: '#e8d4b0',
-    textShadow: '0 0 12px rgba(200,160,80,0.4), 0 2px 4px rgba(0,0,0,0.8)',
-    padding: '12px 20px',
-    background: 'linear-gradient(180deg, rgba(30,24,15,0.85) 0%, rgba(20,16,10,0.9) 100%)',
-    border: '1px solid rgba(196,162,101,0.3)',
-    borderRadius: 6,
   },
   gameOverOverlay: {
     position: 'absolute',

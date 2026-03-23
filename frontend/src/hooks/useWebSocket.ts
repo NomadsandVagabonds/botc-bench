@@ -255,7 +255,8 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
           applyEvent(receivedInitialState);
           applyEvent(event);
           receivedInitialState = null;
-          // live game detected
+          // Enable theatrical pacing for subsequent live events
+          useGameStore.setState({ theatricalMode: true });
           return;
         }
 
@@ -264,10 +265,17 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
         if (receivedInitialState) {
           applyEvent(receivedInitialState);
           receivedInitialState = null;
-          // live game detected
+          // Enable theatrical pacing for subsequent live events
+          useGameStore.setState({ theatricalMode: true });
         }
 
-        applyEvent(event);
+        // Route through theatrical queue for live games, direct for replay
+        const store = useGameStore.getState();
+        if (store.theatricalMode && !store.replayMode) {
+          store.enqueueTheatrical(event);
+        } else {
+          applyEvent(event);
+        }
       } catch {
         console.warn('[ws] Failed to parse event:', ev.data);
       }

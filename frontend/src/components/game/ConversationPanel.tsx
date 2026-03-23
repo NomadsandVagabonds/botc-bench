@@ -729,6 +729,7 @@ export function ConversationPanel() {
   const selectGroup = useGameStore((s) => s.selectGroup);
   const showObserverInfo = useGameStore((s) => s.showObserverInfo);
   const nightActions = useGameStore((s) => s.nightActions);
+  const theatricalQueueLength = useGameStore((s) => s.theatricalEventQueue.length);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -844,7 +845,7 @@ export function ConversationPanel() {
     }
   }, [activeTab, selectGroup]);
 
-  // Build tab list
+  // Tab list
   const tabs: { id: PanelTab; label: string; show: boolean }[] = [
     { id: 'chat', label: 'Chat', show: true },
     { id: 'players', label: 'Players', show: true },
@@ -870,6 +871,31 @@ export function ConversationPanel() {
             }}
           >
             {tab.label}
+            {tab.id === 'chat' && theatricalQueueLength > 0 && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Drain all queued events instantly (skip to live)
+                  const store = useGameStore.getState();
+                  while (store.theatricalEventQueue.length > 0) {
+                    store.drainTheatricalEvent();
+                  }
+                }}
+                title="Click to skip to live"
+                style={{
+                  marginLeft: 5,
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  color: '#F59E0B',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  padding: '0px 5px',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                +{theatricalQueueLength} ⏩
+              </span>
+            )}
             {tab.id === 'whispers' && whispers.length > 0 && (
               <span
                 style={{

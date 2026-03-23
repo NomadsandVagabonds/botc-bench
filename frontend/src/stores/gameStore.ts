@@ -64,6 +64,20 @@ export interface GameStore {
   replayTotal: number;
   replayInitialState: ServerEvent | null;
 
+  // Theatrical pacing (live games only — buffers ALL events, not just messages)
+  theatricalEventQueue: ServerEvent[];
+  theatricalMode: boolean;
+  enqueueTheatrical: (event: ServerEvent) => void;
+  drainTheatricalEvent: () => ServerEvent | null;
+
+  // Active accusation/defense overlay
+  activeSpeech: {
+    type: 'accusation' | 'defense';
+    speakerSeat: number;
+    otherSeat: number;
+    content: string;
+  } | null;
+
   // Live monitor streaming
   liveMonitor: {
     monitorId: string;
@@ -122,6 +136,9 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   replayIndex: 0,
   replayTotal: 0,
   replayInitialState: null,
+  theatricalEventQueue: [],
+  theatricalMode: false,
+  activeSpeech: null,
   liveMonitor: null,
 
   // ── Connection ──────────────────────────────────────────────────
@@ -191,7 +208,10 @@ export const useGameStore = create<GameStore>()((set, get) => ({
             return { ...p, isAlive: s.is_alive, isPoisoned: s.is_poisoned, isDrunk: s.is_drunk, isProtected: s.is_protected };
           });
         }
-        set({ gameState: phaseUpdate });
+        // Clear activeSpeech on phase change, EXCEPT when transitioning to voting
+        // (defense overlay should persist through voting until nomination.result)
+        const keepSpeech = event.phase === 'voting';
+        set({ gameState: phaseUpdate, ...(keepSpeech ? {} : { activeSpeech: null }) });
         break;
       }
 
@@ -212,12 +232,26 @@ export const useGameStore = create<GameStore>()((set, get) => ({
           phase: event.message.phase ?? gameState.phase,
           dayNumber: event.message.dayNumber ?? gameState.dayNumber,
         };
-        set({
+        // Set active speech overlay for accusation/defense
+        const updates: any = {
           gameState: {
             ...gameState,
             messages: [...gameState.messages, stamped],
           },
-        });
+        };
+        if (stamped.type === 'accusation' || stamped.type === 'defense') {
+          const latestNom = gameState.nominations[gameState.nominations.length - 1];
+          const otherSeat = stamped.type === 'accusation'
+            ? latestNom?.nomineeSeat ?? -1
+            : latestNom?.nominatorSeat ?? -1;
+          updates.activeSpeech = {
+            type: stamped.type,
+            speakerSeat: stamped.senderSeat,
+            otherSeat,
+            content: stamped.content,
+          };
+        }
+        set(updates);
         break;
       }
 
@@ -359,7 +393,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
           nrEvent.onTheBlock != null && nrEvent.onTheBlockVotes != null
             ? { seat: nrEvent.onTheBlock, voteCount: nrEvent.onTheBlockVotes }
             : null;
-        set({ gameState: { ...gameState, nominations: updated, onTheBlock: newOnTheBlock } });
+        set({ gameState: { ...gameState, nominations: updated, onTheBlock: newOnTheBlock }, activeSpeech: null });
         break;
       }
 
@@ -1012,6 +1046,19 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       speed: s.paused ? (s.speed === 0 ? 1 : s.speed) : 0,
     })),
 
+  // ── Theatrical pacing ───────────────────────────────────────────
+  enqueueTheatrical: (event) => {
+    set({ theatricalEventQueue: [...get().theatricalEventQueue, event] });
+  },
+  drainTheatricalEvent: () => {
+    const queue = get().theatricalEventQueue;
+    if (queue.length === 0) return null;
+    const [next, ...rest] = queue;
+    set({ theatricalEventQueue: rest });
+    get().applyEvent(next);
+    return next;
+  },
+
   // ── Replay ──────────────────────────────────────────────────────
   startReplay: (initialState, events) => {
     // Apply initial state but override to setup phase (not game_over)
@@ -1044,6 +1091,8 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       replayInitialState: cleanState,
       paused: true, // Start paused so user can hit play
       speed: 1,
+      theatricalEventQueue: [],
+      theatricalMode: false,
     });
   },
 
@@ -1105,6 +1154,9 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       replayIndex: 0,
       replayTotal: 0,
       replayInitialState: null,
+      theatricalEventQueue: [],
+      theatricalMode: false,
+      activeSpeech: null,
       liveMonitor: null,
     }),
 }));

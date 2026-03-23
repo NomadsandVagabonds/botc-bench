@@ -4,6 +4,7 @@ import { Phase } from '../../types/game.ts';
 import type { Message } from '../../types/game.ts';
 import { getProviderColor, shortModelName } from '../../utils/models.ts';
 import { AnimatePresence, motion } from 'framer-motion';
+import AccusationOverlay from './AccusationOverlay.tsx';
 import {
   findPath,
   spriteZIndex,
@@ -46,6 +47,11 @@ const IDLE_CLIPS = [
   '/ambient/idle-climb.mp4',
 ];
 
+// Clips that interact with the clocktower (e.g. rappelling) — render above the foreground overlay
+const ABOVE_TOWER_CLIPS = new Set([
+  '/ambient/idle-climb.mp4',
+]);
+
 const EVENT_CLIPS: Record<string, string> = {
   'evil-wins':   '/ambient/event-evil-wins.mp4',
   // 'good-wins':   '/ambient/event-good-wins.mp4',
@@ -62,6 +68,7 @@ function useAmbientVideo(phase: string | undefined, winner: string | undefined) 
   const [frozenOnLastFrame, setFrozenOnLastFrame] = useState(false);
   const [fullscreenTakeover, setFullscreenTakeover] = useState(false);
   const [gameOverReady, setGameOverReady] = useState(false);
+  const [aboveTower, setAboveTower] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevPhaseRef = useRef(phase);
   const isEventClipRef = useRef(false);
@@ -71,6 +78,7 @@ function useAmbientVideo(phase: string | undefined, winner: string | undefined) 
     if (!vid) return;
     isEventClipRef.current = isEvent;
     setFullscreenTakeover(takeover);
+    setAboveTower(ABOVE_TOWER_CLIPS.has(src));
     vid.src = src;
     vid.load();
     vid.play().then(() => {
@@ -118,6 +126,7 @@ function useAmbientVideo(phase: string | undefined, winner: string | undefined) 
       setGameOverReady(true);
     } else {
       setVideoPlaying(false);
+      setAboveTower(false);
       scheduleIdle();
     }
   }, [scheduleIdle]);
@@ -180,7 +189,7 @@ function useAmbientVideo(phase: string | undefined, winner: string | undefined) 
     }
   }, [playClip]);
 
-  return { videoRef, videoPlaying, frozenOnLastFrame, fullscreenTakeover, gameOverReady, handleEnded, triggerEvent };
+  return { videoRef, videoPlaying, frozenOnLastFrame, fullscreenTakeover, gameOverReady, aboveTower, handleEnded, triggerEvent };
 }
 
 // DX Terminal sprite pool — local sprites, randomized per game
@@ -616,7 +625,7 @@ export function TownMap() {
   const prevMsgCountRef = useRef(0);
 
   // Ambient video system
-  const { videoRef, videoPlaying, fullscreenTakeover, gameOverReady, handleEnded, triggerEvent } = useAmbientVideo(
+  const { videoRef, videoPlaying, fullscreenTakeover, gameOverReady, aboveTower, handleEnded, triggerEvent } = useAmbientVideo(
     gameState?.phase,
     gameState?.winner ?? undefined,
   );
@@ -832,6 +841,7 @@ export function TownMap() {
            the tower (z=2) are occluded, sprites in front (z=10+) are not. */}
       <img src="/clocktower.png" alt="" style={{
         ...styles.towerForeground,
+        zIndex: aboveTower ? 0 : 100,
         opacity: fullscreenTakeover ? 0 : 1,
         transition: 'opacity 0.6s ease',
       }} />
@@ -1005,6 +1015,14 @@ export function TownMap() {
         >
           Night falls on the village...
         </motion.div>
+      )}
+
+      {/* Accusation/Defense dramatic overlay */}
+      {gameState && (
+        <AccusationOverlay
+          players={gameState.players}
+          spriteIds={spriteIds}
+        />
       )}
 
       {/* Death narration (storyteller flavor text) */}

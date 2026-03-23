@@ -12,6 +12,7 @@ import { MonitorPanel } from './MonitorPanel.tsx';
 import { useGameStore } from '../../stores/gameStore.ts';
 import { useWebSocket } from '../../hooks/useWebSocket.ts';
 import { useReplayController } from '../../hooks/useReplayController.ts';
+import { useTheatricalPacer } from '../../hooks/useTheatricalPacer.ts';
 import { getGameStatus, listMonitors } from '../../api/rest.ts';
 import type { MonitorResult } from '../../types/monitor.ts';
 
@@ -25,6 +26,7 @@ export function GameView() {
   }, [gameId, reset]);
   const { connected } = useWebSocket(gameId ?? null);
   useReplayController();
+  useTheatricalPacer();
   const gameState = useGameStore((s) => s.gameState);
   const replayMode = useGameStore((s) => s.replayMode);
   const masterVolume = useGameStore((s) => s.masterVolume);

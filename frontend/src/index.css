@@ -246,3 +246,7 @@ select option {
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }
+
+@keyframes blink {
+  50% { opacity: 0; }
+}

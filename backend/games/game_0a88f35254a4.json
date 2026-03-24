@@ -1,6 +1,7 @@
 {
   "game_id": "0a88f35254a4",
   "status": "failed",
+  "created_at": 1773976728.421,
   "events": [
     {
       "type": "game.created",

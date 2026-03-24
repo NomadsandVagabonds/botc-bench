@@ -1,6 +1,7 @@
 {
   "game_id": "17be84b30352",
   "status": "running",
+  "created_at": 1773988720.589548,
   "events": [
     {
       "type": "game.created",

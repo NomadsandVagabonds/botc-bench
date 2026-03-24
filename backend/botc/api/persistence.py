@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,7 @@ def save_game(
     payload: dict[str, Any] = {
         "game_id": game_id,
         "status": status,
+        "created_at": time.time(),
     }
     if result is not None:
         payload["result"] = result

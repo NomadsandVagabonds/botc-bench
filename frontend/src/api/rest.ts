@@ -171,9 +171,13 @@ export async function listGames(): Promise<GameListItem[]> {
         ...ghGames.filter(g => !backendIds.has(g.game_id)),
       ];
       console.log(`[listGames] ${backendGames.length} from server + ${merged.length - backendGames.length} from GitHub`);
+      // Sort by date, most recent first (games without dates go to the end)
+      merged.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
       return merged;
     } catch {
-      return backendGames; // GitHub failed, just use backend
+      // GitHub failed, just use backend (still sort)
+      backendGames.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+      return backendGames;
     }
   } catch (err) {
     console.log('[listGames] Backend unavailable, falling back to GitHub:', (err as Error)?.message);

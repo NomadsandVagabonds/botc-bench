@@ -583,11 +583,15 @@ async def list_games() -> list[GameResponse]:
             resp.winner = rd.get("winner")
             resp.total_days = rd.get("total_days")
 
-        # File metadata
+        # Timestamp: prefer stored created_at, fall back to first event ts, then file mtime
         game_path = _GAMES_DIR / f"game_{game_id}.json"
-        if game_path.exists():
-            mtime = game_path.stat().st_mtime
-            resp.created_at = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+        ts = info.get("created_at")
+        if not ts and "events" in info and info["events"]:
+            ts = info["events"][0].get("ts")
+        if not ts and game_path.exists():
+            ts = game_path.stat().st_mtime
+        if ts:
+            resp.created_at = datetime.fromtimestamp(float(ts)).strftime("%Y-%m-%d %H:%M")
         resp.has_audio = (_GAMES_DIR / f"audio_{game_id}").is_dir()
         resp.has_monitors = any(_GAMES_DIR.glob(f"monitor_{game_id}_*.json"))
 

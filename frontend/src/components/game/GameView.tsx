@@ -41,8 +41,13 @@ export function GameView() {
       githubAttemptedRef.current = true;
       console.log('[game] WebSocket unavailable, trying GitHub fallback...');
       loadGameFromGitHub(gameId).then((data) => {
-        if (!data.initial_state || !data.events) {
+        if (!data.initial_state || !data.events || data.events.length === 0) {
           console.warn('[game] GitHub game JSON missing initial_state or events');
+          setLoadError(
+            data.status === 'failed'
+              ? `Game failed: ${data.error || 'unknown error'}`
+              : 'This game has no replay data (incomplete or failed game).'
+          );
           return;
         }
         // Normalize initial_state into a game.state event (convert snake_case → camelCase)

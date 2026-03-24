@@ -79,6 +79,7 @@ export function GameView() {
             demonBluffs: raw.demon_bluffs ?? [],
             rngSeed: raw.rng_seed ?? null,
             messages: [],
+            whispers: [],
             onTheBlock: null,
           },
         };

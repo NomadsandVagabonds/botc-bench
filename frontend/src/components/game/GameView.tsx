@@ -20,10 +20,11 @@ export function GameView() {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const reset = useGameStore((s) => s.reset);
-  // Reset store when game changes
+  // Reset store when game changes — only on gameId change, not on re-renders
   useEffect(() => {
     reset();
-  }, [gameId, reset]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId]);
   const { connected } = useWebSocket(gameId ?? null);
   useReplayController();
   useTheatricalPacer();

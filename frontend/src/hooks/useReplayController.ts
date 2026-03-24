@@ -88,7 +88,7 @@ export function useReplayController() {
         const s = useGameStore.getState();
         if (s.replayMode && !s.paused && s.speed > 0 && !runningRef.current) {
           runningRef.current = true;
-          step();
+          timerRef.current = setTimeout(step, 100);
         }
       })
       .catch(() => {
@@ -99,7 +99,7 @@ export function useReplayController() {
         const s = useGameStore.getState();
         if (s.replayMode && !s.paused && s.speed > 0 && !runningRef.current) {
           runningRef.current = true;
-          step();
+          timerRef.current = setTimeout(step, 100);
         }
       });
 
@@ -263,10 +263,10 @@ export function useReplayController() {
       return;
     }
 
-    // Always restart the step loop when unpaused — runningRef may be stale
+    // Always restart the step loop when unpaused — use setTimeout to let React render first
     runningRef.current = true;
     console.log('[replay-ctrl] starting step loop');
-    step();
+    timerRef.current = setTimeout(step, 100);
 
     return () => {
       clearTimer();

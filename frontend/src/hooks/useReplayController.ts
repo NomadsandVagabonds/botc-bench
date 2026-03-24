@@ -175,11 +175,13 @@ export function useReplayController() {
   const step = () => {
     const store = useGameStore.getState();
     if (!store.replayMode || store.paused || store.speed === 0) {
+      console.log('[replay-step] stopped:', { replayMode: store.replayMode, paused: store.paused, speed: store.speed });
       runningRef.current = false;
       return;
     }
     // Pause while accusation/defense overlay or death card is visible
     if (store.accusationOverlayVisible || store.deathCardVisible) {
+      console.log('[replay-step] held for overlay:', { accusation: store.accusationOverlayVisible, deathCard: store.deathCardVisible });
       runningRef.current = false;
       return;
     }

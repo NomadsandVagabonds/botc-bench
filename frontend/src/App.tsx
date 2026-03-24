@@ -16,7 +16,7 @@ export default function App() {
       <Route path="/landing" element={<LandingPageV2 />} />
       <Route path="/landing-old" element={<LandingPage />} />
       <Route path="/lobby" element={<AdminGate><GameLobby /></AdminGate>} />
-      <Route path="/game/:gameId" element={<AdminGate><GameView /></AdminGate>} />
+      <Route path="/game/:gameId" element={<GameView />} />
       <Route path="/spectate/:gameId" element={<SpectatorView />} />
     </Routes>
   );

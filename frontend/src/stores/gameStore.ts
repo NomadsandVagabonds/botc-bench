@@ -158,8 +158,6 @@ export const useGameStore = create<GameStore>()((set, get) => ({
 
     switch (event.type) {
       case 'game.state': {
-        // Don't let stray WS events overwrite replay state
-        if (get().replayMode) break;
         set({ gameState: event.state });
         break;
       }

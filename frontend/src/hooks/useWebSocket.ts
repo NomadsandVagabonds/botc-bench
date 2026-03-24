@@ -271,9 +271,12 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
           useGameStore.setState({ theatricalMode: true });
         }
 
-        // Route through theatrical queue for live games, direct for replay
+        // Ignore WS events while a replay is active (e.g. GitHub fallback loaded)
         const store = useGameStore.getState();
-        if (store.theatricalMode && !store.replayMode) {
+        if (store.replayMode) return;
+
+        // Route through theatrical queue for live games
+        if (store.theatricalMode) {
           store.enqueueTheatrical(event);
         } else {
           applyEvent(event);

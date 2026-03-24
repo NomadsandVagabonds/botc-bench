@@ -286,7 +286,9 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
       storeSetConnected(false);
       wsRef.current = null;
 
-      if (!intentionalClose.current) {
+      // Don't reconnect if in replay mode (game loaded from GitHub, WS not needed)
+      const { replayMode } = useGameStore.getState();
+      if (!intentionalClose.current && !replayMode) {
         // Exponential backoff reconnect.
         const delay = reconnectDelay.current;
         reconnectDelay.current = Math.min(

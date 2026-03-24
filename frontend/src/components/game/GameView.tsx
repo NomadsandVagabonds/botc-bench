@@ -45,8 +45,43 @@ export function GameView() {
           console.warn('[game] GitHub game JSON missing initial_state or events');
           return;
         }
-        // Normalize initial_state into a game.state event
-        const initialEvent = { type: 'game.state' as const, state: data.initial_state };
+        // Normalize initial_state into a game.state event (convert snake_case → camelCase)
+        const raw = data.initial_state;
+        const initialEvent = {
+          type: 'game.state' as const,
+          state: {
+            gameId: raw.game_id ?? gameId,
+            phase: raw.phase ?? 'setup',
+            dayNumber: raw.day_number ?? 0,
+            players: (raw.players ?? []).map((p: any) => ({
+              seat: p.seat,
+              agentId: p.agent_id,
+              characterName: p.character_name,
+              modelName: p.model_name,
+              role: p.role,
+              roleId: p.role_id,
+              roleType: p.role_type,
+              alignment: p.alignment,
+              isAlive: p.is_alive ?? true,
+              isPoisoned: p.is_poisoned ?? false,
+              isDrunk: p.is_drunk ?? false,
+              isProtected: p.is_protected ?? false,
+              ghostVoteUsed: p.ghost_vote_used ?? false,
+              perceivedRole: p.perceived_role ?? null,
+              butlerMaster: p.butler_master ?? null,
+            })),
+            breakoutGroups: raw.breakout_groups ?? [],
+            nominations: raw.nominations ?? [],
+            executedToday: raw.executed_today ?? null,
+            winner: raw.winner ?? null,
+            winCondition: raw.win_condition ?? null,
+            nightKills: raw.night_kills ?? [],
+            demonBluffs: raw.demon_bluffs ?? [],
+            rngSeed: raw.rng_seed ?? null,
+            messages: [],
+            onTheBlock: null,
+          },
+        };
         // Normalize events (they're already in the right format from the backend)
         const events = data.events
           .filter((e: any) => e.type !== 'game.created')

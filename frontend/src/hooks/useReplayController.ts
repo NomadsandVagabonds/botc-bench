@@ -18,27 +18,39 @@ import type { AudioClip } from '../api/rest.ts';
  */
 
 const TIMER_DELAYS: Record<string, number> = {
-  'phase.change': 2000,
-  'message.new': 1200,
-  'nomination.start': 1500,
-  'vote.cast': 600,
-  'nomination.result': 1200,
-  'execution': 2000,
-  'death': 2000,
-  'breakout.formed': 1000,
-  'breakout.ended': 500,
-  'night.action': 800,
+  'phase.change': 3000,
+  'message.new': 0,        // handled by getMessageDelay() below
+  'nomination.start': 2500,
+  'vote.cast': 800,
+  'nomination.result': 2500,
+  'execution': 3500,
+  'death': 3500,
+  'breakout.formed': 1500,
+  'breakout.ended': 800,
+  'night.action': 1200,
   'player.reasoning': 0,
   'agent.tokens': 0,
-  'game.over': 2500,
-  'debrief.message': 1500,
-  'whisper.notification': 800,
+  'game.over': 4000,
+  'debrief.message': 0,    // handled by getMessageDelay() below
+  'whisper.notification': 1200,
   'game.state': 0,
 };
 
-const DEFAULT_DELAY = 300;
-const INTER_SPEAKER_PAUSE_MS = 1000;
-const SAME_SPEAKER_PAUSE_MS = 400;
+const DEFAULT_DELAY = 500;
+const INTER_SPEAKER_PAUSE_MS = 1200;
+const SAME_SPEAKER_PAUSE_MS = 600;
+
+// ~180 words/min reading speed → ~333ms per word, with min/max bounds
+const MS_PER_WORD = 333;
+const MIN_MESSAGE_DELAY = 2000;
+const MAX_MESSAGE_DELAY = 12000;
+
+/** Scale delay by message content length so conversations are actually readable. */
+function getMessageDelay(event: any): number {
+  const content = event.message?.content ?? event.content ?? '';
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  return Math.min(Math.max(wordCount * MS_PER_WORD, MIN_MESSAGE_DELAY), MAX_MESSAGE_DELAY);
+}
 
 export function useReplayController() {
   const replayMode = useGameStore((s) => s.replayMode);
@@ -212,22 +224,20 @@ export function useReplayController() {
       // Play audio clip, then advance when done
       playClip(clip, step);
     } else if (hasMore) {
-      // No audio for this event — use timer delay or instant for data events
-      if (hasAudioRef.current) {
-        // In audio mode: data events advance instantly, visual events get tiny delay
-        const delay = TIMER_DELAYS[event.type] ?? DEFAULT_DELAY;
-        if (delay === 0) {
-          // Instant — call step synchronously (batch data events)
-          step();
-        } else {
-          // Small visual delay so the UI doesn't jump too fast
-          const spd = useGameStore.getState().speed || 1;
-          timerRef.current = setTimeout(step, Math.min(delay / spd, 300));
-        }
+      const spd = useGameStore.getState().speed || 1;
+
+      // Compute delay: content-scaled for messages, fixed for other events
+      let baseDelay: number;
+      if (event.type === 'message.new' || event.type === 'debrief.message') {
+        baseDelay = getMessageDelay(event);
       } else {
-        // Timer-only mode: full delays
-        const spd = useGameStore.getState().speed || 1;
-        const baseDelay = TIMER_DELAYS[event.type] ?? DEFAULT_DELAY;
+        baseDelay = TIMER_DELAYS[event.type] ?? DEFAULT_DELAY;
+      }
+
+      if (baseDelay === 0) {
+        // Instant — batch data events (reasoning, tokens, etc.)
+        step();
+      } else {
         timerRef.current = setTimeout(step, Math.max(baseDelay / spd, 30));
       }
     } else {

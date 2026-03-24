@@ -203,6 +203,8 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
 
   const connect = useCallback(() => {
     if (!gameId) return;
+    // Don't connect if we're already in replay mode (GitHub fallback loaded)
+    if (useGameStore.getState().replayMode) return;
 
     // Clean up any existing connection.
     if (wsRef.current) {

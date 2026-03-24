@@ -175,13 +175,11 @@ export function useReplayController() {
   const step = () => {
     const store = useGameStore.getState();
     if (!store.replayMode || store.paused || store.speed === 0) {
-      console.log('[replay-step] stopped:', { replayMode: store.replayMode, paused: store.paused, speed: store.speed });
       runningRef.current = false;
       return;
     }
     // Pause while accusation/defense overlay or death card is visible
     if (store.accusationOverlayVisible || store.deathCardVisible) {
-      console.log('[replay-step] held for overlay:', { accusation: store.accusationOverlayVisible, deathCard: store.deathCardVisible });
       runningRef.current = false;
       return;
     }
@@ -250,22 +248,16 @@ export function useReplayController() {
 
   // Start/stop the chain when play state changes
   useEffect(() => {
-    console.log('[replay-ctrl] effect:', { replayMode, paused, speed, audioReady: audioReadyRef.current, running: runningRef.current });
-    if (!replayMode || !audioReadyRef.current) {
-      console.log('[replay-ctrl] blocked:', !replayMode ? 'not replay mode' : 'audio not ready');
-      return;
-    }
+    if (!replayMode || !audioReadyRef.current) return;
 
     if (paused || speed === 0) {
       clearTimer();
       runningRef.current = false;
-      console.log('[replay-ctrl] paused');
       return;
     }
 
     // Always restart the step loop when unpaused — use setTimeout to let React render first
     runningRef.current = true;
-    console.log('[replay-ctrl] starting step loop');
     timerRef.current = setTimeout(step, 100);
 
     return () => {

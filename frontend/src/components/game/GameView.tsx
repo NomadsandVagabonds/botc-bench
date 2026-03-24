@@ -20,9 +20,11 @@ export function GameView() {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const reset = useGameStore((s) => s.reset);
+  const githubAttemptedRef = useRef(false);
   // Reset store when game changes — only on gameId change, not on re-renders
   useEffect(() => {
     reset();
+    githubAttemptedRef.current = false;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
   const { connected } = useWebSocket(gameId ?? null);
@@ -31,7 +33,6 @@ export function GameView() {
   const gameState = useGameStore((s) => s.gameState);
   const replayMode = useGameStore((s) => s.replayMode);
   const startReplay = useGameStore((s) => s.startReplay);
-  const githubAttemptedRef = useRef(false);
 
   // GitHub fallback: if WebSocket hasn't delivered game state after 3s, try loading from GitHub
   useEffect(() => {
@@ -91,7 +92,7 @@ export function GameView() {
         };
         // Normalize events (they're already in the right format from the backend)
         const events = data.events
-          .filter((e: any) => e.type !== 'game.created')
+          .filter((e: any) => e.type !== 'game.created' && e.type !== 'game.state')
           .map((e: any) => {
             // Backend saves raw events; normalizeEvent in useWebSocket handles
             // snake_case -> camelCase etc. For GitHub replay we need to do

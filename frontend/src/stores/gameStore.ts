@@ -1086,14 +1086,16 @@ export const useGameStore = create<GameStore>()((set, get) => ({
         executedToday: undefined,
       },
     };
-    get().applyEvent(cleanState);
+    // Set gameState AND replayMode in a single atomic set() call
+    // so nothing can clear gameState between the two operations
     set({
+      gameState: cleanState.state,
       replayMode: true,
       replayQueue: events,
       replayIndex: 0,
       replayTotal: events.length,
       replayInitialState: cleanState,
-      paused: true, // Start paused so user can hit play
+      paused: true,
       speed: 1,
       theatricalEventQueue: [],
       theatricalMode: false, theatricalHold: false,

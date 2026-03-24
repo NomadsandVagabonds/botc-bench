@@ -84,11 +84,23 @@ export function useReplayController() {
         hasAudioRef.current = map.size > 0 || introClipRef.current !== null;
         audioReadyRef.current = true;
         console.log(`[replay] Audio loaded: ${map.size} clips + ${introClipRef.current ? 'intro' : 'no intro'}`);
+        // Kick the replay loop if user already clicked play while we were waiting
+        const s = useGameStore.getState();
+        if (s.replayMode && !s.paused && s.speed > 0 && !runningRef.current) {
+          runningRef.current = true;
+          step();
+        }
       })
       .catch(() => {
         audioReadyRef.current = true;
         hasAudioRef.current = false;
         console.log('[replay] No audio, timer mode');
+        // Kick the replay loop if user already clicked play while we were waiting
+        const s = useGameStore.getState();
+        if (s.replayMode && !s.paused && s.speed > 0 && !runningRef.current) {
+          runningRef.current = true;
+          step();
+        }
       });
 
     return () => {

@@ -98,29 +98,24 @@ export function DeathCardOverlay({ players, spriteIds }: DeathCardOverlayProps) 
         (latest.type === 'system' && latest.content.includes('narration:'))) {
       const narration = latest.content.replace('narration:', '').trim();
 
-      // Try to find which player died from recent death events
-      const recentDeaths = gameState.messages
-        .slice(-10)
-        .filter(m => m.type === 'system' && (m.content.includes('died') || m.content.includes('dead')));
+      // Find dead players in nightKills who haven't had a death card yet.
+      // The death event marks isAlive=false and adds seat to nightKills,
+      // then the backend sends a narration message separately.
+      for (const player of players) {
+        if (!player.characterName || player.isAlive) continue;
+        if (!gameState.nightKills.includes(player.seat)) continue;
 
-      for (const deathMsg of recentDeaths) {
-        // "Urswick died in the night" or "Urswick was found dead"
-        for (const player of players) {
-          if (!player.characterName) continue;
-          if (deathMsg.content.includes(player.characterName) && !player.isAlive) {
-            const key = `night-${player.characterName}-${gameState.dayNumber}`;
-            if (seenDeathsRef.current.has(key)) continue;
-            seenDeathsRef.current.add(key);
+        const key = `night-${player.characterName}-${gameState.dayNumber}`;
+        if (seenDeathsRef.current.has(key)) continue;
+        seenDeathsRef.current.add(key);
 
-            const spriteId = spriteIds[player.seat % spriteIds.length];
-            setQueue(prev => [...prev, {
-              name: player.characterName!,
-              spriteId,
-              text: narration,
-              isExecution: false,
-            }]);
-          }
-        }
+        const spriteId = spriteIds[player.seat % spriteIds.length];
+        setQueue(prev => [...prev, {
+          name: player.characterName!,
+          spriteId,
+          text: narration,
+          isExecution: false,
+        }]);
       }
     }
   }, [gameState?.messages.length, players, spriteIds]);

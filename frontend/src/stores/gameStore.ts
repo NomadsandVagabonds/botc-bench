@@ -1164,3 +1164,8 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       liveMonitor: null,
     }),
 }));
+
+// Expose store for console debugging: __gameStore()
+if (typeof window !== 'undefined') {
+  (window as any).__gameStore = () => useGameStore.getState();
+}

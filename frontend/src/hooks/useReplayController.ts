@@ -248,16 +248,22 @@ export function useReplayController() {
 
   // Start/stop the chain when play state changes
   useEffect(() => {
-    if (!replayMode || !audioReadyRef.current) return;
+    console.log('[replay-ctrl] effect:', { replayMode, paused, speed, audioReady: audioReadyRef.current, running: runningRef.current });
+    if (!replayMode || !audioReadyRef.current) {
+      console.log('[replay-ctrl] blocked:', !replayMode ? 'not replay mode' : 'audio not ready');
+      return;
+    }
 
     if (paused || speed === 0) {
       clearTimer();
       runningRef.current = false;
+      console.log('[replay-ctrl] paused');
       return;
     }
 
     if (!runningRef.current) {
       runningRef.current = true;
+      console.log('[replay-ctrl] starting step loop');
       step();
     }
 

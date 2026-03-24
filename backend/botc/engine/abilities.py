@@ -429,8 +429,14 @@ def resolve_washerwoman(state: GameState, player: Player) -> str:
     if _info_malfunctions(state, player):
         all_seats = [p.seat for p in state.players if p.seat != player.seat]
         pair = wrong_player_pair(target.seat, other.seat, all_seats, state.rng)
-        # Always change the role name so the combo is never accidentally correct
-        all_townsfolk_names = [p.role.name for p in state.players if p.role.role_type == RoleType.TOWNSFOLK]
+        # Always change the role name so the combo is never accidentally correct.
+        # Exclude the player's own perceived role — seeing your own role in the
+        # info is a dead giveaway that something is wrong.
+        own_role = player.effective_role.name
+        all_townsfolk_names = [
+            p.role.name for p in state.players
+            if p.role.role_type == RoleType.TOWNSFOLK and p.role.name != own_role
+        ]
         role_name = wrong_role(role_name, all_townsfolk_names, state.rng)
         # Ensure combo is genuinely wrong — no player in the pair actually has this role
         for _ in range(10):
@@ -478,7 +484,11 @@ def resolve_librarian(state: GameState, player: Player) -> str:
     if _info_malfunctions(state, player):
         all_seats = [p.seat for p in state.players if p.seat != player.seat]
         pair = wrong_player_pair(target.seat, other.seat, all_seats, state.rng)
-        all_outsider_names = [p.role.name for p in state.players if p.role.role_type == RoleType.OUTSIDER]
+        own_role = player.effective_role.name
+        all_outsider_names = [
+            p.role.name for p in state.players
+            if p.role.role_type == RoleType.OUTSIDER and p.role.name != own_role
+        ]
         role_name = wrong_role(role_name, all_outsider_names, state.rng)
         # Ensure combo is genuinely wrong — no player in the pair actually has this role
         for _ in range(10):
@@ -532,7 +542,11 @@ def resolve_investigator(state: GameState, player: Player) -> str:
     if _info_malfunctions(state, player):
         all_seats = [p.seat for p in state.players if p.seat != player.seat]
         pair = wrong_player_pair(target.seat, other.seat, all_seats, state.rng)
-        all_minion_names = [p.role.name for p in state.players if p.role.role_type == RoleType.MINION]
+        own_role = player.effective_role.name
+        all_minion_names = [
+            p.role.name for p in state.players
+            if p.role.role_type == RoleType.MINION and p.role.name != own_role
+        ]
         role_name = wrong_role(role_name, all_minion_names, state.rng)
         # Ensure combo is genuinely wrong — no player in the pair actually has this role
         for _ in range(10):

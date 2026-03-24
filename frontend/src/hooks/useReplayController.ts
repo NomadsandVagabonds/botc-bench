@@ -263,11 +263,10 @@ export function useReplayController() {
       return;
     }
 
-    if (!runningRef.current) {
-      runningRef.current = true;
-      console.log('[replay-ctrl] starting step loop');
-      step();
-    }
+    // Always restart the step loop when unpaused — runningRef may be stale
+    runningRef.current = true;
+    console.log('[replay-ctrl] starting step loop');
+    step();
 
     return () => {
       clearTimer();

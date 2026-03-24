@@ -1139,7 +1139,8 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   },
 
   // ── Reset ───────────────────────────────────────────────────────
-  reset: () =>
+  reset: () => {
+    console.trace('[store] reset() called — wiping gameState');
     set({
       connected: false,
       gameId: null,
@@ -1164,7 +1165,8 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       theatricalMode: false, theatricalHold: false,
       activeSpeech: null, accusationOverlayVisible: false, deathCardVisible: false,
       liveMonitor: null,
-    }),
+    });
+  },
 }));
 
 // Expose store for console debugging: __gameStore()

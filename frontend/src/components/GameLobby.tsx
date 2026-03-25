@@ -7,6 +7,7 @@ import { useGameStore } from '../stores/gameStore.ts';
 import { CHARACTERS_SORTED } from '../data/characters.ts';
 import { SplashScreen } from './SplashScreen.tsx';
 import { PageTransition } from './PageTransition.tsx';
+import { PaymentGate } from './PaymentGate.tsx';
 
 // ── Available models ──────────────────────────────────────────────────
 
@@ -1490,6 +1491,7 @@ export function GameLobby() {
   const [gamesLoading, setGamesLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [showPaymentGate, setShowPaymentGate] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchGames = useCallback(async () => {
@@ -1585,28 +1587,18 @@ export function GameLobby() {
     setOptions((prev) => ({ ...prev, [key]: val }));
   }, []);
 
-  const handleStart = useCallback(async () => {
-    setStarting(true); setStartError(null);
-    // For assigned mode, only block on critical errors (over-assigned types), not missing roles
-    if (roleMode === 'assigned') {
-      const criticalWarnings = roleWarnings.filter(w => w.includes('Too many') || w.includes('Duplicate'));
-      if (criticalWarnings.length > 0) {
-        setStartError('Fix role assignment errors before starting.');
-        setStarting(false); return;
-      }
-    }
-    try {
-      const seed = options.seed ? Number(options.seed) : Math.floor(Math.random() * 100_000);
-      const seatModelConfigs: SeatModelConfig[] = seatModels.slice(0, playerCount).map((modelId) => {
-        const model = AVAILABLE_MODELS.find((m) => m.id === modelId);
-        return { provider: model?.provider ?? 'anthropic', model: modelId };
-      });
-      // Include client-provided API keys if any (BYOK mode)
-      const hasClientKeys = Object.keys(clientKeys).length > 0;
-      // Character assignments: only include if any are manually picked
-      const charSlice = seatCharacters.slice(0, playerCount);
-      const hasCharPicks = charSlice.some(c => c != null);
-      const result = await createConfiguredGame({
+  // Build the game config object (shared between direct start and payment flow)
+  const buildGameConfig = useCallback(() => {
+    const seed = options.seed ? Number(options.seed) : Math.floor(Math.random() * 100_000);
+    const seatModelConfigs: SeatModelConfig[] = seatModels.slice(0, playerCount).map((modelId) => {
+      const model = AVAILABLE_MODELS.find((m) => m.id === modelId);
+      return { provider: model?.provider ?? 'anthropic', model: modelId };
+    });
+    const hasClientKeys = Object.keys(clientKeys).length > 0;
+    const charSlice = seatCharacters.slice(0, playerCount);
+    const hasCharPicks = charSlice.some(c => c != null);
+    return {
+      config: {
         script,
         num_players: playerCount,
         seat_models: seatModelConfigs,
@@ -1618,15 +1610,43 @@ export function GameLobby() {
         share_stats: options.shareStats && options.revealModels === 'true',
         speech_style: options.speechStyle || null,
         ...(hasClientKeys ? { provider_keys: clientKeys } : {}),
-      });
+      },
+      hasClientKeys,
+    };
+  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, options, clientKeys]);
+
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  const handleStart = useCallback(async () => {
+    setStarting(true); setStartError(null);
+    // For assigned mode, only block on critical errors (over-assigned types), not missing roles
+    if (roleMode === 'assigned') {
+      const criticalWarnings = roleWarnings.filter(w => w.includes('Too many') || w.includes('Duplicate'));
+      if (criticalWarnings.length > 0) {
+        setStartError('Fix role assignment errors before starting.');
+        setStarting(false); return;
+      }
+    }
+
+    const { config, hasClientKeys } = buildGameConfig();
+
+    // On production without BYOK keys: show payment gate instead of direct start
+    if (!isLocalhost && !hasClientKeys) {
+      setShowPaymentGate(true);
+      setStarting(false);
+      return;
+    }
+
+    try {
+      const result = await createConfiguredGame(config);
       navigateWithTransition(`/game/${result.game_id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
       if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
-      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab or server .env.');
+      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab, use Stripe checkout, or set keys in server .env.');
       else setStartError(msg);
     } finally { setStarting(false); }
-  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate]);
+  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate, buildGameConfig, isLocalhost]);
 
   const isAssignedAvailable = script in SCRIPT_ROLES;
 
@@ -2079,10 +2099,27 @@ export function GameLobby() {
     </div>
   );
 
+  // Build config for payment gate (memoized to avoid re-renders)
+  const paymentGameConfig = useMemo(() => {
+    if (!showPaymentGate) return null;
+    return buildGameConfig().config;
+  }, [showPaymentGate, buildGameConfig]);
+
   return (
     <>
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       {transitioning && <PageTransition onMidpoint={handleTransitionMidpoint} />}
+      {showPaymentGate && paymentGameConfig && (
+        <PaymentGate
+          gameConfig={paymentGameConfig}
+          onClose={() => setShowPaymentGate(false)}
+          onUseOwnKeys={() => {
+            setShowPaymentGate(false);
+            setView('options');
+            setOptionsTab('api');
+          }}
+        />
+      )}
       <div style={st.page}>
         <img src="/scroll_lg.jpg" alt="" style={st.scrollBg} />
         {/* Ambient idle video — fades in over scroll background after ~90s */}

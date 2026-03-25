@@ -21,6 +21,7 @@ from botc.engine.roles import load_script
 from botc.engine.types import BreakoutConfig, GameConfig, ROLE_DISTRIBUTION, RoleType
 from botc.llm.provider import AgentConfig
 from botc.orchestrator.game_runner import GameResult, GameRunner
+from botc.payments.cost_estimator import estimate_game_cost, estimate_monitor_cost, PAID_ALLOWED_MODELS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -28,6 +29,9 @@ router = APIRouter()
 # In-memory game registry — populated from disk on import
 _games: dict[str, dict[str, Any]] = {}
 _runners: dict[str, GameRunner] = {}
+
+# Payment tracking: game_id → payment info
+_payment_info: dict[str, dict[str, Any]] = {}
 
 
 def _load_saved_games() -> None:
@@ -727,6 +731,304 @@ async def clear_event() -> dict:
     if _EVENTS_FILE.exists():
         _EVENTS_FILE.unlink()
     return {"status": "cleared"}
+
+
+# ---------------------------------------------------------------------------
+# Payments / Stripe
+# ---------------------------------------------------------------------------
+
+
+class EstimateCostRequest(BaseModel):
+    num_players: int
+    seat_models: list[SeatModelConfig]
+    max_days: int = 20
+
+
+class CheckoutRequest(BaseModel):
+    num_players: int
+    seat_models: list[SeatModelConfig]
+    seat_roles: list[str] | None = None
+    seat_characters: list[int | None] | None = None
+    seed: int | None = None
+    max_days: int = 50
+    reveal_models: str = "true"
+    share_stats: bool = False
+    speech_style: str | None = None
+    script: str = "trouble_brewing"
+
+
+class RefundRequest(BaseModel):
+    reason: str = "game_failed"
+
+
+@router.post("/api/estimate-cost")
+async def api_estimate_cost(request: EstimateCostRequest) -> dict:
+    """Return a cost estimate for a game configuration."""
+    models = [sm.model for sm in request.seat_models]
+    estimate = estimate_game_cost(request.num_players, models, request.max_days)
+    return estimate
+
+
+@router.post("/api/checkout")
+async def api_create_checkout(request: CheckoutRequest) -> dict:
+    """Create a Stripe Checkout session for a paid game.
+
+    Returns {url, session_id} — frontend redirects the user to url.
+    """
+    stripe_key = os.environ.get("STRIPE_SECRET_KEY", "")
+    if not stripe_key:
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe payments not configured on this server",
+        )
+
+    # Validate models — paid games are restricted to cheap/high-rate-limit models
+    models = [sm.model for sm in request.seat_models]
+    disallowed = [m for m in models if m not in PAID_ALLOWED_MODELS]
+    if disallowed:
+        allowed_list = ", ".join(sorted(PAID_ALLOWED_MODELS))
+        raise HTTPException(
+            status_code=422,
+            detail=f"Paid games only support: {allowed_list}. "
+                   f"Use your own API keys for: {', '.join(set(disallowed))}",
+        )
+    estimate = estimate_game_cost(request.num_players, models, request.max_days)
+
+    # Build the game config to store in Stripe metadata
+    game_config = {
+        "script": request.script,
+        "num_players": request.num_players,
+        "seat_models": [{"provider": sm.provider, "model": sm.model} for sm in request.seat_models],
+        "max_days": request.max_days,
+        "reveal_models": request.reveal_models,
+        "share_stats": request.share_stats,
+        "speech_style": request.speech_style,
+        "seed": request.seed,
+    }
+    if request.seat_roles:
+        game_config["seat_roles"] = request.seat_roles
+    if request.seat_characters:
+        game_config["seat_characters"] = request.seat_characters
+
+    from botc.payments.stripe_handler import create_checkout_session
+    result = await create_checkout_session(
+        game_config=game_config,
+        charge_amount=estimate["charge_amount"],
+        estimated_cost=estimate["estimated_cost"],
+        item_type="game",
+    )
+
+    return {
+        **result,
+        "estimate": estimate,
+    }
+
+
+@router.post("/api/webhook/stripe")
+async def stripe_webhook(request: Request) -> dict:
+    """Stripe webhook — handles checkout.session.completed to start paid games."""
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    from botc.payments.stripe_handler import verify_webhook_signature
+
+    try:
+        event = verify_webhook_signature(payload, sig_header)
+    except (ValueError, RuntimeError) as e:
+        logger.warning("Stripe webhook verification failed: %s", e)
+        raise HTTPException(status_code=400, detail=str(e))
+
+    event_type = event.get("type", "")
+    logger.info("Stripe webhook: %s", event_type)
+
+    if event_type == "checkout.session.completed":
+        session = event["data"]["object"]
+        metadata = session.get("metadata", {})
+        item_type = metadata.get("type", "game")
+        payment_intent_id = session.get("payment_intent", "")
+
+        if item_type == "game":
+            try:
+                game_config_raw = json_mod.loads(metadata.get("game_config", "{}"))
+                await _start_paid_game(game_config_raw, payment_intent_id, metadata)
+            except Exception:
+                logger.exception("Failed to start paid game from Stripe webhook")
+                # Attempt refund on failure
+                try:
+                    from botc.payments.stripe_handler import issue_refund
+                    await issue_refund(payment_intent_id, reason="requested_by_customer")
+                    logger.info("Auto-refunded failed game start for pi %s", payment_intent_id)
+                except Exception:
+                    logger.exception("Auto-refund also failed for pi %s", payment_intent_id)
+
+    return {"status": "ok"}
+
+
+async def _start_paid_game(game_config_raw: dict, payment_intent_id: str, metadata: dict) -> None:
+    """Start a game using server API keys after successful Stripe payment."""
+    num_players = game_config_raw["num_players"]
+    seat_models_raw = game_config_raw["seat_models"]
+
+    # Collect server-side API keys
+    required_providers = {sm["provider"] for sm in seat_models_raw}
+    provider_keys: dict[str, str] = {}
+
+    for provider in required_providers:
+        env_var = _PROVIDER_ENV_KEYS.get(provider)
+        if not env_var:
+            raise ValueError(f"Unknown provider: {provider}")
+        key = os.environ.get(env_var, "")
+        if not key:
+            raise ValueError(f"Server missing {env_var} for paid game")
+        provider_keys[provider] = key
+
+    agent_configs = [
+        AgentConfig(
+            agent_id=f"seat-{i}",
+            provider=sm["provider"],
+            model=sm["model"],
+            api_key=provider_keys[sm["provider"]],
+            temperature=0.8,
+        )
+        for i, sm in enumerate(seat_models_raw)
+    ]
+
+    game_config = GameConfig(
+        script=game_config_raw.get("script", "trouble_brewing"),
+        num_players=num_players,
+        breakout=BreakoutConfig(
+            num_rounds=1,
+            messages_per_agent=2,
+            max_groups=3,
+            min_group_size=2,
+            whispers_per_round=1,
+            max_whisper_chars=150,
+        ),
+        opening_statements=True,
+        breakout_min_players=6,
+        seed=game_config_raw.get("seed"),
+        max_days=game_config_raw.get("max_days", 50),
+        max_concurrent_llm_calls=3,
+        reveal_models=game_config_raw.get("reveal_models", "true"),
+        share_stats=game_config_raw.get("share_stats", False),
+        seat_roles=game_config_raw.get("seat_roles"),
+        seat_characters=game_config_raw.get("seat_characters"),
+        speech_style=game_config_raw.get("speech_style"),
+    )
+
+    def on_event(event_type: str, data: dict) -> None:
+        if runner.state:
+            asyncio.create_task(
+                ws_manager.broadcast(runner.state.game_id, event_type, data)
+            )
+
+    runner = GameRunner(game_config, agent_configs, on_event=on_event)
+
+    async def run_game():
+        try:
+            result = await runner.run()
+            game_id = result.game_id
+            _games[game_id] = {"status": "completed", "result": result}
+            _save_completed_game(runner, result)
+
+            # Track actual cost vs charged amount
+            actual_cost = result.token_summary.get("total_cost_usd", 0) if isinstance(result.token_summary, dict) else 0
+            _payment_info[game_id] = {
+                "payment_intent_id": payment_intent_id,
+                "charged_amount": float(metadata.get("charge_amount", 0)),
+                "estimated_cost": float(metadata.get("estimated_cost", 0)),
+                "actual_cost": actual_cost,
+                "payment_method": "stripe",
+            }
+
+            logger.info("Paid game %s completed: %s wins (actual cost: $%.2f)", game_id, result.winner, actual_cost)
+        except Exception as e:
+            logger.exception("Paid game failed")
+            _mark_game_failed(runner, e)
+            # Auto-refund on failure
+            try:
+                from botc.payments.stripe_handler import issue_refund
+                await issue_refund(payment_intent_id, reason="requested_by_customer")
+                logger.info("Auto-refunded failed game for pi %s", payment_intent_id)
+            except Exception:
+                logger.exception("Auto-refund failed for pi %s", payment_intent_id)
+
+    task = asyncio.create_task(run_game())
+
+    await asyncio.sleep(0.2)
+    game_id = runner.state.game_id if runner.state else "pending"
+    _games[game_id] = {"status": "running", "runner": runner, "task": task}
+    _runners[game_id] = runner
+
+    logger.info("Paid game %s started (pi: %s)", game_id, payment_intent_id)
+
+
+@router.post("/api/refund/{game_id}")
+async def refund_game(game_id: str, body: RefundRequest | None = None) -> dict:
+    """Refund a Stripe-paid game (full refund)."""
+    payment = _payment_info.get(game_id)
+    if not payment:
+        raise HTTPException(status_code=404, detail="No payment record for this game")
+
+    pi_id = payment.get("payment_intent_id")
+    if not pi_id:
+        raise HTTPException(status_code=400, detail="No payment intent to refund")
+
+    if payment.get("refunded"):
+        return {"status": "already_refunded", "game_id": game_id}
+
+    from botc.payments.stripe_handler import issue_refund
+    reason = body.reason if body else "requested_by_customer"
+    refund = await issue_refund(pi_id, reason=reason)
+
+    payment["refunded"] = True
+    payment["refund_id"] = refund.get("id")
+    payment["refund_amount"] = refund.get("amount", 0) / 100
+
+    return {
+        "status": "refunded",
+        "game_id": game_id,
+        "refund_amount": payment["refund_amount"],
+    }
+
+
+@router.get("/api/payment-status")
+async def payment_status(session_id: str) -> dict:
+    """Check if a Stripe checkout session has been completed and return the game_id."""
+    from botc.payments.stripe_handler import get_session
+
+    try:
+        session = get_session(session_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to retrieve session: {e}")
+
+    status = session.get("status", "unknown")
+    payment_status_val = session.get("payment_status", "unknown")
+
+    # Find the game started by this payment
+    pi_id = session.get("payment_intent", "")
+    game_id = None
+    for gid, pinfo in _payment_info.items():
+        if pinfo.get("payment_intent_id") == pi_id:
+            game_id = gid
+            break
+
+    return {
+        "session_status": status,
+        "payment_status": payment_status_val,
+        "game_id": game_id,
+    }
+
+
+@router.get("/api/stripe-config")
+async def stripe_config() -> dict:
+    """Return the Stripe publishable key for the frontend."""
+    pk = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+    return {
+        "publishable_key": pk,
+        "payments_enabled": bool(pk and os.environ.get("STRIPE_SECRET_KEY", "")),
+        "paid_allowed_models": sorted(PAID_ALLOWED_MODELS),
+    }
 
 
 # ---------------------------------------------------------------------------

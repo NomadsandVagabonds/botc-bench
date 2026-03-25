@@ -309,3 +309,67 @@ export async function getMonitorResult(
 ): Promise<MonitorResult> {
   return request<MonitorResult>(`/api/games/${gameId}/monitors/${monitorId}`);
 }
+
+// ── Payments / Stripe ────────────────────────────────────────────────
+
+export interface CostEstimate {
+  estimated_cost: number;
+  charge_amount: number;
+  breakdown: Record<string, { count: number; cost_per_call: number; daily_cost: number; total_est: number }>;
+  est_days: number;
+  num_players: number;
+  assumptions: string;
+}
+
+export interface CheckoutResult {
+  url: string;
+  session_id: string;
+  estimate: CostEstimate;
+}
+
+export interface StripeConfig {
+  publishable_key: string;
+  payments_enabled: boolean;
+  paid_allowed_models: string[];
+}
+
+export interface PaymentStatusResult {
+  session_status: string;
+  payment_status: string;
+  game_id: string | null;
+}
+
+/** Get cost estimate for a game configuration. */
+export async function estimateCost(config: {
+  num_players: number;
+  seat_models: SeatModelConfig[];
+  max_days?: number;
+}): Promise<CostEstimate> {
+  return request<CostEstimate>('/api/estimate-cost', {
+    method: 'POST',
+    body: JSON.stringify(config),
+  });
+}
+
+/** Create a Stripe Checkout session for a paid game. */
+export async function createCheckout(config: ConfiguredGameRequest): Promise<CheckoutResult> {
+  return request<CheckoutResult>('/api/checkout', {
+    method: 'POST',
+    body: JSON.stringify(config),
+  });
+}
+
+/** Check payment session status and get game_id if started. */
+export async function getPaymentStatus(sessionId: string): Promise<PaymentStatusResult> {
+  return request<PaymentStatusResult>(`/api/payment-status?session_id=${encodeURIComponent(sessionId)}`);
+}
+
+/** Get Stripe config (publishable key, enabled status). */
+export async function getStripeConfig(): Promise<StripeConfig> {
+  return request<StripeConfig>('/api/stripe-config');
+}
+
+/** Request a refund for a paid game. */
+export async function refundGame(gameId: string): Promise<{ status: string; refund_amount?: number }> {
+  return request(`/api/refund/${gameId}`, { method: 'POST' });
+}

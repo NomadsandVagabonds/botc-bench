@@ -7,7 +7,7 @@ import { useGameStore } from '../stores/gameStore.ts';
 import { CHARACTERS_SORTED } from '../data/characters.ts';
 import { SplashScreen } from './SplashScreen.tsx';
 import { PageTransition } from './PageTransition.tsx';
-import { CreditBadge, CreditBalanceInline, CreditPurchaseModal } from './CreditSystem.tsx';
+import { CreditBalanceInline, CreditPurchaseModal } from './CreditSystem.tsx';
 import { estimateCost, getCreditBalance } from '../api/rest.ts';
 
 // ── Available models ──────────────────────────────────────────────────

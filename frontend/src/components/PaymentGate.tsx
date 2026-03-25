@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { estimateCost, createCheckout, getStripeConfig } from '../api/rest.ts';
-import type { CostEstimate, SeatModelConfig, ConfiguredGameRequest } from '../api/rest.ts';
+import type { CostEstimate, ConfiguredGameRequest } from '../api/rest.ts';
 
 // ── Available models (mirrored from GameLobby for display) ──────────
 

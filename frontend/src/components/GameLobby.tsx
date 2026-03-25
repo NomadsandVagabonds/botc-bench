@@ -2188,26 +2188,28 @@ export function GameLobby() {
         />
       )}
       <div style={st.page}>
-        <img src="/scroll_lg.jpg" alt="" style={st.scrollBg} />
-        {/* Ambient idle video — fades in over scroll background after ~90s */}
-        <video
-          ref={lobbyIdleRef}
-          onEnded={handleLobbyIdleEnd}
-          muted
-          playsInline
-          style={{
-            ...st.scrollBg,
-            zIndex: 1,
-            opacity: lobbyIdlePlaying ? 1 : 0,
-            transition: 'opacity 0.6s ease',
-          }}
-        />
-        <div style={st.content}>
-          {view === 'menu' && menuView}
-          {view === 'setup' && setupView}
-          {view === 'options' && optionsView}
-          {view === 'games' && gamesView}
-          {view === 'leaderboard' && leaderboardView}
+        <div style={st.aspectContainer}>
+          <img src="/scroll_lg.jpg" alt="" style={st.scrollBg} />
+          {/* Ambient idle video — fades in over scroll background after ~90s */}
+          <video
+            ref={lobbyIdleRef}
+            onEnded={handleLobbyIdleEnd}
+            muted
+            playsInline
+            style={{
+              ...st.scrollBg,
+              zIndex: 1,
+              opacity: lobbyIdlePlaying ? 1 : 0,
+              transition: 'opacity 0.6s ease',
+            }}
+          />
+          <div style={st.content}>
+            {view === 'menu' && menuView}
+            {view === 'setup' && setupView}
+            {view === 'options' && optionsView}
+            {view === 'games' && gamesView}
+            {view === 'leaderboard' && leaderboardView}
+          </div>
         </div>
       </div>
     </>
@@ -2217,41 +2219,48 @@ export function GameLobby() {
 // ── Styles ────────────────────────────────────────────────────────────
 
 const st: Record<string, React.CSSProperties> = {
+  // ── Layout: aspect-ratio locked to scroll image ──
   page: {
     minHeight: '100vh',
-    position: 'relative',
     display: 'flex',
     justifyContent: 'center',
+    alignItems: 'center',
     background: '#0a0806',
-    overflow: 'auto',
+    overflow: 'hidden',
+  },
+  aspectContainer: {
+    position: 'relative',
+    width: '100%',
+    maxHeight: '100vh',
+    aspectRatio: '1.79',
+    maxWidth: 'calc(100vh * 1.79)',
+    overflow: 'hidden',
   },
   scrollBg: {
-    position: 'fixed',
-    top: 0,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    height: '100vh',
-    maxWidth: '100vw',
-    objectFit: 'contain',
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
     zIndex: 0,
     pointerEvents: 'none',
   },
   content: {
-    position: 'fixed',
-    top: '28vh',
+    position: 'absolute',
+    top: '27%',
     left: '50%',
     transform: 'translateX(-50%)',
-    zIndex: 1,
+    zIndex: 2,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    width: '100%',
-    maxWidth: 620,
-    padding: '0 24px',
-    maxHeight: '54vh',
+    width: '43%',
+    maxHeight: '55%',
     overflowY: 'auto',
     boxSizing: 'border-box',
+    padding: '0 12px',
   },
+  // ── Menu ──
   menuArea: {
     display: 'flex',
     flexDirection: 'column',
@@ -2260,11 +2269,12 @@ const st: Record<string, React.CSSProperties> = {
     marginBottom: 16,
   },
   menuBtn: {
-    background: 'rgba(92, 61, 26, 0.12)',
-    border: '1px solid rgba(92, 61, 26, 0.35)',
-    borderRadius: 3,
+    background: 'linear-gradient(180deg, rgba(92, 61, 26, 0.08), rgba(92, 61, 26, 0.18))',
+    border: '1px solid rgba(139, 94, 42, 0.4)',
+    borderRadius: 2,
     padding: '8px 32px',
-    color: '#2a1a0a',
+    color: '#1e140a',
+    fontFamily: 'Georgia, "Times New Roman", serif',
     fontSize: '0.9rem',
     fontWeight: 700,
     letterSpacing: '0.06em',
@@ -2272,41 +2282,51 @@ const st: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     minWidth: 220,
     textAlign: 'center',
+    textShadow: '0 1px 1px rgba(255,255,255,0.15)',
+    boxShadow: 'inset 0 1px 0 rgba(201, 168, 76, 0.15), 0 2px 4px rgba(0,0,0,0.2)',
   },
   menuBtnPrimary: {
-    background: 'rgba(92, 61, 26, 0.2)',
-    border: '2px solid rgba(92, 61, 26, 0.5)',
+    background: 'linear-gradient(180deg, rgba(139, 26, 26, 0.12), rgba(92, 20, 20, 0.22))',
+    border: '2px solid rgba(139, 26, 26, 0.45)',
     fontSize: '1rem',
     padding: '10px 40px',
+    color: '#2a0e0e',
+    boxShadow: 'inset 0 1px 0 rgba(201, 168, 76, 0.2), 0 3px 6px rgba(0,0,0,0.25)',
   },
   quitBtn: {
     marginTop: 8,
-    background: 'rgba(92, 61, 26, 0.06)',
+    background: 'rgba(30, 20, 10, 0.06)',
     border: '1px solid rgba(92, 61, 26, 0.2)',
-    color: '#5a4630',
+    color: '#6b5840',
     fontSize: '0.8rem',
   },
+  // ── Navigation ──
   backBtn: {
     background: 'none',
     border: 'none',
-    color: '#5a4630',
-    fontSize: '0.75rem',
+    color: '#6b5840',
+    fontFamily: 'Georgia, serif',
+    fontSize: '0.72rem',
     fontWeight: 600,
     cursor: 'pointer',
     padding: '4px 0',
     marginBottom: 8,
-    letterSpacing: '0.05em',
+    letterSpacing: '0.08em',
     textTransform: 'uppercase',
   },
   panelTitle: {
+    fontFamily: 'Georgia, "Times New Roman", serif',
     fontSize: '0.95rem',
     fontWeight: 700,
-    color: '#2a1a0a',
+    color: '#1e140a',
     textTransform: 'uppercase',
-    letterSpacing: '0.1em',
+    letterSpacing: '0.12em',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottom: '1px solid rgba(139, 94, 42, 0.25)',
   },
+  // ── Config / Setup ──
   configGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
@@ -2315,45 +2335,51 @@ const st: Record<string, React.CSSProperties> = {
   field: { marginBottom: 12 },
   label: {
     display: 'block',
+    fontFamily: 'Georgia, serif',
     fontSize: '0.65rem',
     fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.1em',
+    fontVariant: 'small-caps',
+    letterSpacing: '0.08em',
     color: '#3d2812',
     marginBottom: 4,
   },
   select: {
     width: '100%',
-    background: 'rgba(92, 61, 26, 0.08)',
-    border: '1px solid rgba(92, 61, 26, 0.25)',
-    borderRadius: 3,
-    color: '#2a1a0a',
+    background: 'linear-gradient(180deg, rgba(92, 61, 26, 0.04), rgba(92, 61, 26, 0.1))',
+    border: '1px solid rgba(139, 94, 42, 0.3)',
+    borderRadius: 2,
+    color: '#1e140a',
     padding: '4px 6px',
     fontSize: '0.78rem',
+    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.08)',
   },
   smallBtn: {
-    background: 'rgba(92, 61, 26, 0.08)',
-    border: '1px solid rgba(92, 61, 26, 0.2)',
-    borderRadius: 3,
+    background: 'linear-gradient(180deg, rgba(92, 61, 26, 0.06), rgba(92, 61, 26, 0.14))',
+    border: '1px solid rgba(139, 94, 42, 0.3)',
+    borderRadius: 2,
     padding: '3px 8px',
     color: '#3d2812',
     fontSize: '0.68rem',
     fontWeight: 600,
     cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
   },
   toggleBtn: {
     flex: 1,
     border: 'none',
+    borderRight: '1px solid rgba(92, 61, 26, 0.12)',
     padding: '5px 12px',
-    color: '#2a1a0a',
+    color: '#1e140a',
     fontSize: '0.72rem',
     cursor: 'pointer',
     transition: 'background 0.15s',
   },
+  // ── Feedback ──
   errorBox: {
-    background: 'rgba(239, 68, 68, 0.12)',
-    border: '1px solid rgba(239, 68, 68, 0.3)',
-    borderRadius: 4,
+    background: 'rgba(239, 68, 68, 0.1)',
+    border: '1px solid rgba(239, 68, 68, 0.25)',
+    borderLeft: '3px solid #991B1B',
+    borderRadius: 2,
     padding: '8px 12px',
     fontSize: '0.78rem',
     color: '#991B1B',
@@ -2361,31 +2387,35 @@ const st: Record<string, React.CSSProperties> = {
     maxWidth: 360,
     textAlign: 'center',
   },
+  // ── Game List ──
   gamesSection: { width: '100%', marginBottom: 20 },
   gameCard: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     padding: '6px 10px',
-    background: 'rgba(92, 61, 26, 0.06)',
-    border: '1px solid rgba(92, 61, 26, 0.12)',
-    borderRadius: 3,
+    background: 'rgba(30, 20, 10, 0.06)',
+    border: '1px solid rgba(139, 94, 42, 0.15)',
+    borderLeft: '3px solid rgba(139, 94, 42, 0.25)',
+    borderRadius: 2,
     cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
   },
-  // Options tabs
+  // ── Options Tabs ──
   tabBar: {
     display: 'flex',
     gap: 2,
     flexWrap: 'wrap',
     marginBottom: 12,
-    borderBottom: '1px solid rgba(92, 61, 26, 0.2)',
+    borderBottom: '2px solid rgba(139, 94, 42, 0.2)',
     paddingBottom: 2,
   },
   tab: {
     background: 'none',
     border: 'none',
     padding: '6px 10px',
-    fontSize: '0.68rem',
+    fontFamily: 'Georgia, serif',
+    fontSize: '0.66rem',
     fontWeight: 600,
     color: '#8b7355',
     cursor: 'pointer',
@@ -2394,22 +2424,23 @@ const st: Record<string, React.CSSProperties> = {
     letterSpacing: '0.03em',
   },
   tabActive: {
-    color: '#2a1a0a',
-    borderBottomColor: '#8b5e2a',
+    color: '#1e140a',
+    borderBottomColor: '#c9a84c',
   },
   tabContent: {
     minHeight: 200,
   },
   optLabel: {
     display: 'block',
+    fontFamily: 'Georgia, serif',
     fontSize: '0.72rem',
     fontWeight: 700,
-    color: '#2a1a0a',
+    color: '#1e140a',
     marginBottom: 2,
   },
   optHelp: {
     fontSize: '0.62rem',
-    color: '#8b7355',
+    color: '#6b5840',
     lineHeight: 1.4,
     marginBottom: 2,
   },

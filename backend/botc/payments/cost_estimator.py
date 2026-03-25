@@ -52,10 +52,10 @@ def _model_cost_per_call(model: str) -> float:
 
 
 def _estimate_days(num_players: int, max_days: int = 20) -> int:
-    """Conservative median estimate of game length in days."""
-    # Historical: games tend to last roughly num_players // 3 days,
-    # with a floor of 2 and capped by max_days.
-    return min(max(2, num_players // 3), max_days)
+    """Conservative estimate of game length in days."""
+    # Historical: games typically last 3-5+ days. Use num_players // 2
+    # with a floor of 3 to avoid underestimating.
+    return min(max(3, num_players // 2), max_days)
 
 
 def estimate_game_cost(
@@ -95,11 +95,15 @@ def estimate_game_cost(
         }
 
     estimated_cost = total_per_day * est_days
-    charge_amount = max(estimated_cost * buffer_multiplier, MINIMUM_CHARGE_USD)
+    buffered = estimated_cost * buffer_multiplier
+    is_minimum = buffered < MINIMUM_CHARGE_USD
+    charge_amount = max(buffered, MINIMUM_CHARGE_USD)
 
     return {
         "estimated_cost": round(estimated_cost, 2),
         "charge_amount": round(charge_amount, 2),
+        "is_minimum": is_minimum,
+        "minimum_charge": MINIMUM_CHARGE_USD,
         "breakdown": breakdown,
         "est_days": est_days,
         "num_players": num_players,

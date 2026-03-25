@@ -315,6 +315,8 @@ export async function getMonitorResult(
 export interface CostEstimate {
   estimated_cost: number;
   charge_amount: number;
+  is_minimum: boolean;
+  minimum_charge: number;
   breakdown: Record<string, { count: number; cost_per_call: number; daily_cost: number; total_est: number }>;
   est_days: number;
   num_players: number;

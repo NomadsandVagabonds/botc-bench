@@ -135,7 +135,10 @@ export function PaymentGate({ gameConfig, onClose, onUseOwnKeys }: PaymentGatePr
             </div>
 
             <div style={styles.bufferNote}>
-              Includes buffer for variance. If the game costs less, the surplus covers server + Stripe fees.
+              {estimate.is_minimum
+                ? `$${estimate.minimum_charge.toFixed(2)} minimum charge applies. Covers Stripe fees and server costs.`
+                : 'Includes 1.5x buffer for variance. Surplus covers server + Stripe fees.'
+              }
             </div>
 
             {/* Per-model breakdown */}

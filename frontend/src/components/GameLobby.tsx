@@ -1516,6 +1516,7 @@ export function GameLobby() {
   const [showCreditPurchase, setShowCreditPurchase] = useState(false);
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
+  const [paymentMode, setPaymentMode] = useState<'stripe' | 'api'>('stripe');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch credit balance on mount
@@ -1672,23 +1673,30 @@ export function GameLobby() {
 
     const { config, hasClientKeys } = buildGameConfig();
 
-    // BYOK: need client API keys
-    if (hasClientKeys) {
+    // API Keys mode: need BYOK keys
+    if (paymentMode === 'api') {
+      if (!hasClientKeys) {
+        setStartError('No API keys entered.');
+        setStarting(false);
+        setView('options');
+        setOptionsTab('api');
+        return;
+      }
       try {
         const result = await createConfiguredGame(config);
         navigateWithTransition(`/game/${result.game_id}`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed';
         if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
-        else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab.');
         else setStartError(msg);
       } finally { setStarting(false); }
       return;
     }
 
-    // Credit-paid game: check balance before sending to backend
-    if (estimatedCost !== null && (creditBalance ?? 0) < estimatedCost) {
-      setStartError(`Insufficient credits. Need $${estimatedCost.toFixed(2)}, have $${(creditBalance ?? 0).toFixed(2)}.`);
+    // Credits mode: check balance before sending to backend
+    const cost = estimatedCost !== null ? Math.ceil(estimatedCost) : 0;
+    if (cost > 0 && (creditBalance ?? 0) < cost) {
+      setStartError(`Insufficient credits. Need ${cost}, have ${Math.floor(creditBalance ?? 0)}.`);
       setShowCreditPurchase(true);
       setStarting(false);
       return;
@@ -1696,7 +1704,6 @@ export function GameLobby() {
 
     try {
       const result = await createConfiguredGame(config);
-      // Refresh balance after game start (credits deducted server-side)
       getCreditBalance()
         .then((data) => setCreditBalance(data.balance))
         .catch(() => {});
@@ -1712,7 +1719,7 @@ export function GameLobby() {
         setStartError(msg);
       }
     } finally { setStarting(false); }
-  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate, buildGameConfig, creditBalance, estimatedCost]);
+  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate, buildGameConfig, creditBalance, estimatedCost, paymentMode]);
 
   const isAssignedAvailable = script in SCRIPT_ROLES;
 
@@ -1743,12 +1750,31 @@ export function GameLobby() {
             </div>
           </div>
 
-          <CreditBalanceInline
-            balance={creditBalance}
-            estimatedCost={estimatedCost}
-            onBuyCredits={() => setShowCreditPurchase(true)}
-            onUseApiKeys={() => { setView('options'); setOptionsTab('api'); }}
-          />
+          <div style={st.field}>
+            <label style={st.label}>Payment</label>
+            <div style={{ display: 'flex', gap: 0, borderRadius: 2, overflow: 'hidden', border: '1px solid rgba(139, 94, 42, 0.35)' }}>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'stripe' ? 'rgba(201, 168, 76, 0.2)' : 'transparent', fontWeight: paymentMode === 'stripe' ? 700 : 400, color: paymentMode === 'stripe' ? '#c9a84c' : '#6b5840' }} onClick={() => setPaymentMode('stripe')}>Credits</button>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? 'rgba(201, 168, 76, 0.2)' : 'transparent', fontWeight: paymentMode === 'api' ? 700 : 400, color: paymentMode === 'api' ? '#c9a84c' : '#6b5840' }} onClick={() => setPaymentMode('api')}>API Keys</button>
+            </div>
+          </div>
+
+          {paymentMode === 'stripe' && (
+            <CreditBalanceInline
+              balance={creditBalance}
+              estimatedCost={estimatedCost}
+              onBuyCredits={() => setShowCreditPurchase(true)}
+            />
+          )}
+          {paymentMode === 'api' && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: '0.58rem', color: '#6b5840', lineHeight: 1.5 }}>
+                {Object.keys(clientKeys).length > 0
+                  ? <span style={{ color: '#2d5a2d', fontWeight: 600 }}>BYOK mode — using your API keys (free)</span>
+                  : <>No keys configured. <button style={{ background: 'none', border: 'none', color: '#c9a84c', fontSize: '0.58rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }} onClick={() => { setView('options'); setOptionsTab('api'); }}>Add API keys</button></>
+                }
+              </div>
+            </div>
+          )}
 
           <div style={st.field}>
             <label style={st.label}>Quick Fill</label>
@@ -2269,29 +2295,26 @@ const st: Record<string, React.CSSProperties> = {
     marginBottom: 16,
   },
   menuBtn: {
-    background: 'linear-gradient(180deg, rgba(92, 61, 26, 0.08), rgba(92, 61, 26, 0.18))',
-    border: '1px solid rgba(139, 94, 42, 0.4)',
+    background: '#1a1a2e',
+    border: '2px solid rgba(201, 168, 76, 0.3)',
     borderRadius: 2,
-    padding: '8px 32px',
-    color: '#1e140a',
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontSize: '0.9rem',
-    fontWeight: 700,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
+    padding: '10px 32px',
+    color: '#e8d5a3',
+    fontFamily: '"Press Start 2P", monospace',
+    fontSize: '0.55rem',
     cursor: 'pointer',
     minWidth: 220,
     textAlign: 'center',
-    textShadow: '0 1px 1px rgba(255,255,255,0.15)',
-    boxShadow: 'inset 0 1px 0 rgba(201, 168, 76, 0.15), 0 2px 4px rgba(0,0,0,0.2)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+    transition: 'border-color 0.15s',
   },
   menuBtnPrimary: {
-    background: 'linear-gradient(180deg, rgba(139, 26, 26, 0.12), rgba(92, 20, 20, 0.22))',
-    border: '2px solid rgba(139, 26, 26, 0.45)',
-    fontSize: '1rem',
-    padding: '10px 40px',
-    color: '#2a0e0e',
-    boxShadow: 'inset 0 1px 0 rgba(201, 168, 76, 0.2), 0 3px 6px rgba(0,0,0,0.25)',
+    background: 'linear-gradient(180deg, #1a1a2e, #141420)',
+    border: '2px solid #c9a84c',
+    fontSize: '0.6rem',
+    padding: '12px 40px',
+    color: '#c9a84c',
+    boxShadow: '0 0 12px rgba(201, 168, 76, 0.15), 0 3px 8px rgba(0,0,0,0.3)',
   },
   quitBtn: {
     marginTop: 8,
@@ -2304,27 +2327,22 @@ const st: Record<string, React.CSSProperties> = {
   backBtn: {
     background: 'none',
     border: 'none',
-    color: '#6b5840',
-    fontFamily: 'Georgia, serif',
-    fontSize: '0.72rem',
-    fontWeight: 600,
+    color: '#8b7355',
+    fontFamily: '"Press Start 2P", monospace',
+    fontSize: '0.38rem',
     cursor: 'pointer',
     padding: '4px 0',
     marginBottom: 8,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
   },
   panelTitle: {
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontSize: '0.95rem',
-    fontWeight: 700,
-    color: '#1e140a',
-    textTransform: 'uppercase',
-    letterSpacing: '0.12em',
+    fontFamily: '"Press Start 2P", monospace',
+    fontSize: '0.72rem',
+    color: '#c9a84c',
+    letterSpacing: '0.06em',
     textAlign: 'center',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottom: '1px solid rgba(139, 94, 42, 0.25)',
+    marginBottom: 14,
+    paddingBottom: 10,
+    borderBottom: '1px solid rgba(201, 168, 76, 0.25)',
   },
   // ── Config / Setup ──
   configGrid: {
@@ -2335,13 +2353,11 @@ const st: Record<string, React.CSSProperties> = {
   field: { marginBottom: 12 },
   label: {
     display: 'block',
-    fontFamily: 'Georgia, serif',
-    fontSize: '0.65rem',
-    fontWeight: 700,
-    fontVariant: 'small-caps',
-    letterSpacing: '0.08em',
-    color: '#3d2812',
-    marginBottom: 4,
+    fontFamily: '"Press Start 2P", monospace',
+    fontSize: '0.42rem',
+    color: '#c9a84c',
+    letterSpacing: '0.04em',
+    marginBottom: 6,
   },
   select: {
     width: '100%',
@@ -2413,18 +2429,16 @@ const st: Record<string, React.CSSProperties> = {
   tab: {
     background: 'none',
     border: 'none',
-    padding: '6px 10px',
-    fontFamily: 'Georgia, serif',
-    fontSize: '0.66rem',
-    fontWeight: 600,
+    padding: '6px 8px',
+    fontFamily: '"Press Start 2P", monospace',
+    fontSize: '0.35rem',
     color: '#8b7355',
     cursor: 'pointer',
     borderBottom: '2px solid transparent',
     transition: 'color 0.15s, border-color 0.15s',
-    letterSpacing: '0.03em',
   },
   tabActive: {
-    color: '#1e140a',
+    color: '#c9a84c',
     borderBottomColor: '#c9a84c',
   },
   tabContent: {
@@ -2432,11 +2446,10 @@ const st: Record<string, React.CSSProperties> = {
   },
   optLabel: {
     display: 'block',
-    fontFamily: 'Georgia, serif',
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    color: '#1e140a',
-    marginBottom: 2,
+    fontFamily: '"Press Start 2P", monospace',
+    fontSize: '0.4rem',
+    color: '#c9a84c',
+    marginBottom: 4,
   },
   optHelp: {
     fontSize: '0.62rem',

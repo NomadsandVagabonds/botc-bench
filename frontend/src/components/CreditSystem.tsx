@@ -20,69 +20,39 @@ function CoinIcon({ size = 24, dim = false }: { size?: number; dim?: boolean }) 
   );
 }
 
-function CoinDisplay({ amount, size = 20 }: { amount: number; size?: number }) {
-  if (amount <= 0) {
+/** Display coin amount — always rounds up to whole number. */
+export function CoinDisplay({ amount, size = 20 }: { amount: number; size?: number }) {
+  const rounded = Math.ceil(amount);
+  if (rounded <= 0) {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
         <CoinIcon size={size} dim />
-        <span style={{ fontSize: size * 0.6, color: '#8b7355', fontStyle: 'italic' }}>Empty</span>
+        <span style={{ fontSize: size * 0.55, color: '#8b7355', fontFamily: PX_FONT }}>0</span>
       </span>
     );
   }
-  if (amount <= 5) {
+  if (rounded <= 5) {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-        {Array.from({ length: Math.floor(amount) }, (_, i) => (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+        {Array.from({ length: rounded }, (_, i) => (
           <CoinIcon key={i} size={size} />
         ))}
-        {amount % 1 > 0 && (
-          <span style={{ fontSize: size * 0.55, fontFamily: 'monospace', color: '#5a4630', marginLeft: 2 }}>
-            +{(amount % 1).toFixed(1).slice(1)}
-          </span>
-        )}
       </span>
     );
   }
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
       <CoinIcon size={size} />
-      <span style={{ fontSize: size * 0.7, fontFamily: 'monospace', fontWeight: 700, color: '#2a1a0a' }}>
-        {amount % 1 === 0 ? `${amount}` : amount.toFixed(1)}
+      <span style={{ fontSize: size * 0.6, fontFamily: PX_FONT, fontWeight: 700, color: '#c9a84c' }}>
+        x{rounded}
       </span>
     </span>
   );
 }
 
-// ── Credit Badge (for lobby header) ─────────────────────────────────
+// ── Shared font ─────────────────────────────────────────────────────
 
-export function CreditBadge({
-  balance,
-  onClick,
-}: {
-  balance: number | null;
-  onClick: () => void;
-}) {
-  if (balance === null) return null;
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '4px 10px',
-        background: 'rgba(92, 61, 26, 0.1)',
-        border: '1px solid rgba(139, 94, 42, 0.3)',
-        borderRadius: 4,
-        cursor: 'pointer',
-        transition: 'background 0.15s',
-      }}
-      title="Click to buy credits"
-    >
-      <CoinDisplay amount={balance} size={18} />
-    </button>
-  );
-}
+const PX_FONT = '"Press Start 2P", monospace';
 
 // ── Credit Balance Display (inline in setup view) ───────────────────
 
@@ -90,69 +60,54 @@ export function CreditBalanceInline({
   balance,
   estimatedCost,
   onBuyCredits,
-  onUseApiKeys,
 }: {
   balance: number | null;
   estimatedCost: number | null;
   onBuyCredits: () => void;
-  onUseApiKeys: () => void;
 }) {
-  const sufficient = balance !== null && estimatedCost !== null && balance >= estimatedCost;
+  const rounded = estimatedCost !== null ? Math.ceil(estimatedCost) : null;
+  const sufficient = balance !== null && rounded !== null && balance >= rounded;
 
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#3d2812' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: '0.6rem', fontFamily: PX_FONT, color: '#c9a84c' }}>
           Balance:
         </span>
         {balance !== null ? (
           <CoinDisplay amount={balance} size={18} />
         ) : (
-          <span style={{ fontSize: '0.7rem', color: '#8b7355' }}>Loading...</span>
+          <span style={{ fontSize: '0.6rem', fontFamily: PX_FONT, color: '#8b7355' }}>...</span>
         )}
         <button
           onClick={onBuyCredits}
           style={{
-            background: 'none',
-            border: 'none',
-            color: '#5b21b6',
-            fontSize: '0.62rem',
-            fontWeight: 700,
+            background: 'linear-gradient(180deg, rgba(139, 26, 26, 0.15), rgba(92, 20, 20, 0.25))',
+            border: '1px solid rgba(139, 26, 26, 0.4)',
+            borderRadius: 2,
+            padding: '3px 8px',
+            color: '#c9a84c',
+            fontFamily: PX_FONT,
+            fontSize: '0.45rem',
             cursor: 'pointer',
-            textDecoration: 'underline',
-            padding: 0,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
           }}
         >
-          Buy Credits
+          BUY
         </button>
       </div>
 
-      {estimatedCost !== null && (
+      {rounded !== null && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: '0.62rem', color: '#5a4630' }}>This game:</span>
-          <CoinDisplay amount={estimatedCost} size={16} />
+          <span style={{ fontSize: '0.55rem', fontFamily: PX_FONT, color: '#6b5840' }}>Cost:</span>
+          <CoinDisplay amount={rounded} size={16} />
           {!sufficient && balance !== null && (
-            <span style={{ fontSize: '0.58rem', color: '#991B1B', fontWeight: 600 }}>
-              (insufficient)
+            <span style={{ fontSize: '0.45rem', fontFamily: PX_FONT, color: '#991B1B' }}>
+              INSUFFICIENT
             </span>
           )}
         </div>
       )}
-
-      <button
-        onClick={onUseApiKeys}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#8b7355',
-          fontSize: '0.58rem',
-          cursor: 'pointer',
-          textDecoration: 'underline',
-          padding: '4px 0 0 0',
-        }}
-      >
-        Or use your own API keys
-      </button>
     </div>
   );
 }
@@ -192,10 +147,10 @@ export function CreditPurchaseModal({ onClose }: { onClose: () => void }) {
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.title}>BUY CREDITS</div>
-        <div style={styles.subtitle}>Credits are used to run games on our servers.</div>
+        <div style={styles.title}>Buy Credits</div>
+        <div style={styles.subtitle}>1 credit = 1 game dollar. No expiration.</div>
 
-        {loading && <div style={styles.loadingText}>Loading packs...</div>}
+        {loading && <div style={styles.loadingText}>Loading...</div>}
         {error && <div style={styles.errorText}>{error}</div>}
 
         <div style={styles.packGrid}>
@@ -210,24 +165,17 @@ export function CreditPurchaseModal({ onClose }: { onClose: () => void }) {
               disabled={!!purchasing}
             >
               <div style={styles.packCoins}>
-                <CoinDisplay amount={pack.credits} size={22} />
+                <CoinDisplay amount={pack.credits} size={24} />
               </div>
-              <div style={styles.packCredits}>{pack.credits} credits</div>
+              <div style={styles.packCredits}>
+                {pack.credits.toFixed(0)} credits
+              </div>
               <div style={styles.packPrice}>${pack.price_usd.toFixed(0)}</div>
-              {pack.credits > pack.price_usd && (
-                <div style={styles.packBonus}>
-                  +{Math.round(((pack.credits - pack.price_usd) / pack.price_usd) * 100)}% bonus
-                </div>
-              )}
             </button>
           ))}
         </div>
 
-        <div style={styles.note}>
-          Credits never expire. 1 credit &#8776; $1 of API cost.
-        </div>
-
-        <button style={styles.closeBtn} onClick={onClose}>Cancel</button>
+        <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
       </div>
     </div>
   );
@@ -249,7 +197,6 @@ export function CreditSuccessPage() {
           setBalance(result.balance);
           setStatus('success');
           clearInterval(poll);
-          // Auto-redirect to lobby after 2s
           setTimeout(() => { window.location.href = '/lobby'; }, 2000);
         }
       } catch {
@@ -268,7 +215,7 @@ export function CreditSuccessPage() {
     <div style={styles.successPage}>
       {status === 'checking' && (
         <>
-          <div style={styles.successTitle}>Processing purchase...</div>
+          <div style={styles.successTitle}>Processing...</div>
           <div style={styles.successText}>Adding credits to your account.</div>
         </>
       )}
@@ -279,15 +226,15 @@ export function CreditSuccessPage() {
           </div>
           <div style={styles.successTitle}>Credits Added!</div>
           <div style={styles.successText}>
-            Your balance: {balance?.toFixed(1)} credits. Redirecting to lobby...
+            Balance: {Math.ceil(balance ?? 0)} credits. Redirecting...
           </div>
         </>
       )}
       {status === 'error' && (
         <>
-          <div style={styles.successTitle}>Something went wrong</div>
+          <div style={styles.successTitle}>Error</div>
           <div style={styles.successText}>
-            Your payment was processed but credits may take a moment to appear.
+            Payment processed. Credits may take a moment to appear.
           </div>
           <a href="/lobby" style={styles.backLink}>Back to lobby</a>
         </>
@@ -302,7 +249,7 @@ const styles: Record<string, React.CSSProperties> = {
   overlay: {
     position: 'fixed',
     inset: 0,
-    background: 'rgba(10, 8, 6, 0.7)',
+    background: 'rgba(10, 8, 6, 0.8)',
     zIndex: 1000,
     display: 'flex',
     alignItems: 'center',
@@ -310,94 +257,84 @@ const styles: Record<string, React.CSSProperties> = {
     backdropFilter: 'blur(4px)',
   },
   modal: {
-    background: '#f5efe0',
-    border: '2px solid rgba(92, 61, 26, 0.4)',
+    background: '#141420',
+    border: '2px solid #c9a84c',
     borderRadius: 8,
-    padding: '28px 32px',
-    maxWidth: 440,
+    padding: '32px 36px',
+    maxWidth: 460,
     width: '90%',
     textAlign: 'center',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
   },
   title: {
-    fontSize: '0.75rem',
-    fontWeight: 700,
-    letterSpacing: '0.15em',
-    textTransform: 'uppercase' as const,
-    color: '#3d2812',
-    marginBottom: 4,
+    fontFamily: PX_FONT,
+    fontSize: '0.7rem',
+    color: '#c9a84c',
+    letterSpacing: '0.08em',
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: '0.68rem',
+    fontSize: '0.72rem',
     color: '#8b7355',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   loadingText: {
-    fontSize: '0.8rem',
+    fontFamily: PX_FONT,
+    fontSize: '0.5rem',
     color: '#8b7355',
     padding: '20px 0',
   },
   errorText: {
-    fontSize: '0.75rem',
-    color: '#991B1B',
+    fontSize: '0.72rem',
+    color: '#e74c3c',
     padding: '8px 12px',
-    background: 'rgba(239, 68, 68, 0.08)',
+    background: 'rgba(231, 76, 60, 0.1)',
+    border: '1px solid rgba(231, 76, 60, 0.3)',
     borderRadius: 4,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   packGrid: {
     display: 'flex',
-    gap: 12,
+    gap: 14,
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   packCard: {
     flex: '1 1 0',
-    padding: '16px 12px',
-    background: 'rgba(92, 61, 26, 0.06)',
-    border: '2px solid rgba(139, 94, 42, 0.25)',
-    borderRadius: 8,
+    padding: '18px 14px',
+    background: '#1a1a2e',
+    border: '2px solid rgba(201, 168, 76, 0.25)',
+    borderRadius: 6,
     cursor: 'pointer',
     transition: 'border-color 0.15s, background 0.15s',
     display: 'flex',
     flexDirection: 'column' as const,
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   packCoins: {
-    marginBottom: 4,
+    marginBottom: 2,
   },
   packCredits: {
-    fontSize: '0.8rem',
-    fontWeight: 700,
-    color: '#2a1a0a',
+    fontFamily: PX_FONT,
+    fontSize: '0.45rem',
+    color: '#e8d5a3',
   },
   packPrice: {
-    fontSize: '1rem',
+    fontFamily: PX_FONT,
+    fontSize: '0.65rem',
     fontWeight: 700,
-    color: '#5b21b6',
+    color: '#c9a84c',
   },
-  packBonus: {
-    fontSize: '0.58rem',
-    fontWeight: 700,
-    color: '#16a34a',
-    background: 'rgba(22, 163, 74, 0.1)',
-    padding: '1px 6px',
-    borderRadius: 8,
-  },
-  note: {
-    fontSize: '0.6rem',
-    color: '#8b7355',
-    fontStyle: 'italic',
-    marginBottom: 12,
-  },
-  closeBtn: {
+  cancelBtn: {
     background: 'none',
-    border: 'none',
+    border: '1px solid rgba(139, 115, 85, 0.3)',
+    borderRadius: 4,
     color: '#8b7355',
-    fontSize: '0.72rem',
+    fontFamily: PX_FONT,
+    fontSize: '0.45rem',
+    padding: '6px 16px',
     cursor: 'pointer',
-    textDecoration: 'underline',
   },
   successPage: {
     minHeight: '100vh',
@@ -406,22 +343,23 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     background: '#0a0806',
-    color: '#f5efe0',
+    color: '#e8d5a3',
   },
   successTitle: {
-    fontSize: '1.2rem',
-    fontWeight: 700,
-    letterSpacing: '0.08em',
+    fontFamily: PX_FONT,
+    fontSize: '0.7rem',
+    color: '#c9a84c',
     marginBottom: 12,
   },
   successText: {
     fontSize: '0.85rem',
-    color: '#b89b6a',
+    color: '#8b7355',
     marginBottom: 20,
   },
   backLink: {
+    fontFamily: PX_FONT,
+    fontSize: '0.5rem',
     color: '#c9a84c',
-    fontSize: '0.8rem',
     textDecoration: 'underline',
   },
 };

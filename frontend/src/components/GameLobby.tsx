@@ -11,22 +11,33 @@ import { PaymentGate } from './PaymentGate.tsx';
 
 // ── Available models ──────────────────────────────────────────────────
 
+// Models available via Stripe (cheap, high rate limits)
+const STRIPE_MODEL_IDS = new Set([
+  'claude-haiku-4-5-20251001',
+  'gemini-3-flash-preview',
+  'gpt-5.4-mini',
+  'o4-mini',
+  'gpt-4o',
+]);
+
 const AVAILABLE_MODELS = [
+  // ── Stripe-eligible (listed first) ──
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', provider: 'anthropic' },
+  { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai' },
+  { id: 'o4-mini', label: 'o4-mini', provider: 'openai' },
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai' },
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google' },
+  // ── API Key Required ──
   { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4.6', provider: 'anthropic' },
   { id: 'claude-opus-4-20250514', label: 'Claude Opus 4.6', provider: 'anthropic' },
   { id: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai' },
-  { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai' },
   { id: 'o3-mini', label: 'o3-mini', provider: 'openai' },
-  { id: 'o4-mini', label: 'o4-mini', provider: 'openai' },
   { id: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai' },
   { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai' },
   { id: 'gpt-5.4', label: 'GPT-5.4', provider: 'openai' },
-  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai' },
   // gpt-5.4-pro uses completions API, not chat — not compatible
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'google' },
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google' },
-  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google' },
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', provider: 'google' },
   // OpenRouter — use any model via a single API key
   { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (OR)', provider: 'openrouter' },
@@ -54,14 +65,9 @@ const SCRIPTS: { label: string; value: string; note?: string }[] = [
   { label: 'Sects & Violets', value: 'sects_and_violets', note: 'experimental' },
 ];
 
-const QUICK_FILL_PRESETS = [
-  { label: 'All Haiku', modelId: 'claude-haiku-4-5-20251001', provider: 'anthropic' },
-  { label: 'All Sonnet', modelId: 'claude-sonnet-4-20250514', provider: 'anthropic' },
-  { label: 'Mixed', modelId: '__mixed__', provider: '' },
-] as const;
-
 function buildMixedSeatModels(count: number): string[] {
-  const mixedOrder = ['claude-haiku-4-5-20251001', 'gpt-4o-mini', 'gemini-2.5-flash'];
+  // Round-robin across Stripe-eligible models
+  const mixedOrder = ['claude-haiku-4-5-20251001', 'gpt-4o', 'gemini-3-flash-preview', 'o4-mini', 'gpt-5.4-mini'];
   return Array.from({ length: count }, (_, i) => mixedOrder[i % mixedOrder.length]);
 }
 
@@ -205,6 +211,25 @@ function CharacterSelect({ spriteId, usedCharacters, onChange }: {
   );
 }
 
+// ── Model select with Stripe/API grouping ───────────────────────────
+
+function ModelSelect({ value, onChange, style: extraStyle }: {
+  value: string; onChange: (m: string) => void; style?: React.CSSProperties;
+}) {
+  const stripeModels = AVAILABLE_MODELS.filter(m => STRIPE_MODEL_IDS.has(m.id));
+  const apiModels = AVAILABLE_MODELS.filter(m => !STRIPE_MODEL_IDS.has(m.id));
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...st.select, ...extraStyle }}>
+      <optgroup label="Stripe Eligible">
+        {stripeModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+      </optgroup>
+      <optgroup label="API Key Required">
+        {apiModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+      </optgroup>
+    </select>
+  );
+}
+
 // ── Seat rows ───────────────────────────────────────────────────────
 
 function SeatRow({ seat, model, spriteId, usedCharacters, onChange, onCharChange }: {
@@ -216,9 +241,7 @@ function SeatRow({ seat, model, spriteId, usedCharacters, onChange, onCharChange
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <div style={{ width: 20, height: 20, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, color: '#1a0e04', flexShrink: 0 }}>{seat}</div>
-      <select value={model} onChange={(e) => onChange(e.target.value)} style={{ ...st.select, flex: '1 1 45%' }}>
-        {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-      </select>
+      <ModelSelect value={model} onChange={onChange} style={{ flex: '1 1 45%' }} />
       <CharacterSelect spriteId={spriteId} usedCharacters={usedCharacters} onChange={onCharChange} />
     </div>
   );
@@ -239,9 +262,7 @@ function AssignedSeatRow({ seat, model, roleId, scriptId, spriteId, usedRoles, u
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <div style={{ width: 18, height: 18, borderRadius: '50%', background: modelColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 700, color: '#1a0e04', flexShrink: 0 }}>{seat}</div>
-      <select value={model} onChange={(e) => onModelChange(e.target.value)} style={{ ...st.select, flex: '1 1 30%', fontSize: '0.7rem', padding: '3px 4px' }}>
-        {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-      </select>
+      <ModelSelect value={model} onChange={onModelChange} style={{ flex: '1 1 30%', fontSize: '0.7rem', padding: '3px 4px' }} />
       <select value={roleId} onChange={(e) => onRoleChange(e.target.value)} style={{ ...st.select, flex: '1 1 30%', fontSize: '0.7rem', padding: '3px 4px', borderLeft: `3px solid ${roleColor}` }}>
         <option value="">-- random --</option>
         {Array.from(grouped.entries()).map(([type, typeRoles]) => (
@@ -1492,6 +1513,7 @@ export function GameLobby() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [showPaymentGate, setShowPaymentGate] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'stripe' | 'api'>('stripe');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchGames = useCallback(async () => {
@@ -1546,7 +1568,6 @@ export function GameLobby() {
   const handleCharacterChange = useCallback((seat: number, spriteId: number | null) => {
     setSeatCharacters((prev) => { const next = [...prev]; next[seat] = spriteId; return next; });
   }, []);
-  const fillAllWith = useCallback((model: string) => { setSeatModels(Array(15).fill(model)); }, []);
 
   const usedRoles = useMemo(() => {
     const set = new Set<string>();
@@ -1615,8 +1636,6 @@ export function GameLobby() {
     };
   }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, options, clientKeys]);
 
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
   const handleStart = useCallback(async () => {
     setStarting(true); setStartError(null);
     // For assigned mode, only block on critical errors (over-assigned types), not missing roles
@@ -1630,10 +1649,19 @@ export function GameLobby() {
 
     const { config, hasClientKeys } = buildGameConfig();
 
-    // On production without BYOK keys: show payment gate instead of direct start
-    if (!isLocalhost && !hasClientKeys) {
+    // Stripe mode: show payment gate
+    if (paymentMode === 'stripe') {
       setShowPaymentGate(true);
       setStarting(false);
+      return;
+    }
+
+    // API mode: need BYOK keys
+    if (!hasClientKeys) {
+      setStartError('No API keys entered.');
+      setStarting(false);
+      setView('options');
+      setOptionsTab('api');
       return;
     }
 
@@ -1643,10 +1671,10 @@ export function GameLobby() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
       if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
-      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab, use Stripe checkout, or set keys in server .env.');
+      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab.');
       else setStartError(msg);
     } finally { setStarting(false); }
-  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate, buildGameConfig, isLocalhost]);
+  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate, buildGameConfig, paymentMode]);
 
   const isAssignedAvailable = script in SCRIPT_ROLES;
 
@@ -1658,7 +1686,7 @@ export function GameLobby() {
       <div style={st.panelTitle}>Game Setup</div>
 
       <div style={st.configGrid}>
-        {/* Left: Script + Players + Quick Fill + Role Mode */}
+        {/* Left: Script + Players + Payment Mode + Role Mode */}
         <div>
           <div style={st.field}>
             <label style={st.label}>Script</label>
@@ -1678,15 +1706,25 @@ export function GameLobby() {
           </div>
 
           <div style={st.field}>
-            <label style={st.label}>Quick Fill</label>
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-              {QUICK_FILL_PRESETS.map((preset) => (
-                <button key={preset.label} style={{ ...st.smallBtn, borderLeft: `3px solid ${preset.modelId === '__mixed__' ? '#8b5e2a' : PROVIDER_COLORS[preset.provider] ?? '#6B7280'}` }}
-                  onClick={() => { if (preset.modelId === '__mixed__') setSeatModels(buildMixedSeatModels(15)); else fillAllWith(preset.modelId); }}>
-                  {preset.label}
-                </button>
-              ))}
+            <label style={st.label}>Payment</label>
+            <div style={{ display: 'flex', gap: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(92, 61, 26, 0.25)' }}>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'stripe' ? 'rgba(91, 33, 182, 0.15)' : 'transparent', fontWeight: paymentMode === 'stripe' ? 700 : 400, color: paymentMode === 'stripe' ? '#5b21b6' : '#2a1a0a' }} onClick={() => setPaymentMode('stripe')}>Stripe</button>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? 'rgba(92, 61, 26, 0.2)' : 'transparent', fontWeight: paymentMode === 'api' ? 700 : 400 }} onClick={() => setPaymentMode('api')}>API Keys</button>
             </div>
+            <div style={{ fontSize: '0.6rem', color: '#8b7355', marginTop: 3, lineHeight: 1.4 }}>
+              {paymentMode === 'stripe'
+                ? 'Pay per game via Stripe. Only Stripe-eligible models available.'
+                : <>Bring your own API keys. <button style={{ background: 'none', border: 'none', color: '#5b21b6', fontSize: '0.6rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }} onClick={() => { setView('options'); setOptionsTab('api'); }}>Configure keys</button></>
+              }
+            </div>
+          </div>
+
+          <div style={st.field}>
+            <label style={st.label}>Quick Fill</label>
+            <button style={{ ...st.smallBtn, borderLeft: '3px solid #8b5e2a' }}
+              onClick={() => setSeatModels(buildMixedSeatModels(15))}>
+              Mixed
+            </button>
           </div>
 
           <div style={st.field}>
@@ -1715,7 +1753,16 @@ export function GameLobby() {
             </div>
           )}
 
-          <p style={{ fontSize: '0.65rem', color: '#8b7355', marginTop: 6 }}>API keys loaded from server .env</p>
+          {paymentMode === 'stripe' && (
+            <p style={{ fontSize: '0.65rem', color: '#5b21b6', marginTop: 6, fontWeight: 600 }}>
+              You'll see a cost estimate before paying.
+            </p>
+          )}
+          {paymentMode === 'api' && (
+            <p style={{ fontSize: '0.65rem', color: '#8b7355', marginTop: 6 }}>
+              {Object.keys(clientKeys).length > 0 ? 'Using your API keys' : 'No API keys configured yet'}
+            </p>
+          )}
         </div>
 
         {/* Right: Seats */}

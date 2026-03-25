@@ -89,6 +89,17 @@ CREATE TABLE IF NOT EXISTS phase_snapshots (
     alive_count INTEGER NOT NULL,
     total_players INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS credit_transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    amount REAL NOT NULL,
+    balance_after REAL NOT NULL,
+    tx_type TEXT NOT NULL,
+    reference_id TEXT,
+    description TEXT,
+    created_at REAL NOT NULL
+);
 """
 
 _db: aiosqlite.Connection | None = None
@@ -103,7 +114,7 @@ async def get_db() -> aiosqlite.Connection:
         _db.row_factory = aiosqlite.Row
         await _db.executescript(_SCHEMA)
         # Migrations: add columns if missing
-        for col in ("passphrase_hash TEXT", "github_id TEXT"):
+        for col in ("passphrase_hash TEXT", "github_id TEXT", "credit_balance REAL DEFAULT 0.0"):
             try:
                 await _db.execute(f"ALTER TABLE users ADD COLUMN {col}")
             except Exception:
@@ -214,6 +225,89 @@ async def update_user_stats(
         (crowns_delta, correct_delta, total_delta, games_delta, user_id),
     )
     await db.commit()
+
+
+# ── Credits ─────────────────────────────────────────────────────────
+
+
+async def get_credit_balance(user_id: str) -> float:
+    """Return user's current credit balance."""
+    db = await get_db()
+    rows = await db.execute_fetchall(
+        "SELECT credit_balance FROM users WHERE id = ?", (user_id,)
+    )
+    if not rows:
+        return 0.0
+    return float(rows[0]["credit_balance"] or 0.0)
+
+
+async def add_credits(
+    user_id: str,
+    amount: float,
+    tx_type: str,
+    reference_id: str | None = None,
+    description: str = "",
+) -> float:
+    """Add credits to user balance. Returns new balance."""
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET credit_balance = credit_balance + ? WHERE id = ?",
+        (amount, user_id),
+    )
+    rows = await db.execute_fetchall(
+        "SELECT credit_balance FROM users WHERE id = ?", (user_id,)
+    )
+    new_balance = float(rows[0]["credit_balance"]) if rows else 0.0
+    await db.execute(
+        """INSERT INTO credit_transactions
+            (user_id, amount, balance_after, tx_type, reference_id, description, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (user_id, amount, new_balance, tx_type, reference_id, description, time.time()),
+    )
+    await db.commit()
+    return new_balance
+
+
+async def deduct_credits(
+    user_id: str,
+    amount: float,
+    tx_type: str,
+    reference_id: str | None = None,
+    description: str = "",
+) -> float:
+    """Deduct credits from user balance. Raises ValueError if insufficient."""
+    db = await get_db()
+    balance = await get_credit_balance(user_id)
+    if balance < amount:
+        raise ValueError(
+            f"Insufficient credits: need ${amount:.2f}, have ${balance:.2f}"
+        )
+    await db.execute(
+        "UPDATE users SET credit_balance = credit_balance - ? WHERE id = ?",
+        (amount, user_id),
+    )
+    rows = await db.execute_fetchall(
+        "SELECT credit_balance FROM users WHERE id = ?", (user_id,)
+    )
+    new_balance = float(rows[0]["credit_balance"]) if rows else 0.0
+    await db.execute(
+        """INSERT INTO credit_transactions
+            (user_id, amount, balance_after, tx_type, reference_id, description, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (user_id, -amount, new_balance, tx_type, reference_id, description, time.time()),
+    )
+    await db.commit()
+    return new_balance
+
+
+async def get_credit_history(user_id: str, limit: int = 50) -> list[dict[str, Any]]:
+    """Return recent credit transactions for a user."""
+    db = await get_db()
+    rows = await db.execute_fetchall(
+        "SELECT * FROM credit_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+        (user_id, limit),
+    )
+    return [dict(r) for r in rows]
 
 
 # ── Game Sessions ───────────────────────────────────────────────────

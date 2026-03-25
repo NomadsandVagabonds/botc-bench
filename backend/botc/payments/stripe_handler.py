@@ -94,6 +94,54 @@ async def create_checkout_session(
     }
 
 
+async def create_credit_checkout_session(
+    user_id: str,
+    pack: dict,
+) -> dict:
+    """Create a Stripe Checkout Session for a credit pack purchase.
+
+    Returns {url, session_id}.
+    """
+    stripe.api_key = _get_stripe_key()
+    base_url = _get_base_url()
+
+    amount_cents = int(round(pack["price_usd"] * 100))
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=[{
+            "price_data": {
+                "currency": "usd",
+                "unit_amount": amount_cents,
+                "product_data": {
+                    "name": f"BloodBench Credits — {pack['label']}",
+                    "description": f"{pack['credits']:.0f} game credits for BloodBench",
+                },
+            },
+            "quantity": 1,
+        }],
+        mode="payment",
+        success_url=f"{base_url}/credits/success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{base_url}/lobby",
+        metadata={
+            "type": "credit_pack",
+            "pack_id": pack["id"],
+            "user_id": user_id,
+            "credits": str(pack["credits"]),
+        },
+    )
+
+    logger.info(
+        "Credit checkout session %s created — $%.2f for %s (user %s)",
+        session.id, pack["price_usd"], pack["id"], user_id,
+    )
+
+    return {
+        "url": session.url,
+        "session_id": session.id,
+    }
+
+
 def verify_webhook_signature(payload: bytes, sig_header: str) -> dict:
     """Verify and parse a Stripe webhook event.
 

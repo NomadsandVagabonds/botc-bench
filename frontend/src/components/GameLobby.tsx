@@ -7,7 +7,8 @@ import { useGameStore } from '../stores/gameStore.ts';
 import { CHARACTERS_SORTED } from '../data/characters.ts';
 import { SplashScreen } from './SplashScreen.tsx';
 import { PageTransition } from './PageTransition.tsx';
-import { PaymentGate } from './PaymentGate.tsx';
+import { CreditBadge, CreditBalanceInline, CreditPurchaseModal } from './CreditSystem.tsx';
+import { estimateCost, getCreditBalance } from '../api/rest.ts';
 
 // ── Available models ──────────────────────────────────────────────────
 
@@ -1512,9 +1513,31 @@ export function GameLobby() {
   const [gamesLoading, setGamesLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [showPaymentGate, setShowPaymentGate] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<'stripe' | 'api'>('stripe');
+  const [showCreditPurchase, setShowCreditPurchase] = useState(false);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Fetch credit balance on mount
+  useEffect(() => {
+    const token = localStorage.getItem('wager_token');
+    if (token) {
+      getCreditBalance()
+        .then((data) => setCreditBalance(data.balance))
+        .catch(() => setCreditBalance(null));
+    }
+  }, []);
+
+  // Update cost estimate when game config changes
+  useEffect(() => {
+    const models = seatModels.slice(0, playerCount).map((modelId) => {
+      const model = AVAILABLE_MODELS.find((m) => m.id === modelId);
+      return { provider: model?.provider ?? 'anthropic', model: modelId };
+    });
+    estimateCost({ num_players: playerCount, seat_models: models, max_days: options.maxDays })
+      .then((est) => setEstimatedCost(est.charge_amount))
+      .catch(() => setEstimatedCost(null));
+  }, [playerCount, seatModels, options.maxDays]);
 
   const fetchGames = useCallback(async () => {
     try { setGames(await listGames()); setGamesError(null); }
@@ -1649,32 +1672,47 @@ export function GameLobby() {
 
     const { config, hasClientKeys } = buildGameConfig();
 
-    // Stripe mode: show payment gate
-    if (paymentMode === 'stripe') {
-      setShowPaymentGate(true);
-      setStarting(false);
+    // BYOK: need client API keys
+    if (hasClientKeys) {
+      try {
+        const result = await createConfiguredGame(config);
+        navigateWithTransition(`/game/${result.game_id}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed';
+        if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
+        else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab.');
+        else setStartError(msg);
+      } finally { setStarting(false); }
       return;
     }
 
-    // API mode: need BYOK keys
-    if (!hasClientKeys) {
-      setStartError('No API keys entered.');
+    // Credit-paid game: check balance before sending to backend
+    if (estimatedCost !== null && (creditBalance ?? 0) < estimatedCost) {
+      setStartError(`Insufficient credits. Need $${estimatedCost.toFixed(2)}, have $${(creditBalance ?? 0).toFixed(2)}.`);
+      setShowCreditPurchase(true);
       setStarting(false);
-      setView('options');
-      setOptionsTab('api');
       return;
     }
 
     try {
       const result = await createConfiguredGame(config);
+      // Refresh balance after game start (credits deducted server-side)
+      getCreditBalance()
+        .then((data) => setCreditBalance(data.balance))
+        .catch(() => {});
       navigateWithTransition(`/game/${result.game_id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed';
-      if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
-      else if (msg.includes('API keys') || msg.includes('Missing')) setStartError('Missing API keys. Add them in the API Keys tab.');
-      else setStartError(msg);
+      if (msg.includes('402') || msg.includes('Insufficient')) {
+        setStartError(msg);
+        setShowCreditPurchase(true);
+      } else if (msg.includes('fetch') || msg.includes('Network')) {
+        setStartError('Cannot connect to server.');
+      } else {
+        setStartError(msg);
+      }
     } finally { setStarting(false); }
-  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate, buildGameConfig, paymentMode]);
+  }, [playerCount, script, seatModels, seatRoles, seatCharacters, roleMode, roleWarnings, options, clientKeys, navigate, buildGameConfig, creditBalance, estimatedCost]);
 
   const isAssignedAvailable = script in SCRIPT_ROLES;
 
@@ -1705,19 +1743,12 @@ export function GameLobby() {
             </div>
           </div>
 
-          <div style={st.field}>
-            <label style={st.label}>Payment</label>
-            <div style={{ display: 'flex', gap: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(92, 61, 26, 0.25)' }}>
-              <button style={{ ...st.toggleBtn, background: paymentMode === 'stripe' ? 'rgba(91, 33, 182, 0.15)' : 'transparent', fontWeight: paymentMode === 'stripe' ? 700 : 400, color: paymentMode === 'stripe' ? '#5b21b6' : '#2a1a0a' }} onClick={() => setPaymentMode('stripe')}>Stripe</button>
-              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? 'rgba(92, 61, 26, 0.2)' : 'transparent', fontWeight: paymentMode === 'api' ? 700 : 400 }} onClick={() => setPaymentMode('api')}>API Keys</button>
-            </div>
-            <div style={{ fontSize: '0.6rem', color: '#8b7355', marginTop: 3, lineHeight: 1.4 }}>
-              {paymentMode === 'stripe'
-                ? 'Pay per game via Stripe. Only Stripe-eligible models available.'
-                : <>Bring your own API keys. <button style={{ background: 'none', border: 'none', color: '#5b21b6', fontSize: '0.6rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }} onClick={() => { setView('options'); setOptionsTab('api'); }}>Configure keys</button></>
-              }
-            </div>
-          </div>
+          <CreditBalanceInline
+            balance={creditBalance}
+            estimatedCost={estimatedCost}
+            onBuyCredits={() => setShowCreditPurchase(true)}
+            onUseApiKeys={() => { setView('options'); setOptionsTab('api'); }}
+          />
 
           <div style={st.field}>
             <label style={st.label}>Quick Fill</label>
@@ -1753,14 +1784,9 @@ export function GameLobby() {
             </div>
           )}
 
-          {paymentMode === 'stripe' && (
-            <p style={{ fontSize: '0.65rem', color: '#5b21b6', marginTop: 6, fontWeight: 600 }}>
-              You'll see a cost estimate before paying.
-            </p>
-          )}
-          {paymentMode === 'api' && (
-            <p style={{ fontSize: '0.65rem', color: '#8b7355', marginTop: 6 }}>
-              {Object.keys(clientKeys).length > 0 ? 'Using your API keys' : 'No API keys configured yet'}
+          {Object.keys(clientKeys).length > 0 && (
+            <p style={{ fontSize: '0.65rem', color: '#2d5a2d', marginTop: 6, fontWeight: 600 }}>
+              BYOK mode — using your API keys (free)
             </p>
           )}
         </div>
@@ -2146,24 +2172,18 @@ export function GameLobby() {
     </div>
   );
 
-  // Build config for payment gate (memoized to avoid re-renders)
-  const paymentGameConfig = useMemo(() => {
-    if (!showPaymentGate) return null;
-    return buildGameConfig().config;
-  }, [showPaymentGate, buildGameConfig]);
-
   return (
     <>
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       {transitioning && <PageTransition onMidpoint={handleTransitionMidpoint} />}
-      {showPaymentGate && paymentGameConfig && (
-        <PaymentGate
-          gameConfig={paymentGameConfig}
-          onClose={() => setShowPaymentGate(false)}
-          onUseOwnKeys={() => {
-            setShowPaymentGate(false);
-            setView('options');
-            setOptionsTab('api');
+      {showCreditPurchase && (
+        <CreditPurchaseModal
+          onClose={() => {
+            setShowCreditPurchase(false);
+            // Refresh balance after closing (might have bought credits)
+            getCreditBalance()
+              .then((data) => setCreditBalance(data.balance))
+              .catch(() => {});
           }}
         />
       )}

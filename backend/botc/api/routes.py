@@ -30,8 +30,8 @@ router = APIRouter()
 _games: dict[str, dict[str, Any]] = {}
 _runners: dict[str, GameRunner] = {}
 
-# Payment tracking: game_id → payment info
-_payment_info: dict[str, dict[str, Any]] = {}
+# Credit tracking: game_id → {user_id, charged_amount} for refund on failure
+_credit_charges: dict[str, dict[str, Any]] = {}
 
 
 def _load_saved_games() -> None:
@@ -322,11 +322,12 @@ async def create_game(request: CreateGameRequest) -> GameResponse:
 
 
 @router.post("/api/games/configured", response_model=GameResponse)
-async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
-    """Start a game with per-seat model choices, using server-side API keys from .env.
+async def configured_game(request: ConfiguredGameRequest, raw_request: Request) -> GameResponse:
+    """Start a game with per-seat model choices.
 
-    Bridges the gap between /api/games (requires per-agent API keys in the request)
-    and /api/games/quick (ignores model choices, round-robins automatically).
+    Two modes:
+    - BYOK: client provides API keys in provider_keys → free, no auth needed
+    - Credits: no provider_keys → requires auth, deducts credits, uses server keys
     """
     _check_concurrent_limit()
     if len(request.seat_models) != request.num_players:
@@ -334,6 +335,39 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
             status_code=422,
             detail=f"Need {request.num_players} seat_models, got {len(request.seat_models)}",
         )
+
+    is_byok = bool(request.provider_keys and len(request.provider_keys) > 0)
+    credit_user_id: str | None = None
+    charge_amount: float = 0.0
+
+    # ── Credit-paid game: auth + model validation + balance check ──
+    if not is_byok:
+        user = await require_auth(raw_request)
+        credit_user_id = user["id"]
+
+        # Validate models against allowed list
+        models = [sm.model for sm in request.seat_models]
+        disallowed = [m for m in models if m not in PAID_ALLOWED_MODELS]
+        if disallowed:
+            allowed_list = ", ".join(sorted(PAID_ALLOWED_MODELS))
+            raise HTTPException(
+                status_code=422,
+                detail=f"Credit games only support: {allowed_list}. "
+                       f"Use your own API keys for: {', '.join(set(disallowed))}",
+            )
+
+        # Estimate cost and deduct credits
+        estimate = estimate_game_cost(request.num_players, models, request.max_days)
+        charge_amount = estimate["charge_amount"]
+
+        from botc.wager.db import deduct_credits
+        try:
+            await deduct_credits(
+                credit_user_id, charge_amount, "game_debit", None,
+                f"{request.num_players}p game (est ${estimate['estimated_cost']:.2f})",
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=402, detail=str(e))
 
     # Collect required providers and look up their API keys
     # Priority: client-provided keys > server .env
@@ -440,6 +474,18 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
         except Exception as e:
             logger.exception("Game failed")
             _mark_game_failed(runner, e)
+            # Refund credits on failure
+            if credit_user_id and charge_amount > 0:
+                try:
+                    from botc.wager.db import add_credits
+                    gid = runner.state.game_id if runner.state else "unknown"
+                    await add_credits(
+                        credit_user_id, charge_amount, "game_refund", gid,
+                        "Game failed — credits refunded",
+                    )
+                    logger.info("Refunded %.2f credits to user %s for failed game", charge_amount, credit_user_id)
+                except Exception:
+                    logger.exception("Credit refund failed for user %s", credit_user_id)
 
     task = asyncio.create_task(run_game())
 
@@ -447,6 +493,10 @@ async def configured_game(request: ConfiguredGameRequest) -> GameResponse:
     game_id = runner.state.game_id if runner.state else "pending"
     _games[game_id] = {"status": "running", "runner": runner, "task": task}
     _runners[game_id] = runner
+
+    # Track credit charge for this game
+    if credit_user_id:
+        _credit_charges[game_id] = {"user_id": credit_user_id, "charged_amount": charge_amount}
 
     return GameResponse(game_id=game_id, status="running")
 
@@ -744,22 +794,6 @@ class EstimateCostRequest(BaseModel):
     max_days: int = 20
 
 
-class CheckoutRequest(BaseModel):
-    num_players: int
-    seat_models: list[SeatModelConfig]
-    seat_roles: list[str] | None = None
-    seat_characters: list[int | None] | None = None
-    seed: int | None = None
-    max_days: int = 50
-    reveal_models: str = "true"
-    share_stats: bool = False
-    speech_style: str | None = None
-    script: str = "trouble_brewing"
-
-
-class RefundRequest(BaseModel):
-    reason: str = "game_failed"
-
 
 @router.post("/api/estimate-cost")
 async def api_estimate_cost(request: EstimateCostRequest) -> dict:
@@ -769,64 +803,9 @@ async def api_estimate_cost(request: EstimateCostRequest) -> dict:
     return estimate
 
 
-@router.post("/api/checkout")
-async def api_create_checkout(request: CheckoutRequest) -> dict:
-    """Create a Stripe Checkout session for a paid game.
-
-    Returns {url, session_id} — frontend redirects the user to url.
-    """
-    stripe_key = os.environ.get("STRIPE_SECRET_KEY", "")
-    if not stripe_key:
-        raise HTTPException(
-            status_code=503,
-            detail="Stripe payments not configured on this server",
-        )
-
-    # Validate models — paid games are restricted to cheap/high-rate-limit models
-    models = [sm.model for sm in request.seat_models]
-    disallowed = [m for m in models if m not in PAID_ALLOWED_MODELS]
-    if disallowed:
-        allowed_list = ", ".join(sorted(PAID_ALLOWED_MODELS))
-        raise HTTPException(
-            status_code=422,
-            detail=f"Paid games only support: {allowed_list}. "
-                   f"Use your own API keys for: {', '.join(set(disallowed))}",
-        )
-    estimate = estimate_game_cost(request.num_players, models, request.max_days)
-
-    # Build the game config to store in Stripe metadata
-    game_config = {
-        "script": request.script,
-        "num_players": request.num_players,
-        "seat_models": [{"provider": sm.provider, "model": sm.model} for sm in request.seat_models],
-        "max_days": request.max_days,
-        "reveal_models": request.reveal_models,
-        "share_stats": request.share_stats,
-        "speech_style": request.speech_style,
-        "seed": request.seed,
-    }
-    if request.seat_roles:
-        game_config["seat_roles"] = request.seat_roles
-    if request.seat_characters:
-        game_config["seat_characters"] = request.seat_characters
-
-    from botc.payments.stripe_handler import create_checkout_session
-    result = await create_checkout_session(
-        game_config=game_config,
-        charge_amount=estimate["charge_amount"],
-        estimated_cost=estimate["estimated_cost"],
-        item_type="game",
-    )
-
-    return {
-        **result,
-        "estimate": estimate,
-    }
-
-
 @router.post("/api/webhook/stripe")
 async def stripe_webhook(request: Request) -> dict:
-    """Stripe webhook — handles checkout.session.completed to start paid games."""
+    """Stripe webhook — handles checkout.session.completed for credit purchases."""
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 
@@ -844,190 +823,90 @@ async def stripe_webhook(request: Request) -> dict:
     if event_type == "checkout.session.completed":
         session = event["data"]["object"]
         metadata = session.get("metadata", {})
-        item_type = metadata.get("type", "game")
-        payment_intent_id = session.get("payment_intent", "")
+        item_type = metadata.get("type", "")
 
-        if item_type == "game":
-            try:
-                game_config_raw = json_mod.loads(metadata.get("game_config", "{}"))
-                await _start_paid_game(game_config_raw, payment_intent_id, metadata)
-            except Exception:
-                logger.exception("Failed to start paid game from Stripe webhook")
-                # Attempt refund on failure
-                try:
-                    from botc.payments.stripe_handler import issue_refund
-                    await issue_refund(payment_intent_id, reason="requested_by_customer")
-                    logger.info("Auto-refunded failed game start for pi %s", payment_intent_id)
-                except Exception:
-                    logger.exception("Auto-refund also failed for pi %s", payment_intent_id)
+        if item_type == "credit_pack":
+            user_id = metadata.get("user_id", "")
+            credits = float(metadata.get("credits", 0))
+            pack_id = metadata.get("pack_id", "")
+            session_id = session.get("id", "")
+
+            if user_id and credits > 0:
+                from botc.wager.db import add_credits
+                new_balance = await add_credits(
+                    user_id, credits, "purchase", session_id,
+                    f"Purchased {pack_id} ({credits:.0f} credits)",
+                )
+                logger.info(
+                    "Credits added: user %s +%.1f credits (pack %s), balance now $%.2f",
+                    user_id, credits, pack_id, new_balance,
+                )
 
     return {"status": "ok"}
 
 
-async def _start_paid_game(game_config_raw: dict, payment_intent_id: str, metadata: dict) -> None:
-    """Start a game using server API keys after successful Stripe payment."""
-    num_players = game_config_raw["num_players"]
-    seat_models_raw = game_config_raw["seat_models"]
-
-    # Collect server-side API keys
-    required_providers = {sm["provider"] for sm in seat_models_raw}
-    provider_keys: dict[str, str] = {}
-
-    for provider in required_providers:
-        env_var = _PROVIDER_ENV_KEYS.get(provider)
-        if not env_var:
-            raise ValueError(f"Unknown provider: {provider}")
-        key = os.environ.get(env_var, "")
-        if not key:
-            raise ValueError(f"Server missing {env_var} for paid game")
-        provider_keys[provider] = key
-
-    agent_configs = [
-        AgentConfig(
-            agent_id=f"seat-{i}",
-            provider=sm["provider"],
-            model=sm["model"],
-            api_key=provider_keys[sm["provider"]],
-            temperature=0.8,
-        )
-        for i, sm in enumerate(seat_models_raw)
-    ]
-
-    game_config = GameConfig(
-        script=game_config_raw.get("script", "trouble_brewing"),
-        num_players=num_players,
-        breakout=BreakoutConfig(
-            num_rounds=1,
-            messages_per_agent=2,
-            max_groups=3,
-            min_group_size=2,
-            whispers_per_round=1,
-            max_whisper_chars=150,
-        ),
-        opening_statements=True,
-        breakout_min_players=6,
-        seed=game_config_raw.get("seed"),
-        max_days=game_config_raw.get("max_days", 50),
-        max_concurrent_llm_calls=3,
-        reveal_models=game_config_raw.get("reveal_models", "true"),
-        share_stats=game_config_raw.get("share_stats", False),
-        seat_roles=game_config_raw.get("seat_roles"),
-        seat_characters=game_config_raw.get("seat_characters"),
-        speech_style=game_config_raw.get("speech_style"),
-    )
-
-    def on_event(event_type: str, data: dict) -> None:
-        if runner.state:
-            asyncio.create_task(
-                ws_manager.broadcast(runner.state.game_id, event_type, data)
-            )
-
-    runner = GameRunner(game_config, agent_configs, on_event=on_event)
-
-    async def run_game():
-        try:
-            result = await runner.run()
-            game_id = result.game_id
-            _games[game_id] = {"status": "completed", "result": result}
-            _save_completed_game(runner, result)
-
-            # Track actual cost vs charged amount
-            actual_cost = result.token_summary.get("total_cost_usd", 0) if isinstance(result.token_summary, dict) else 0
-            _payment_info[game_id] = {
-                "payment_intent_id": payment_intent_id,
-                "charged_amount": float(metadata.get("charge_amount", 0)),
-                "estimated_cost": float(metadata.get("estimated_cost", 0)),
-                "actual_cost": actual_cost,
-                "payment_method": "stripe",
-            }
-
-            logger.info("Paid game %s completed: %s wins (actual cost: $%.2f)", game_id, result.winner, actual_cost)
-        except Exception as e:
-            logger.exception("Paid game failed")
-            _mark_game_failed(runner, e)
-            # Auto-refund on failure
-            try:
-                from botc.payments.stripe_handler import issue_refund
-                await issue_refund(payment_intent_id, reason="requested_by_customer")
-                logger.info("Auto-refunded failed game for pi %s", payment_intent_id)
-            except Exception:
-                logger.exception("Auto-refund failed for pi %s", payment_intent_id)
-
-    task = asyncio.create_task(run_game())
-
-    await asyncio.sleep(0.2)
-    game_id = runner.state.game_id if runner.state else "pending"
-    _games[game_id] = {"status": "running", "runner": runner, "task": task}
-    _runners[game_id] = runner
-
-    logger.info("Paid game %s started (pi: %s)", game_id, payment_intent_id)
+# ── Credits ────────────────────────────────────────────────────────
 
 
-@router.post("/api/refund/{game_id}")
-async def refund_game(game_id: str, body: RefundRequest | None = None) -> dict:
-    """Refund a Stripe-paid game (full refund)."""
-    payment = _payment_info.get(game_id)
-    if not payment:
-        raise HTTPException(status_code=404, detail="No payment record for this game")
-
-    pi_id = payment.get("payment_intent_id")
-    if not pi_id:
-        raise HTTPException(status_code=400, detail="No payment intent to refund")
-
-    if payment.get("refunded"):
-        return {"status": "already_refunded", "game_id": game_id}
-
-    from botc.payments.stripe_handler import issue_refund
-    reason = body.reason if body else "requested_by_customer"
-    refund = await issue_refund(pi_id, reason=reason)
-
-    payment["refunded"] = True
-    payment["refund_id"] = refund.get("id")
-    payment["refund_amount"] = refund.get("amount", 0) / 100
-
-    return {
-        "status": "refunded",
-        "game_id": game_id,
-        "refund_amount": payment["refund_amount"],
-    }
+class CreditPurchaseRequest(BaseModel):
+    pack_id: str
 
 
-@router.get("/api/payment-status")
-async def payment_status(session_id: str) -> dict:
-    """Check if a Stripe checkout session has been completed and return the game_id."""
-    from botc.payments.stripe_handler import get_session
+@router.get("/api/credits/balance")
+async def credit_balance(request: Request) -> dict:
+    """Return the authenticated user's credit balance."""
+    user = await require_auth(request)
+    from botc.wager.db import get_credit_balance
+    balance = await get_credit_balance(user["id"])
+    return {"balance": balance, "display_name": user.get("display_name", "")}
 
-    try:
-        session = get_session(session_id)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to retrieve session: {e}")
 
-    status = session.get("status", "unknown")
-    payment_status_val = session.get("payment_status", "unknown")
+@router.get("/api/credits/packs")
+async def credit_packs() -> dict:
+    """Return available credit packs."""
+    from botc.payments.credit_packs import CREDIT_PACKS
+    return {"packs": CREDIT_PACKS}
 
-    # Find the game started by this payment
-    pi_id = session.get("payment_intent", "")
-    game_id = None
-    for gid, pinfo in _payment_info.items():
-        if pinfo.get("payment_intent_id") == pi_id:
-            game_id = gid
-            break
 
-    return {
-        "session_status": status,
-        "payment_status": payment_status_val,
-        "game_id": game_id,
-    }
+@router.post("/api/credits/purchase")
+async def purchase_credits(request: Request, body: CreditPurchaseRequest) -> dict:
+    """Create a Stripe Checkout session for a credit pack purchase."""
+    user = await require_auth(request)
+
+    stripe_key = os.environ.get("STRIPE_SECRET_KEY", "")
+    if not stripe_key:
+        raise HTTPException(status_code=503, detail="Stripe payments not configured")
+
+    from botc.payments.credit_packs import get_pack
+    pack = get_pack(body.pack_id)
+    if not pack:
+        raise HTTPException(status_code=422, detail=f"Unknown pack: {body.pack_id}")
+
+    from botc.payments.stripe_handler import create_credit_checkout_session
+    result = await create_credit_checkout_session(user["id"], pack)
+
+    return result
+
+
+@router.get("/api/credits/history")
+async def credit_history(request: Request) -> dict:
+    """Return the authenticated user's credit transaction history."""
+    user = await require_auth(request)
+    from botc.wager.db import get_credit_history
+    history = await get_credit_history(user["id"])
+    return {"transactions": history}
 
 
 @router.get("/api/stripe-config")
 async def stripe_config() -> dict:
-    """Return the Stripe publishable key for the frontend."""
+    """Return Stripe config for the frontend."""
     pk = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+    from botc.payments.credit_packs import CREDIT_PACKS
     return {
         "publishable_key": pk,
         "payments_enabled": bool(pk and os.environ.get("STRIPE_SECRET_KEY", "")),
         "paid_allowed_models": sorted(PAID_ALLOWED_MODELS),
+        "credit_packs": CREDIT_PACKS,
     }
 
 

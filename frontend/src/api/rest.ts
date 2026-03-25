@@ -310,7 +310,7 @@ export async function getMonitorResult(
   return request<MonitorResult>(`/api/games/${gameId}/monitors/${monitorId}`);
 }
 
-// ── Payments / Stripe ────────────────────────────────────────────────
+// ── Cost Estimation ──────────────────────────────────────────────────
 
 export interface CostEstimate {
   estimated_cost: number;
@@ -321,24 +321,6 @@ export interface CostEstimate {
   est_days: number;
   num_players: number;
   assumptions: string;
-}
-
-export interface CheckoutResult {
-  url: string;
-  session_id: string;
-  estimate: CostEstimate;
-}
-
-export interface StripeConfig {
-  publishable_key: string;
-  payments_enabled: boolean;
-  paid_allowed_models: string[];
-}
-
-export interface PaymentStatusResult {
-  session_status: string;
-  payment_status: string;
-  game_id: string | null;
 }
 
 /** Get cost estimate for a game configuration. */
@@ -353,25 +335,61 @@ export async function estimateCost(config: {
   });
 }
 
-/** Create a Stripe Checkout session for a paid game. */
-export async function createCheckout(config: ConfiguredGameRequest): Promise<CheckoutResult> {
-  return request<CheckoutResult>('/api/checkout', {
+// ── Credits ─────────────────────────────────────────────────────────
+
+export interface CreditBalance {
+  balance: number;
+  display_name: string;
+}
+
+export interface CreditPack {
+  id: string;
+  credits: number;
+  price_usd: number;
+  label: string;
+}
+
+export interface CreditTransaction {
+  id: number;
+  amount: number;
+  balance_after: number;
+  tx_type: string;
+  reference_id: string | null;
+  description: string;
+  created_at: number;
+}
+
+export interface StripeConfig {
+  publishable_key: string;
+  payments_enabled: boolean;
+  paid_allowed_models: string[];
+  credit_packs: CreditPack[];
+}
+
+/** Get the authenticated user's credit balance. */
+export async function getCreditBalance(): Promise<CreditBalance> {
+  return request<CreditBalance>('/api/credits/balance');
+}
+
+/** Get available credit packs. */
+export async function getCreditPacks(): Promise<{ packs: CreditPack[] }> {
+  return request<{ packs: CreditPack[] }>('/api/credits/packs');
+}
+
+/** Purchase a credit pack via Stripe Checkout. */
+export async function purchaseCredits(packId: string): Promise<{ url: string; session_id: string }> {
+  return request('/api/credits/purchase', {
     method: 'POST',
-    body: JSON.stringify(config),
+    body: JSON.stringify({ pack_id: packId }),
   });
 }
 
-/** Check payment session status and get game_id if started. */
-export async function getPaymentStatus(sessionId: string): Promise<PaymentStatusResult> {
-  return request<PaymentStatusResult>(`/api/payment-status?session_id=${encodeURIComponent(sessionId)}`);
+/** Get credit transaction history. */
+export async function getCreditHistory(): Promise<{ transactions: CreditTransaction[] }> {
+  return request<{ transactions: CreditTransaction[] }>('/api/credits/history');
 }
 
-/** Get Stripe config (publishable key, enabled status). */
+/** Get Stripe config (publishable key, enabled status, credit packs). */
 export async function getStripeConfig(): Promise<StripeConfig> {
   return request<StripeConfig>('/api/stripe-config');
-}
-
-/** Request a refund for a paid game. */
-export async function refundGame(gameId: string): Promise<{ status: string; refund_amount?: number }> {
-  return request(`/api/refund/${gameId}`, { method: 'POST' });
 }

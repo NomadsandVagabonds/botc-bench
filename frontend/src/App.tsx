@@ -5,7 +5,7 @@ import { GameLobby } from './components/GameLobby.tsx';
 import { AdminGate } from './components/AdminGate.tsx';
 import { GameView } from './components/game/GameView.tsx';
 import { SpectatorView } from './features/wager/components/SpectatorView.tsx';
-import { PaymentSuccess } from './components/PaymentGate.tsx';
+import { CreditSuccessPage } from './components/CreditSystem.tsx';
 
 // Show landing page on production (bloodbench.com), GameLobby on localhost
 const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
@@ -19,7 +19,8 @@ export default function App() {
       <Route path="/lobby" element={<AdminGate><GameLobby /></AdminGate>} />
       <Route path="/game/:gameId" element={<GameView />} />
       <Route path="/spectate/:gameId" element={<SpectatorView />} />
-      <Route path="/payment/success" element={<PaymentSuccess />} />
+      <Route path="/payment/success" element={<CreditSuccessPage />} />
+      <Route path="/credits/success" element={<CreditSuccessPage />} />
     </Routes>
   );
 }

@@ -2252,15 +2252,15 @@ const st: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     alignItems: 'center',
     background: '#0a0806',
-    overflow: 'hidden',
+    overflow: 'auto',
   },
   aspectContainer: {
     position: 'relative',
     width: '100%',
-    maxHeight: '100vh',
+    minHeight: '100vh',
     aspectRatio: '1.79',
     maxWidth: 'calc(100vh * 1.79)',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   scrollBg: {
     position: 'absolute',

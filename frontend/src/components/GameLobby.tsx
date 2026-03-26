@@ -217,16 +217,9 @@ function CharacterSelect({ spriteId, usedCharacters, onChange }: {
 function ModelSelect({ value, onChange, style: extraStyle }: {
   value: string; onChange: (m: string) => void; style?: React.CSSProperties;
 }) {
-  const stripeModels = AVAILABLE_MODELS.filter(m => STRIPE_MODEL_IDS.has(m.id));
-  const apiModels = AVAILABLE_MODELS.filter(m => !STRIPE_MODEL_IDS.has(m.id));
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...st.select, ...extraStyle }}>
-      <optgroup label="Stripe Eligible">
-        {stripeModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-      </optgroup>
-      <optgroup label="API Key Required">
-        {apiModels.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-      </optgroup>
+      {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
     </select>
   );
 }

@@ -21,7 +21,7 @@ from botc.engine.roles import load_script
 from botc.engine.types import BreakoutConfig, GameConfig, ROLE_DISTRIBUTION, RoleType
 from botc.llm.provider import AgentConfig
 from botc.orchestrator.game_runner import GameResult, GameRunner
-from botc.payments.cost_estimator import estimate_game_cost, estimate_monitor_cost, PAID_ALLOWED_MODELS
+from botc.payments.cost_estimator import estimate_game_cost, estimate_monitor_cost
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -345,18 +345,8 @@ async def configured_game(request: ConfiguredGameRequest, raw_request: Request) 
         user = await require_auth(raw_request)
         credit_user_id = user["id"]
 
-        # Validate models against allowed list
-        models = [sm.model for sm in request.seat_models]
-        disallowed = [m for m in models if m not in PAID_ALLOWED_MODELS]
-        if disallowed:
-            allowed_list = ", ".join(sorted(PAID_ALLOWED_MODELS))
-            raise HTTPException(
-                status_code=422,
-                detail=f"Credit games only support: {allowed_list}. "
-                       f"Use your own API keys for: {', '.join(set(disallowed))}",
-            )
-
         # Estimate cost and deduct credits
+        models = [sm.model for sm in request.seat_models]
         estimate = estimate_game_cost(request.num_players, models, request.max_days)
         charge_amount = estimate["charge_amount"]
 
@@ -905,7 +895,6 @@ async def stripe_config() -> dict:
     return {
         "publishable_key": pk,
         "payments_enabled": bool(pk and os.environ.get("STRIPE_SECRET_KEY", "")),
-        "paid_allowed_models": sorted(PAID_ALLOWED_MODELS),
         "credit_packs": CREDIT_PACKS,
     }
 

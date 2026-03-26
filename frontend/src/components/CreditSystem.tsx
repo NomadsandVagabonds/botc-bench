@@ -55,7 +55,7 @@ export function CoinDisplay({ amount, size = 22 }: { amount: number; size?: numb
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
       <CoinIcon size={size} />
-      <span style={{ fontSize: Math.max(12, size * 0.55), fontFamily: PX, color: GOLD_BRIGHT }}>
+      <span style={{ fontSize: Math.max(12, size * 0.55), fontFamily: PX, color: '#3d2812' }}>
         x{rounded}
       </span>
     </span>

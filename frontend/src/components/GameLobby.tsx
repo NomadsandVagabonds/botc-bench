@@ -37,6 +37,7 @@ const AVAILABLE_MODELS = [
   { id: 'moonshotai/kimi-k2', label: 'Kimi K2 (OR)', provider: 'openrouter' },
   { id: 'deepseek/deepseek-r1', label: 'DeepSeek R1 (OR)', provider: 'openrouter' },
   { id: 'qwen/qwen3-235b-a22b', label: 'Qwen3 235B (OR)', provider: 'openrouter' },
+  { id: 'x-ai/grok-4.20-beta', label: 'Grok 4.20 (OR)', provider: 'openrouter' },
 ];
 
 const PROVIDER_COLORS: Record<string, string> = {

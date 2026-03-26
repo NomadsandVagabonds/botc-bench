@@ -34,6 +34,13 @@ MODEL_PRICING: dict[str, tuple[float, float]] = {
     "gemini-2.0-flash": (0.10, 0.40),
     "gemini-3-flash-preview": (0.50, 3.0),
     "gemini-3.1-pro-preview": (1.25, 10.0),
+    # OpenRouter models (approximate pricing)
+    "x-ai/grok-4.20-beta": (2.0, 10.0),
+    "meta-llama/llama-3.1-70b-instruct": (0.40, 0.40),
+    "mistralai/mistral-large": (2.0, 6.0),
+    "moonshotai/kimi-k2": (0.60, 2.0),
+    "deepseek/deepseek-r1": (0.55, 2.19),
+    "qwen/qwen3-235b-a22b": (0.80, 3.0),
 }
 
 

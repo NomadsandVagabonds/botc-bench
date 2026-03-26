@@ -141,15 +141,14 @@ async def require_auth(request: Request) -> dict:
     """
     host = request.headers.get("host", "")
     if "localhost" in host or "127.0.0.1" in host:
-        return {"github_id": "local", "github_login": "local"}
+        return {"id": "local", "github_id": "local", "github_login": "local", "display_name": "local"}
 
     token = request.headers.get("X-Wager-Token")
     if not token:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    from botc.wager.db import get_db
-    db = get_db()
-    user = db.get_user_by_token(token)
+    from botc.wager.db import get_user_by_token
+    user = await get_user_by_token(token)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     return user

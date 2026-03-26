@@ -151,9 +151,13 @@ def verify_webhook_signature(payload: bytes, sig_header: str) -> dict:
     if not webhook_secret:
         raise RuntimeError("STRIPE_WEBHOOK_SECRET not set")
 
+    logger.info("Webhook debug: secret starts with %s, sig_header starts with %s, payload length %d",
+                webhook_secret[:12], sig_header[:30] if sig_header else "EMPTY", len(payload))
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
     except SignatureVerificationError as e:
+        logger.error("Signature verification failed: %s", e)
+        logger.error("Full sig_header: %s", sig_header)
         raise ValueError(f"Invalid Stripe signature: {e}")
 
     return event

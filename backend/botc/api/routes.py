@@ -818,19 +818,19 @@ async def stripe_webhook(request: Request) -> dict:
         logger.warning("Stripe webhook verification failed: %s", e)
         raise HTTPException(status_code=400, detail=str(e))
 
-    event_type = event.get("type", "")
+    event_type = event.type
     logger.info("Stripe webhook: %s", event_type)
 
     if event_type == "checkout.session.completed":
-        session = event["data"]["object"]
-        metadata = session.get("metadata", {})
+        session = event.data.object
+        metadata = dict(session.metadata or {})
         item_type = metadata.get("type", "")
 
         if item_type == "credit_pack":
             user_id = metadata.get("user_id", "")
             credits = float(metadata.get("credits", 0))
             pack_id = metadata.get("pack_id", "")
-            session_id = session.get("id", "")
+            session_id = session.id
 
             if user_id and credits > 0:
                 from botc.wager.db import add_credits

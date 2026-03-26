@@ -823,7 +823,8 @@ async def stripe_webhook(request: Request) -> dict:
 
     if event_type == "checkout.session.completed":
         session = event.data.object
-        metadata = dict(session.metadata or {})
+        raw_meta = session.metadata
+        metadata = raw_meta.to_dict() if hasattr(raw_meta, "to_dict") else (raw_meta or {})
         item_type = metadata.get("type", "")
 
         if item_type == "credit_pack":

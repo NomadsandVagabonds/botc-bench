@@ -27,11 +27,14 @@ CALLS_PER_PLAYER_PER_DAY = 9
 # Default pricing for unknown models (moderate assumption)
 DEFAULT_PRICING = (2.0, 10.0)
 
-# Minimum charge in USD (covers Stripe fees + overhead)
+# Minimum charge in USD
 MINIMUM_CHARGE_USD = 1.00
 
-# No buffer multiplier — we charge for max possible days (num_players - 2)
-# which is already the ceiling. Most games cost much less.
+# Service fee: $0.50 base + 10% markup covers Stripe (2.9% + $0.30) + server costs
+SERVICE_FEE_BASE = 0.50
+SERVICE_FEE_MULTIPLIER = 1.10
+
+# No variance buffer — we charge for max possible days (num_players - 2)
 DEFAULT_BUFFER = 1.0
 
 
@@ -99,9 +102,10 @@ def estimate_game_cost(
         }
 
     estimated_cost = total_per_day * est_days
-    buffered = estimated_cost * buffer_multiplier
-    is_minimum = buffered < MINIMUM_CHARGE_USD
-    charge_amount = max(buffered, MINIMUM_CHARGE_USD)
+    # Apply service fee: $0.50 base + 10% markup
+    with_fees = (estimated_cost * buffer_multiplier * SERVICE_FEE_MULTIPLIER) + SERVICE_FEE_BASE
+    is_minimum = with_fees < MINIMUM_CHARGE_USD
+    charge_amount = max(with_fees, MINIMUM_CHARGE_USD)
 
     return {
         "estimated_cost": round(estimated_cost, 2),

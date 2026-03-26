@@ -13,24 +13,25 @@ import { estimateCost, getCreditBalance } from '../api/rest.ts';
 // ── Available models ──────────────────────────────────────────────────
 
 const AVAILABLE_MODELS = [
+  // Anthropic (first-party)
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', provider: 'anthropic' },
   { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4.6', provider: 'anthropic' },
   { id: 'claude-opus-4-20250514', label: 'Claude Opus 4.6', provider: 'anthropic' },
+  // OpenAI (first-party)
+  { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai' },
   { id: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai' },
   { id: 'o3-mini', label: 'o3-mini', provider: 'openai' },
+  { id: 'o4-mini', label: 'o4-mini', provider: 'openai' },
   { id: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai' },
   { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai' },
   { id: 'gpt-5.4', label: 'GPT-5.4', provider: 'openai' },
-  // gpt-5.4-pro uses completions API, not chat — not compatible
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai' },
+  // Google (first-party)
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'google' },
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google' },
+  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google' },
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', provider: 'google' },
-  // OpenRouter — use any model via a single API key
-  { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (OR)', provider: 'openrouter' },
-  { id: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (OR)', provider: 'openrouter' },
-  { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini (OR)', provider: 'openrouter' },
-  { id: 'openai/gpt-4o', label: 'GPT-4o (OR)', provider: 'openrouter' },
-  { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash (OR)', provider: 'openrouter' },
+  // OpenRouter — non-first-party models only
   { id: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B (OR)', provider: 'openrouter' },
   { id: 'mistralai/mistral-large', label: 'Mistral Large (OR)', provider: 'openrouter' },
   { id: 'moonshotai/kimi-k2', label: 'Kimi K2 (OR)', provider: 'openrouter' },

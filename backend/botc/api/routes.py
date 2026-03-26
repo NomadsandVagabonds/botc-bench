@@ -792,18 +792,6 @@ async def api_estimate_cost(request: EstimateCostRequest) -> dict:
     return estimate
 
 
-@router.get("/api/debug/env-check")
-async def env_check():
-    """Temporary debug endpoint — remove after Stripe webhook is working."""
-    import os
-    return {
-        "has_webhook_secret": bool(os.environ.get("STRIPE_WEBHOOK_SECRET")),
-        "has_stripe_key": bool(os.environ.get("STRIPE_SECRET_KEY")),
-        "env_keys_with_stripe": [k for k in os.environ if "STRIPE" in k],
-    }
-
-
-
 @router.post("/api/webhook/stripe")
 async def stripe_webhook(request: Request) -> dict:
     """Stripe webhook — handles checkout.session.completed for credit purchases."""

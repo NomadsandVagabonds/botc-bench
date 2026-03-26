@@ -289,8 +289,8 @@ function DistributionSummary({ playerCount, seatRoles, roleMode, scriptId }: {
   const hasBaron = assigned.includes('baron');
   const expected = hasBaron ? withBaron : base;
   return (
-    <div style={{ fontSize: '0.62rem', color: '#5a4630', lineHeight: 1.5, marginTop: 4 }}>
-      <div style={{ fontWeight: 700, marginBottom: 2 }}>Required for {playerCount}p:</div>
+    <div style={{ fontSize: 12, color: '#3d2812', lineHeight: 1.6, marginTop: 6 }}>
+      <div style={{ fontWeight: 700, marginBottom: 3 }}>Required for {playerCount}p:</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {(['townsfolk', 'outsider', 'minion', 'demon'] as const).map((type) => {
           const exp = type === 'townsfolk' ? expected.t : type === 'outsider' ? expected.o : type === 'minion' ? expected.m : expected.d;
@@ -1752,9 +1752,9 @@ export function GameLobby() {
 
           <div style={st.field}>
             <label style={st.label}>Payment</label>
-            <div style={{ display: 'flex', gap: 0, borderRadius: 2, overflow: 'hidden', border: '1px solid rgba(139, 94, 42, 0.35)' }}>
-              <button style={{ ...st.toggleBtn, background: paymentMode === 'stripe' ? 'rgba(201, 168, 76, 0.2)' : 'transparent', fontWeight: paymentMode === 'stripe' ? 700 : 400, color: paymentMode === 'stripe' ? '#c9a84c' : '#6b5840' }} onClick={() => setPaymentMode('stripe')}>Credits</button>
-              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? 'rgba(201, 168, 76, 0.2)' : 'transparent', fontWeight: paymentMode === 'api' ? 700 : 400, color: paymentMode === 'api' ? '#c9a84c' : '#6b5840' }} onClick={() => setPaymentMode('api')}>API Keys</button>
+            <div style={{ display: 'flex', gap: 0, borderRadius: 2, overflow: 'hidden', border: '2px solid rgba(61, 40, 18, 0.3)' }}>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'stripe' ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: paymentMode === 'stripe' ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => setPaymentMode('stripe')}>Credits</button>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: paymentMode === 'api' ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => setPaymentMode('api')}>API Keys</button>
             </div>
           </div>
 
@@ -1817,29 +1817,29 @@ export function GameLobby() {
           )}
         </div>
 
-        {/* Right: Seats */}
+        {/* Right: Seats + Launch */}
         <div>
           <label style={st.label}>Seat Assignments {roleMode === 'assigned' ? '(Model + Role + Character)' : '(Model + Character)'}</label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 320, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 280, overflowY: 'auto' }}>
             {roleMode === 'random' ? (
               Array.from({ length: playerCount }, (_, i) => <SeatRow key={i} seat={i} model={seatModels[i]} spriteId={seatCharacters[i]} usedCharacters={usedCharacters} onChange={(m) => handleModelChange(i, m)} onCharChange={(c) => handleCharacterChange(i, c)} />)
             ) : (
               Array.from({ length: playerCount }, (_, i) => <AssignedSeatRow key={i} seat={i} model={seatModels[i]} roleId={seatRoles[i]} scriptId={script} spriteId={seatCharacters[i]} usedRoles={usedRoles} usedCharacters={usedCharacters} onModelChange={(m) => handleModelChange(i, m)} onRoleChange={(r) => handleRoleChange(i, r)} onCharChange={(c) => handleCharacterChange(i, c)} />)
             )}
           </div>
+
+          {startError && <div style={{ ...st.errorBox, marginTop: 10 }}>{startError}</div>}
+
+          <div style={{ marginTop: 12 }}>
+            <button
+              style={{ ...st.menuBtn, ...st.menuBtnPrimary, width: '100%', opacity: starting ? 0.5 : 1 }}
+              onClick={() => void handleStart()}
+              disabled={starting}
+            >
+              {starting ? '... Summoning Agents ...' : 'Launch Game'}
+            </button>
+          </div>
         </div>
-      </div>
-
-      {startError && <div style={{ ...st.errorBox, marginTop: 12 }}>{startError}</div>}
-
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
-        <button
-          style={{ ...st.menuBtn, ...st.menuBtnPrimary, opacity: starting ? 0.5 : 1 }}
-          onClick={() => void handleStart()}
-          disabled={starting}
-        >
-          {starting ? '... Summoning Agents ...' : 'Launch Game'}
-        </button>
       </div>
     </div>
   );

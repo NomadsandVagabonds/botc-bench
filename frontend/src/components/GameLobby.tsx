@@ -12,23 +12,8 @@ import { estimateCost, getCreditBalance } from '../api/rest.ts';
 
 // ── Available models ──────────────────────────────────────────────────
 
-// Models available via Stripe (cheap, high rate limits)
-const STRIPE_MODEL_IDS = new Set([
-  'claude-haiku-4-5-20251001',
-  'gemini-3-flash-preview',
-  'gpt-5.4-mini',
-  'o4-mini',
-  'gpt-4o',
-]);
-
 const AVAILABLE_MODELS = [
-  // ── Stripe-eligible (listed first) ──
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', provider: 'anthropic' },
-  { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai' },
-  { id: 'o4-mini', label: 'o4-mini', provider: 'openai' },
-  { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai' },
-  { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google' },
-  // ── API Key Required ──
   { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4.6', provider: 'anthropic' },
   { id: 'claude-opus-4-20250514', label: 'Claude Opus 4.6', provider: 'anthropic' },
   { id: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai' },
@@ -282,18 +267,22 @@ function DistributionSummary({ playerCount, seatRoles, roleMode, scriptId }: {
   const hasBaron = assigned.includes('baron');
   const expected = hasBaron ? withBaron : base;
   return (
-    <div style={{ fontSize: 12, color: '#3d2812', lineHeight: 1.6, marginTop: 6 }}>
-      <div style={{ fontWeight: 700, marginBottom: 3 }}>Required for {playerCount}p:</div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <div style={{ fontSize: 13, color: '#3d2812', lineHeight: 1.7, marginTop: 8 }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>Required for {playerCount} players:</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {(['townsfolk', 'outsider', 'minion', 'demon'] as const).map((type) => {
           const exp = type === 'townsfolk' ? expected.t : type === 'outsider' ? expected.o : type === 'minion' ? expected.m : expected.d;
           const cur = counts[type];
           const isOk = roleMode === 'random' || cur === exp;
-          return (<span key={type} style={{ color: isOk ? '#5a4630' : '#991B1B', fontWeight: isOk ? 400 : 700 }}><span style={{ color: ROLE_TYPE_COLORS[type], fontWeight: 700 }}>{exp}{type[0].toUpperCase()}</span>{roleMode === 'assigned' && ` (${cur})`}</span>);
+          const fullName = ROLE_TYPE_LABELS[type] ?? type;
+          return (
+            <span key={type} style={{ color: isOk ? '#3d2812' : '#991B1B', fontWeight: isOk ? 400 : 700 }}>
+              <span style={{ color: ROLE_TYPE_COLORS[type], fontWeight: 700 }}>{exp}</span> {fullName}{roleMode === 'assigned' ? ` (${cur} assigned)` : ''}
+            </span>
+          );
         })}
       </div>
-      {hasBaron && <div style={{ fontStyle: 'italic', color: '#8b7355', marginTop: 2 }}>Baron: +2 Outsiders, -2 Townsfolk</div>}
-      <div style={{ color: '#8b7355', marginTop: 2 }}>Base: {base.t}T {base.o}O {base.m}M {base.d}D{base.o !== withBaron.o && ` | w/ Baron: ${withBaron.t}T ${withBaron.o}O ${withBaron.m}M ${withBaron.d}D`}</div>
+      {hasBaron && <div style={{ fontStyle: 'italic', color: '#5a4630', marginTop: 4, fontSize: 12 }}>Baron: +2 Outsiders, -2 Townsfolk</div>}
     </div>
   );
 }
@@ -2197,9 +2186,9 @@ export function GameLobby() {
       {transitioning && <PageTransition onMidpoint={handleTransitionMidpoint} />}
       {showCreditPurchase && (
         <CreditPurchaseModal
+          gameAmount={estimatedCost != null ? Math.ceil(estimatedCost) : undefined}
           onClose={() => {
             setShowCreditPurchase(false);
-            // Refresh balance after closing (might have bought credits)
             getCreditBalance()
               .then((data) => setCreditBalance(data.balance))
               .catch(() => {});

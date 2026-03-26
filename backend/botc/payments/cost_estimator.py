@@ -28,10 +28,11 @@ CALLS_PER_PLAYER_PER_DAY = 9
 DEFAULT_PRICING = (2.0, 10.0)
 
 # Minimum charge in USD (covers Stripe fees + overhead)
-MINIMUM_CHARGE_USD = 2.00
+MINIMUM_CHARGE_USD = 1.00
 
-# Buffer multiplier — 1.5x covers ~90%+ of games
-DEFAULT_BUFFER = 1.5
+# No buffer multiplier — we charge for max possible days (num_players - 2)
+# which is already the ceiling. Most games cost much less.
+DEFAULT_BUFFER = 1.0
 
 
 def _model_cost_per_call(model: str) -> float:
@@ -52,10 +53,13 @@ def _model_cost_per_call(model: str) -> float:
 
 
 def _estimate_days(num_players: int, max_days: int = 20) -> int:
-    """Conservative estimate of game length in days."""
-    # Historical: games typically last 3-5+ days. Use num_players // 2
-    # with a floor of 3 to avoid underestimating.
-    return min(max(3, num_players // 2), max_days)
+    """Theoretical max game length in BotC: num_players - 2 days.
+
+    One death per day (execution) + one per night (demon kill).
+    Game ends when ~3 players remain. This is the ceiling — most games
+    end much sooner, but charging for the max means no shortfall.
+    """
+    return min(max(2, num_players - 2), max_days)
 
 
 def estimate_game_cost(

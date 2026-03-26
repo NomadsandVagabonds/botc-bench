@@ -878,6 +878,33 @@ async def purchase_credits(request: Request, body: CreditPurchaseRequest) -> dic
     return result
 
 
+class GameCreditPurchaseRequest(BaseModel):
+    amount: float  # exact credit amount needed
+
+
+@router.post("/api/credits/purchase-exact")
+async def purchase_exact_credits(request: Request, body: GameCreditPurchaseRequest) -> dict:
+    """Buy exactly the credits needed for a specific game — no packs, no overpaying."""
+    user = await require_auth(request)
+
+    stripe_key = os.environ.get("STRIPE_SECRET_KEY", "")
+    if not stripe_key:
+        raise HTTPException(status_code=503, detail="Stripe payments not configured")
+
+    amount = max(body.amount, 1.0)  # $1 minimum (Stripe needs at least ~$0.50)
+    # Create a one-off pack for exactly this amount
+    pack = {
+        "id": f"exact_{int(amount * 100)}",
+        "credits": amount,
+        "price_usd": amount,
+        "label": f"${amount:.2f} — {amount:.0f} credits",
+    }
+
+    from botc.payments.stripe_handler import create_credit_checkout_session
+    result = await create_credit_checkout_session(user["id"], pack)
+    return result
+
+
 @router.get("/api/credits/history")
 async def credit_history(request: Request) -> dict:
     """Return the authenticated user's credit transaction history."""

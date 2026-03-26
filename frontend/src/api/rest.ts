@@ -384,6 +384,14 @@ export async function purchaseCredits(packId: string): Promise<{ url: string; se
   });
 }
 
+/** Purchase exact credits for a specific game (no pack, no overpaying). */
+export async function purchaseExactCredits(amount: number): Promise<{ url: string; session_id: string }> {
+  return request('/api/credits/purchase-exact', {
+    method: 'POST',
+    body: JSON.stringify({ amount }),
+  });
+}
+
 /** Get credit transaction history. */
 export async function getCreditHistory(): Promise<{ transactions: CreditTransaction[] }> {
   return request<{ transactions: CreditTransaction[] }>('/api/credits/history');

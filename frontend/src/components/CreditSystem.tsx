@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCreditBalance, getCreditPacks, purchaseCredits } from '../api/rest.ts';
+import { getCreditBalance, getCreditPacks, purchaseCredits, purchaseExactCredits } from '../api/rest.ts';
 import type { CreditPack } from '../api/rest.ts';
 
 // ── Design tokens (matching landing page) ───────────────────────────
@@ -132,7 +132,7 @@ const FALLBACK_PACKS: CreditPack[] = [
   { id: 'pack_20', credits: 20, price_usd: 20, label: '$20 — 20 credits' },
 ];
 
-export function CreditPurchaseModal({ onClose }: { onClose: () => void }) {
+export function CreditPurchaseModal({ onClose, gameAmount }: { onClose: () => void; gameAmount?: number }) {
   const [packs, setPacks] = useState<CreditPack[]>(FALLBACK_PACKS);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -173,6 +173,45 @@ export function CreditPurchaseModal({ onClose }: { onClose: () => void }) {
         <div style={st.divider} />
 
         {error && <div style={st.errorText}>{error}</div>}
+
+        {/* Pay exact amount for this game */}
+        {gameAmount != null && gameAmount > 0 && (
+          <>
+            <button
+              style={{
+                ...st.packCard,
+                width: '100%',
+                flexDirection: 'row' as const,
+                justifyContent: 'center',
+                gap: 12,
+                padding: '14px 20px',
+                border: `2px solid ${GOLD}`,
+                marginBottom: 8,
+                opacity: purchasing ? 0.4 : 1,
+              }}
+              onClick={async () => {
+                setPurchasing('exact');
+                setError(null);
+                try {
+                  const result = await purchaseExactCredits(Math.ceil(gameAmount));
+                  window.location.href = result.url;
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Purchase failed');
+                  setPurchasing(null);
+                }
+              }}
+              disabled={!!purchasing}
+            >
+              <CoinDisplay amount={gameAmount} size={22} />
+              <span style={{ fontFamily: PX, fontSize: 11, color: GOLD_BRIGHT }}>
+                Pay ${Math.ceil(gameAmount)} for this game
+              </span>
+            </button>
+            <p style={{ fontFamily: SERIF, fontSize: 12, color: GOLD_DIM, margin: '0 0 16px', fontStyle: 'italic' }}>
+              Or buy a credit pack:
+            </p>
+          </>
+        )}
 
         {/* Pack cards */}
         <div style={st.packGrid}>

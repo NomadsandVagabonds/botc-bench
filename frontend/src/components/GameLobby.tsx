@@ -1794,7 +1794,13 @@ export function GameLobby() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed';
         if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
-        else setStartError(msg);
+        else if (msg.includes('Missing API keys')) {
+          // Extract which providers are missing from the backend message
+          const match = msg.match(/:\s*(.+)$/);
+          const missing = match ? match[1] : '';
+          setStartError(`Missing API keys for: ${missing}. Enter them above or buy credits.`);
+          setShowApiKeys(true);
+        } else setStartError(msg);
       } finally { setStarting(false); }
       return;
     }
@@ -2324,13 +2330,6 @@ export function GameLobby() {
                   background: g.status === 'running' ? '#8b5e2a22' : g.status === 'completed' ? '#c9a84c22' : '#991B1B22',
                   color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#6b5840' : '#991B1B',
                 }}>{g.status}</span>
-                {g.winner && (
-                  <span style={{
-                    fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                    background: g.winner === 'good' ? '#c9a84c22' : '#991B1B22',
-                    color: g.winner === 'good' ? '#c9a84c' : '#991B1B',
-                  }}>{g.winner} wins</span>
-                )}
                 {g.total_days != null && (
                   <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days} days</span>
                 )}

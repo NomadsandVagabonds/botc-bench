@@ -45,8 +45,11 @@ async function request<T>(
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
+    // Try to extract a clean "detail" message from JSON error responses
+    let detail = '';
+    try { detail = JSON.parse(body)?.detail ?? ''; } catch { /* not JSON */ }
     throw new Error(
-      `API ${options.method ?? 'GET'} ${path} failed (${res.status}): ${body}`,
+      detail || `API ${options.method ?? 'GET'} ${path} failed (${res.status}): ${body}`,
     );
   }
 

@@ -372,27 +372,7 @@ async def configured_game(request: ConfiguredGameRequest, raw_request: Request) 
     credit_user_id: str | None = None
     charge_amount: float = 0.0
 
-    # ── Credit-paid game: auth + model validation + balance check ──
-    if not is_byok:
-        user = await require_auth(raw_request)
-        credit_user_id = user["id"]
-
-        # Estimate cost and deduct credits
-        models = [sm.model for sm in request.seat_models]
-        estimate = estimate_game_cost(request.num_players, models, request.max_days)
-        charge_amount = estimate["charge_amount"]
-
-        from botc.wager.db import deduct_credits
-        try:
-            await deduct_credits(
-                credit_user_id, charge_amount, "game_debit", None,
-                f"{request.num_players}p game (est ${estimate['estimated_cost']:.2f})",
-            )
-        except ValueError as e:
-            raise HTTPException(status_code=402, detail=str(e))
-
-    # Collect required providers and look up their API keys
-    # Priority: client-provided keys > server .env
+    # ── Validate API keys first (before charging credits) ──
     required_providers = {sm.provider for sm in request.seat_models}
     provider_keys: dict[str, str] = {}
     missing: list[str] = []
@@ -420,6 +400,35 @@ async def configured_game(request: ConfiguredGameRequest, raw_request: Request) 
             status_code=400,
             detail=f"Missing API keys — provide them in provider_keys or set in server .env: {', '.join(missing)}",
         )
+
+    # ── Credit-paid game: model whitelist + auth + balance check ──
+    if not is_byok:
+        # Enforce model whitelist for paid games
+        from botc.payments.cost_estimator import PAID_ALLOWED_MODELS
+        invalid = [sm.model for sm in request.seat_models if sm.model not in PAID_ALLOWED_MODELS]
+        if invalid:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Models not available in credits mode: {', '.join(invalid)}. "
+                       f"Allowed: {', '.join(sorted(PAID_ALLOWED_MODELS))}",
+            )
+
+        user = await require_auth(raw_request)
+        credit_user_id = user["id"]
+
+        # Estimate cost and deduct credits (after all validation passes)
+        models = [sm.model for sm in request.seat_models]
+        estimate = estimate_game_cost(request.num_players, models, request.max_days)
+        charge_amount = estimate["charge_amount"]
+
+        from botc.wager.db import deduct_credits
+        try:
+            await deduct_credits(
+                credit_user_id, charge_amount, "game_debit", None,
+                f"{request.num_players}p game (est ${estimate['estimated_cost']:.2f})",
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=402, detail=str(e))
 
     # Build agent configs — agent_ids are placeholders; setup.py assigns character names
     agent_configs = [
@@ -878,15 +887,21 @@ async def stripe_webhook(request: Request) -> dict:
             session_id = session.id
 
             if user_id and credits > 0:
-                from botc.wager.db import add_credits
-                new_balance = await add_credits(
-                    user_id, credits, "purchase", session_id,
-                    f"Purchased {pack_id} ({credits:.0f} credits)",
-                )
-                logger.info(
-                    "Credits added: user %s +%.1f credits (pack %s), balance now $%.2f",
-                    user_id, credits, pack_id, new_balance,
-                )
+                try:
+                    from botc.wager.db import add_credits
+                    new_balance = await add_credits(
+                        user_id, credits, "purchase", session_id,
+                        f"Purchased {pack_id} ({credits:.0f} credits)",
+                    )
+                    logger.info(
+                        "Credits added: user %s +%.1f credits (pack %s), balance now $%.2f",
+                        user_id, credits, pack_id, new_balance,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to add credits for user %s (session %s, pack %s)",
+                        user_id, session_id, pack_id,
+                    )
 
     return {"status": "ok"}
 

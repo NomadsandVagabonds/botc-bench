@@ -1288,19 +1288,31 @@ class GameRunner:
     )
 
     def _pick_narrator_agent(self) -> "Agent | None":
-        """Pick the best available agent for narration and utility calls."""
+        """Pick the best available agent for narration and utility calls.
+
+        Prefers direct-provider agents (Anthropic, Google, OpenAI) over
+        OpenRouter, since OpenRouter adds latency and cost markup.
+        Falls back to OpenRouter if it's the only provider available.
+        """
         agents = list(self.agents.values())
         if not agents:
             return None
-        for prefix in self._NARRATOR_MODEL_PREFIXES:
-            for agent in agents:
-                model = agent.llm_config.model.lower()
-                # Handle OpenRouter prefixed names like "google/gemini-3-flash"
-                base = model.rsplit("/", 1)[-1] if "/" in model else model
-                if base.startswith(prefix):
-                    return agent
-        # No cheap model found — use first agent
-        return agents[0]
+
+        # Split into direct-provider and OpenRouter agents
+        direct = [a for a in agents if a.llm_config.provider != "openrouter"]
+        openrouter = [a for a in agents if a.llm_config.provider == "openrouter"]
+
+        # Try direct-provider agents first, then OpenRouter
+        for pool in (direct, openrouter):
+            for prefix in self._NARRATOR_MODEL_PREFIXES:
+                for agent in pool:
+                    model = agent.llm_config.model.lower()
+                    base = model.rsplit("/", 1)[-1] if "/" in model else model
+                    if base.startswith(prefix):
+                        return agent
+
+        # No preferred model found — use first direct agent, or first OpenRouter
+        return direct[0] if direct else agents[0]
 
     async def _narrate_death(self, player: Player, state: GameState) -> str:
         """Generate a dramatic/funny death narration from the Storyteller.

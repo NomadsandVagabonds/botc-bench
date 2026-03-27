@@ -60,6 +60,39 @@ def _load_saved_games() -> None:
 _load_saved_games()
 
 
+def _try_load_game(game_id: str) -> bool:
+    """Try to load a single game from disk into the registry. Returns True if loaded."""
+    if game_id in _games:
+        return True
+    from botc.api.persistence import _GAMES_DIR
+    saved_path = _GAMES_DIR / f"game_{game_id}.json"
+    if not saved_path.exists():
+        return False
+    try:
+        import json
+        data = json.loads(saved_path.read_text())
+        info: dict[str, Any] = {
+            "status": data.get("status", "completed"),
+            "saved": True,
+        }
+        if data.get("result_data"):
+            info["result_data"] = data["result_data"]
+        elif data.get("result"):
+            info["result_data"] = data["result"]
+        if data.get("events"):
+            info["events"] = data["events"]
+        if data.get("initial_state"):
+            info["initial_state"] = data["initial_state"]
+        if data.get("error"):
+            info["error"] = data["error"]
+        _games[game_id] = info
+        logger.info("Loaded game %s from disk on-demand", game_id)
+        return True
+    except Exception:
+        logger.exception("Failed to load game %s from disk", game_id)
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Request/response models
 # ---------------------------------------------------------------------------
@@ -612,6 +645,12 @@ async def list_games() -> list[GameResponse]:
     from botc.api.persistence import _GAMES_DIR
     from datetime import datetime
 
+    # Pick up any games added to disk since server startup
+    for path in _GAMES_DIR.glob("game_*.json"):
+        gid = path.stem.removeprefix("game_")
+        if gid not in _games:
+            _try_load_game(gid)
+
     results = []
     for game_id, info in _games.items():
         resp = GameResponse(game_id=game_id, status=info["status"])
@@ -645,6 +684,9 @@ async def list_games() -> list[GameResponse]:
 @router.get("/api/games/{game_id}")
 async def get_game(game_id: str) -> dict:
     """Get game state or result."""
+    if game_id not in _games:
+        # Try on-demand load from disk (game added after server startup)
+        _try_load_game(game_id)
     if game_id not in _games:
         return {"error": "Game not found"}
 
@@ -1073,74 +1115,81 @@ async def game_websocket(websocket: WebSocket, game_id: str):
                 },
             })
 
-    elif game_id in _games:
-        # Completed or saved game — try to serve from disk or in-memory save data
-        info = _games[game_id]
-
-        # If not already loaded from disk, try loading the saved JSON file
-        if not info.get("saved") and not info.get("events"):
-            from botc.api.persistence import _GAMES_DIR
-            saved_path = _GAMES_DIR / f"game_{game_id}.json"
-            if saved_path.exists():
-                import json
-                try:
-                    saved_data = json.loads(saved_path.read_text())
-                    info["events"] = saved_data.get("events")
-                    info["initial_state"] = saved_data.get("initial_state")
-                    info["result_data"] = saved_data.get("result", saved_data.get("result_data"))
-                    info["saved"] = True
-                except Exception:
-                    logger.exception("Failed to load game %s for WebSocket", game_id)
-        initial = info.get("initial_state")
-
-        # Legacy games may not have initial_state — synthesize from result_data
-        if not initial and info.get("result_data"):
-            rd = info["result_data"]
-            initial = {
-                "game_id": rd.get("game_id", game_id),
-                "phase": "game_over",
-                "day_number": rd.get("total_days", 0),
-                "players": [
-                    {
-                        "seat": p.get("seat", i),
-                        "agent_id": p.get("agent_id", f"seat-{i}"),
-                        "character_name": p.get("character_name", p.get("agent_id", f"Player {i}")),
-                        "model_name": p.get("model", ""),
-                        "role": p.get("role", ""),
-                        "role_id": p.get("role", "").lower().replace(" ", "_"),
-                        "role_type": "",
-                        "alignment": p.get("alignment", "good"),
-                        "is_alive": p.get("survived", True),
-                        "is_poisoned": False,
-                        "is_drunk": False,
-                        "is_protected": False,
-                        "ghost_vote_used": False,
-                        "perceived_role": None,
-                        "butler_master": None,
-                    }
-                    for i, p in enumerate(rd.get("players", []))
-                ],
-                "breakout_groups": [],
-                "nominations": [],
-                "executed_today": None,
-                "winner": rd.get("winner"),
-                "night_kills": [],
-                "demon_bluffs": [],
-                "rng_seed": None,
-            }
-
-        if initial:
+    else:
+        # Not a live runner — try in-memory registry, then disk.
+        _try_load_game(game_id)
+        info = _games.get(game_id)
+        if not info:
             await websocket.send_json({
-                "type": "game.state",
-                "data": initial,
+                "type": "error",
+                "data": {"message": f"Game {game_id} not found"},
             })
-        if info.get("events"):
-            await websocket.send_json({
-                "type": "event.history",
-                "data": {
-                    "events": info["events"],
-                },
-            })
+        else:
+            # If not already loaded from disk, try loading the saved JSON file
+            if not info.get("saved") and not info.get("events"):
+                from botc.api.persistence import _GAMES_DIR
+                saved_path = _GAMES_DIR / f"game_{game_id}.json"
+                if saved_path.exists():
+                    import json
+                    try:
+                        saved_data = json.loads(saved_path.read_text())
+                        info["events"] = saved_data.get("events")
+                        info["initial_state"] = saved_data.get("initial_state")
+                        info["result_data"] = saved_data.get("result", saved_data.get("result_data"))
+                        info["saved"] = True
+                    except Exception:
+                        logger.exception("Failed to load game %s for WebSocket", game_id)
+
+            initial = info.get("initial_state")
+
+            # Legacy games may not have initial_state — synthesize from result_data
+            if not initial and info.get("result_data"):
+                rd = info["result_data"]
+                initial = {
+                    "game_id": rd.get("game_id", game_id),
+                    "phase": "game_over",
+                    "day_number": rd.get("total_days", 0),
+                    "players": [
+                        {
+                            "seat": p.get("seat", i),
+                            "agent_id": p.get("agent_id", f"seat-{i}"),
+                            "character_name": p.get("character_name", p.get("agent_id", f"Player {i}")),
+                            "model_name": p.get("model", ""),
+                            "role": p.get("role", ""),
+                            "role_id": p.get("role", "").lower().replace(" ", "_"),
+                            "role_type": "",
+                            "alignment": p.get("alignment", "good"),
+                            "is_alive": p.get("survived", True),
+                            "is_poisoned": False,
+                            "is_drunk": False,
+                            "is_protected": False,
+                            "ghost_vote_used": False,
+                            "perceived_role": None,
+                            "butler_master": None,
+                        }
+                        for i, p in enumerate(rd.get("players", []))
+                    ],
+                    "breakout_groups": [],
+                    "nominations": [],
+                    "executed_today": None,
+                    "winner": rd.get("winner"),
+                    "night_kills": [],
+                    "demon_bluffs": [],
+                    "rng_seed": None,
+                }
+
+            if initial:
+                await websocket.send_json({
+                    "type": "game.state",
+                    "data": initial,
+                })
+            if info.get("events"):
+                await websocket.send_json({
+                    "type": "event.history",
+                    "data": {
+                        "events": info["events"],
+                    },
+                })
 
     try:
         while True:

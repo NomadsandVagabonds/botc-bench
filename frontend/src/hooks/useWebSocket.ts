@@ -173,6 +173,9 @@ function normalizeEvent(raw: { type: string; data: any }): ServerEvent | null {
       // Not a state event — just log
       console.log('[ws] Game created:', data);
       return null;
+    case 'error':
+      console.error('[ws] Server error:', data?.message);
+      return { type: 'error', message: data?.message ?? 'Unknown error' } as any;
     case 'monitor.started':
     case 'monitor.phase':
     case 'monitor.complete':
@@ -232,6 +235,12 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
         const raw = JSON.parse(ev.data as string);
         const event = normalizeEvent(raw);
         if (!event) return;
+
+        // Server-side error (e.g. game not found)
+        if (event.type === 'error') {
+          window.dispatchEvent(new CustomEvent('ws-error', { detail: (event as any).message }));
+          return;
+        }
 
         // First message is always game.state — save it to detect replay vs live
         if (event.type === 'game.state' && !receivedInitialState) {

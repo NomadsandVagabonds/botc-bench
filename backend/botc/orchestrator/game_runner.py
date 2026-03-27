@@ -451,6 +451,7 @@ class GameRunner:
                 messages=[{"role": "user", "content": debrief_prompt}],
                 temperature=0.9,
                 max_tokens=150,
+                reasoning_effort="low",
             )
             self._record_tokens(
                 agent_id=agent.agent_id,
@@ -1274,13 +1275,39 @@ class GameRunner:
     # Death narration
     # -------------------------------------------------------------------
 
+    # Preferred models for narration and other utility calls.
+    # These are fast, good at creative short-form, and inexpensive.
+    # Ordered by preference — first match among available agents wins.
+    _NARRATOR_MODEL_PREFIXES = (
+        "gemini-3",           # Gemini 3 Flash — best at creative short-form
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "claude-haiku",
+        "gpt-4o-mini", "gpt-4.1-mini", "gpt-5.4-mini",
+        "gpt-4o",
+    )
+
+    def _pick_narrator_agent(self) -> "Agent | None":
+        """Pick the best available agent for narration and utility calls."""
+        agents = list(self.agents.values())
+        if not agents:
+            return None
+        for prefix in self._NARRATOR_MODEL_PREFIXES:
+            for agent in agents:
+                model = agent.llm_config.model.lower()
+                # Handle OpenRouter prefixed names like "google/gemini-3-flash"
+                base = model.rsplit("/", 1)[-1] if "/" in model else model
+                if base.startswith(prefix):
+                    return agent
+        # No cheap model found — use first agent
+        return agents[0]
+
     async def _narrate_death(self, player: Player, state: GameState) -> str:
         """Generate a dramatic/funny death narration from the Storyteller.
 
-        Uses whichever LLM provider is available, falling back to templates.
+        Prefers the cheapest available model. Uses low reasoning effort.
         """
-        # Try to use the first available agent's provider for narration
-        narrator_agent = next(iter(self.agents.values()), None)
+        narrator_agent = self._pick_narrator_agent()
         if narrator_agent is None:
             return f"{player.character_name} was found dead in the village square."
 
@@ -1305,7 +1332,8 @@ class GameRunner:
                                f"There are {len(state.alive_players)} villagers remaining.",
                 }],
                 temperature=0.95,
-                max_tokens=512,
+                max_tokens=100,
+                reasoning_effort="low",
             )
             narration = response.content.strip().strip('"')
             self._record_tokens(

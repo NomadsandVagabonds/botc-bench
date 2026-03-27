@@ -1465,14 +1465,37 @@ export function GameLobby() {
   const [view, setView] = useState<'menu' | 'setup' | 'options' | 'games' | 'leaderboard'>('menu');
   const [optionsTab, setOptionsTab] = useState<OptionsTab>('rules');
 
-  // Game config
-  const [playerCount, setPlayerCount] = useState(7);
-  const [script, setScript] = useState(SCRIPTS[0].value);
-  const [seatModels, setSeatModels] = useState<string[]>(Array(15).fill(AVAILABLE_MODELS[0].id));
-  const [seatRoles, setSeatRoles] = useState<string[]>(Array(15).fill(''));
-  const [seatCharacters, setSeatCharacters] = useState<(number | null)[]>(Array(15).fill(null));
-  const [roleMode, setRoleMode] = useState<'random' | 'assigned'>('random');
-  const [options, setOptions] = useState<GameOptions>({ ...DEFAULT_OPTIONS });
+  // Game config — persisted to localStorage so settings survive Stripe redirect
+  const [playerCount, setPlayerCount] = useState(() => {
+    try { const v = localStorage.getItem('bb_playerCount'); return v ? Number(v) : 7; } catch { return 7; }
+  });
+  const [script, setScript] = useState(() => {
+    try { return localStorage.getItem('bb_script') || SCRIPTS[0].value; } catch { return SCRIPTS[0].value; }
+  });
+  const [seatModels, setSeatModels] = useState<string[]>(() => {
+    try { const v = localStorage.getItem('bb_seatModels'); return v ? JSON.parse(v) : Array(15).fill(AVAILABLE_MODELS[0].id); } catch { return Array(15).fill(AVAILABLE_MODELS[0].id); }
+  });
+  const [seatRoles, setSeatRoles] = useState<string[]>(() => {
+    try { const v = localStorage.getItem('bb_seatRoles'); return v ? JSON.parse(v) : Array(15).fill(''); } catch { return Array(15).fill(''); }
+  });
+  const [seatCharacters, setSeatCharacters] = useState<(number | null)[]>(() => {
+    try { const v = localStorage.getItem('bb_seatChars'); return v ? JSON.parse(v) : Array(15).fill(null); } catch { return Array(15).fill(null); }
+  });
+  const [roleMode, setRoleMode] = useState<'random' | 'assigned'>(() => {
+    try { const v = localStorage.getItem('bb_roleMode'); return v === 'assigned' ? 'assigned' : 'random'; } catch { return 'random'; }
+  });
+  const [options, setOptions] = useState<GameOptions>(() => {
+    try { const v = localStorage.getItem('bb_options'); return v ? { ...DEFAULT_OPTIONS, ...JSON.parse(v) } : { ...DEFAULT_OPTIONS }; } catch { return { ...DEFAULT_OPTIONS }; }
+  });
+
+  // Persist game config changes to localStorage
+  useEffect(() => { localStorage.setItem('bb_playerCount', String(playerCount)); }, [playerCount]);
+  useEffect(() => { localStorage.setItem('bb_script', script); }, [script]);
+  useEffect(() => { localStorage.setItem('bb_seatModels', JSON.stringify(seatModels)); }, [seatModels]);
+  useEffect(() => { localStorage.setItem('bb_seatRoles', JSON.stringify(seatRoles)); }, [seatRoles]);
+  useEffect(() => { localStorage.setItem('bb_seatChars', JSON.stringify(seatCharacters)); }, [seatCharacters]);
+  useEffect(() => { localStorage.setItem('bb_roleMode', roleMode); }, [roleMode]);
+  useEffect(() => { localStorage.setItem('bb_options', JSON.stringify(options)); }, [options]);
 
   // Client-provided API keys (BYOK mode — stored in localStorage, never sent to server .env)
   const [clientKeys, setClientKeys] = useState<Record<string, string>>(() => {

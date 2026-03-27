@@ -645,8 +645,10 @@ export function TownMap({ showStoryteller = false }: { showStoryteller?: boolean
 
     let lastSpeakerSeat: number | null = null;
 
+    const SPEECH_TYPES = new Set(['public', 'breakout', 'accusation', 'defense', 'whisper']);
     for (const msg of newMsgs) {
       if (msg.senderSeat === undefined || msg.senderSeat === null) continue;
+      if (!SPEECH_TYPES.has(msg.type)) continue;
 
       // Add text speech bubble
       const newBubble: SpeechBubble = {

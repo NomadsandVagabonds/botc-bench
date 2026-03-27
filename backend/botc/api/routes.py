@@ -618,13 +618,27 @@ async def quick_game(
 
 @router.post("/api/games/{game_id}/stop")
 async def stop_game(game_id: str) -> dict:
-    """Stop a running game immediately."""
+    """Stop a running game immediately, saving progress to disk."""
     if game_id not in _games:
         raise HTTPException(status_code=404, detail="Game not found")
 
     info = _games[game_id]
     if info["status"] != "running":
         return {"game_id": game_id, "status": info["status"], "message": "Game is not running"}
+
+    # Save checkpoint before stopping
+    runner = _runners.get(game_id)
+    if runner:
+        try:
+            save_game(
+                game_id,
+                "stopped",
+                events=runner.event_history,
+                initial_state=getattr(runner, "_initial_snapshot", None),
+            )
+            logger.info("Game %s checkpoint saved before stop", game_id)
+        except Exception:
+            logger.exception("Failed to save checkpoint for game %s", game_id)
 
     # Cancel the async task
     task = info.get("task")
@@ -636,7 +650,7 @@ async def stop_game(game_id: str) -> dict:
         del _runners[game_id]
 
     logger.info("Game %s stopped by user", game_id)
-    return {"game_id": game_id, "status": "stopped", "message": "Game stopped"}
+    return {"game_id": game_id, "status": "stopped", "message": "Game stopped (progress saved)"}
 
 
 @router.get("/api/games")

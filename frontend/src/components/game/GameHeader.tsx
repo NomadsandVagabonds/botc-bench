@@ -140,7 +140,11 @@ export function GameHeader({ muted = false, onToggleMute }: GameHeaderProps) {
         )}
 
         {/* Lobby */}
-        <button style={s.lobbyBtn} onClick={() => navigate('/')} title="Back to lobby">
+        <button style={s.lobbyBtn} onClick={() => {
+          const isLive = !replayMode && !isGameOver;
+          if (isLive && !confirm(`Leave this game? It will keep running in the background.\n\nRejoin at: ${window.location.href}`)) return;
+          navigate('/');
+        }} title="Back to lobby">
           Lobby
         </button>
 

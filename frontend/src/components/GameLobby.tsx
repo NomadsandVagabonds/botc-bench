@@ -1879,7 +1879,7 @@ export function GameLobby() {
                     .catch(() => setCreditBalance(null));
                 }
               }}>Credits</button>
-              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: paymentMode === 'api' ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => setPaymentMode('api')}>API Keys</button>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: paymentMode === 'api' ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => { setPaymentMode('api'); setShowApiKeys(true); }}>API Keys</button>
             </div>
           </div>
 
@@ -1891,7 +1891,7 @@ export function GameLobby() {
               onBuyCredits={() => setShowCreditPurchase(true)}
             />
             <div style={{ fontSize: '0.52rem', color: '#6b5840', lineHeight: 1.4, marginBottom: 8, fontStyle: 'italic' }}>
-              Games played with credits using open-weight models contribute to AI deception research data.
+              Games played with open-weight models contribute to AI deception research data.
             </div>
             </>
           )}

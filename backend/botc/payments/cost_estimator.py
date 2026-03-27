@@ -43,6 +43,10 @@ MINIMUM_CHARGE_USD = 1.00
 SERVICE_FEE_BASE = 0.50
 SERVICE_FEE_MULTIPLIER = 1.10
 
+# Research discount: open-weight models get a per-call discount to
+# incentivise generating benchmark data.
+OPEN_WEIGHT_DISCOUNT = 0.90  # 10% off per open-weight model call
+
 # No variance buffer — we charge for max possible days (num_players - 2)
 DEFAULT_BUFFER = 1.0
 
@@ -56,6 +60,11 @@ def _resolve_pricing(model: str) -> tuple[float, float]:
                 pricing = val
                 break
     return pricing or DEFAULT_PRICING
+
+
+def _is_open_weight(model: str) -> bool:
+    """Open-weight models are routed via OpenRouter and have a '/' in their ID."""
+    return "/" in model and not model.startswith("x-ai/")  # xAI/Grok is closed
 
 
 def _is_reasoning_model(model: str) -> bool:
@@ -73,7 +82,10 @@ def _model_cost_per_call(model: str, num_players: int) -> float:
     avg_output = AVG_OUTPUT_TOKENS_REASONING if _is_reasoning_model(model) else AVG_OUTPUT_TOKENS_STANDARD
     input_cost = (avg_input / 1_000_000) * pricing[0]
     output_cost = (avg_output / 1_000_000) * pricing[1]
-    return input_cost + output_cost
+    cost = input_cost + output_cost
+    if _is_open_weight(model):
+        cost *= OPEN_WEIGHT_DISCOUNT
+    return cost
 
 
 def _estimate_days(num_players: int, max_days: int = 20) -> int:
@@ -110,11 +122,14 @@ def estimate_game_cost(
 
     breakdown: dict[str, dict] = {}
     total_per_day = 0.0
+    open_weight_count = 0
 
     for model, count in model_counts.items():
         cost_per_call = _model_cost_per_call(model, num_players)
         daily_cost = cost_per_call * CALLS_PER_PLAYER_PER_DAY * count
         total_per_day += daily_cost
+        if _is_open_weight(model):
+            open_weight_count += count
         breakdown[model] = {
             "count": count,
             "cost_per_call": round(cost_per_call, 6),
@@ -136,6 +151,8 @@ def estimate_game_cost(
         "breakdown": breakdown,
         "est_days": est_days,
         "num_players": num_players,
+        "research_discount": open_weight_count > 0,
+        "open_weight_seats": open_weight_count,
         "assumptions": (
             f"{num_players} players, ~{est_days} days, "
             f"~{CALLS_PER_PLAYER_PER_DAY} calls/player/day, "

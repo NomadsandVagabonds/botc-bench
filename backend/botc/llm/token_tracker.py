@@ -34,8 +34,14 @@ MODEL_PRICING: dict[str, tuple[float, float]] = {
     "gemini-2.0-flash": (0.10, 0.40),
     "gemini-3-flash-preview": (0.50, 3.0),
     "gemini-3.1-pro-preview": (1.25, 10.0),
-    # OpenRouter models (approximate pricing)
+    # OpenRouter models (pricing from OpenRouter API, $/MTok)
     "x-ai/grok-4.20-beta": (2.0, 10.0),
+    "meta-llama/llama-3.3-70b-instruct": (0.10, 0.32),
+    "moonshotai/kimi-k2.5": (0.45, 2.20),
+    "deepseek/deepseek-r1-0528": (0.45, 2.15),
+    "deepseek/deepseek-v3.2": (0.26, 0.38),
+    "qwen/qwen3.5-397b-a17b": (0.39, 2.34),
+    # Legacy OpenRouter models (still referenced in saved games)
     "meta-llama/llama-3.1-70b-instruct": (0.40, 0.40),
     "mistralai/mistral-large": (2.0, 6.0),
     "moonshotai/kimi-k2": (0.60, 2.0),

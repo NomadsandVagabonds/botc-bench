@@ -874,18 +874,8 @@ class GameRunner:
             if state.executed_today is not None:
                 return False
 
-            # Broadcast any speech
-            if parsed.say:
-                msg = Message(
-                    id=uuid.uuid4().hex,
-                    type=MessageType.PUBLIC_SPEECH,
-                    phase_id=state.phase_id,
-                    sender_seat=player.seat,
-                    content=parsed.say,
-                )
-                state.add_message(msg)
-
-            # Check for a nomination action
+            # Check for a nomination action (before broadcasting speech,
+            # because if they nominate, their SAY becomes the accusation)
             nomination = None
             for action in parsed.actions:
                 if action.action_type == "NOMINATE" and action.target is not None:
@@ -909,6 +899,16 @@ class GameRunner:
                         break  # Only one nomination per player
 
             if nomination is None:
+                # No nomination — broadcast their speech as regular public speech
+                if parsed.say:
+                    msg = Message(
+                        id=uuid.uuid4().hex,
+                        type=MessageType.PUBLIC_SPEECH,
+                        phase_id=state.phase_id,
+                        sender_seat=player.seat,
+                        content=parsed.say,
+                    )
+                    state.add_message(msg)
                 continue  # Player passed
 
             # --- Virgin ability may have caused an execution ---
@@ -958,10 +958,26 @@ class GameRunner:
                 "day": state.day_number,
             })
 
-            # 1. Nominator gives accusation speech
-            accusation_text = await self._get_speech(
-                nominator_player, nominee_player, state, speech_type="accusation"
-            )
+            # 1. Accusation: use the nominator's SAY from their nomination
+            #    turn (already broadcast as PUBLIC_SPEECH above). Re-broadcast
+            #    as ACCUSATION type so the defense prompt and UI see it.
+            accusation_text = parsed.say or ""
+            if accusation_text:
+                acc_msg = Message(
+                    id=uuid.uuid4().hex,
+                    type=MessageType.ACCUSATION,
+                    phase_id=state.phase_id,
+                    sender_seat=nominator_player.seat,
+                    content=accusation_text,
+                )
+                state.add_message(acc_msg)
+                self._emit("message.new", {
+                    "seat": nominator_player.seat,
+                    "content": accusation_text,
+                    "type": "accusation",
+                    "phase": state.phase.value,
+                    "day": state.day_number,
+                })
 
             # 2. Nominee gives defense speech (receives accusation as context)
             defense_text = await self._get_speech(

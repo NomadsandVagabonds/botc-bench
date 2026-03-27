@@ -107,13 +107,17 @@ class OpenAIProvider(LLMProvider):
         choice = response.choices[0]
         usage = response.usage
 
-        # Log response time for OpenRouter diagnostics
-        if is_openrouter:
-            reasoning_tokens = getattr(usage, "reasoning_tokens", 0) if usage else 0
-            log.info(
-                "OpenRouter %s: %.1fs, %d reasoning tokens",
-                self.config.model, latency_ms / 1000, reasoning_tokens,
-            )
+        # Log cache and reasoning token stats
+        if usage:
+            details = getattr(usage, "prompt_tokens_details", None)
+            cached = getattr(details, "cached_tokens", 0) if details else 0
+            reasoning_tokens = getattr(usage, "reasoning_tokens", 0) or 0
+            if cached or is_openrouter:
+                log.info(
+                    "OpenAI %s cache: %d cached of %d prompt tokens%s",
+                    self.config.model, cached, usage.prompt_tokens,
+                    f", {reasoning_tokens} reasoning" if reasoning_tokens else "",
+                )
 
         return LLMResponse(
             content=choice.message.content or "",

@@ -1615,6 +1615,7 @@ export function GameLobby() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [showCreditPurchase, setShowCreditPurchase] = useState(false);
+  const [showApiKeys, setShowApiKeys] = useState(false);
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
   const [paymentMode, setPaymentMode] = useState<'stripe' | 'api'>(() => {
@@ -1784,8 +1785,7 @@ export function GameLobby() {
       if (!hasClientKeys) {
         setStartError('No API keys entered.');
         setStarting(false);
-        setView('options');
-        setOptionsTab('api');
+        setShowApiKeys(true);
         return;
       }
       try {
@@ -1891,9 +1891,37 @@ export function GameLobby() {
             <div style={{ fontSize: '0.58rem', color: '#6b5840', lineHeight: 1.5 }}>
               {Object.keys(clientKeys).length > 0
                 ? <span style={{ color: '#6b5840', fontWeight: 600 }}>BYOK mode — using your API keys (free)</span>
-                : <>No keys configured. <button style={{ background: 'none', border: 'none', color: '#b34a28', fontSize: '0.58rem', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontWeight: 600 }} onClick={() => { setView('options'); setOptionsTab('api'); }}>Add API keys</button></>
+                : <>No keys configured. <button style={{ background: 'none', border: 'none', color: '#b34a28', fontSize: '0.58rem', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontWeight: 600 }} onClick={() => setShowApiKeys(v => !v)}>Add API keys</button></>
               }
             </div>
+            {showApiKeys && (
+              <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(92, 61, 26, 0.06)', borderRadius: 4, border: '1px solid rgba(92, 61, 26, 0.15)' }}>
+                <div style={{ fontSize: '0.6rem', color: '#8b7355', marginBottom: 6, lineHeight: 1.4 }}>
+                  Stored in your browser only — never sent to the server.
+                </div>
+                {[
+                  { provider: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...' },
+                  { provider: 'openai', label: 'OpenAI', placeholder: 'sk-...' },
+                  { provider: 'google', label: 'Google', placeholder: 'AIza...' },
+                  { provider: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...' },
+                ].map(({ provider, label, placeholder }) => (
+                  <div key={provider} style={{ marginBottom: 4 }}>
+                    <input
+                      type="password"
+                      value={clientKeys[provider] ?? ''}
+                      onChange={e => updateClientKey(provider, e.target.value)}
+                      placeholder={`${label}: ${placeholder}`}
+                      style={{
+                        width: '100%', padding: '4px 8px', boxSizing: 'border-box',
+                        fontSize: '0.65rem', fontFamily: 'monospace',
+                        background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(92, 61, 26, 0.2)',
+                        borderRadius: 3, color: '#3d2812',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={st.field}>

@@ -141,8 +141,13 @@ export async function createConfiguredGame(
   });
 }
 
-/** True when no explicit server URL has been configured (localStorage or env var). */
-const hasConfiguredServer = !!(localStorage.getItem('bloodbench_server_url') || import.meta.env.VITE_API_URL);
+/** True when a backend server should be reachable (explicit config, env var, or localhost dev). */
+const hasConfiguredServer = !!(
+  localStorage.getItem('bloodbench_server_url')
+  || import.meta.env.VITE_API_URL
+  || window.location.hostname === 'localhost'
+  || window.location.hostname === '127.0.0.1'
+);
 
 export async function listGames(): Promise<GameListItem[]> {
   // If no server configured, go straight to GitHub — don't waste 3s on localhost timeout

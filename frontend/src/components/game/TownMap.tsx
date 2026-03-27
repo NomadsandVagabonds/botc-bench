@@ -56,9 +56,6 @@ const ABOVE_TOWER_CLIPS = new Set([
 
 const EVENT_CLIPS: Record<string, string> = {
   'evil-wins':   '/ambient/event-evil-wins.mp4',
-  // 'good-wins':   '/ambient/event-good-wins.mp4',
-  // 'execution':   '/ambient/event-execution.mp4',
-  // 'night-falls': '/ambient/event-night-falls.mp4',
 };
 
 const IDLE_MIN_MS = 45_000;

@@ -6,7 +6,6 @@ import { ConversationPanel } from './ConversationPanel.tsx';
 import { PlayerDetailDrawer } from './PlayerDetailDrawer.tsx';
 import { VotingOverlay } from './VotingOverlay.tsx';
 import { DebriefPanel } from './DebriefPanel.tsx';
-// GameLog removed — replaced by VotingOverlay in the bottom bar
 import { ReplayScrubber } from './ReplayScrubber.tsx';
 import { MonitorPanel } from './MonitorPanel.tsx';
 import { useGameStore } from '../../stores/gameStore.ts';

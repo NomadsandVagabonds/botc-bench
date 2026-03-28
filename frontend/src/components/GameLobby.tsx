@@ -2305,6 +2305,15 @@ export function GameLobby() {
     </div>
   );
 
+  const [gamesFilter, setGamesFilter] = useState<'all' | 'completed' | 'running'>('completed');
+  const filteredGames = games.filter((g) => {
+    if (gamesFilter === 'completed') return g.status === 'completed';
+    if (gamesFilter === 'running') return g.status === 'running';
+    return g.status !== 'abandoned' && g.status !== 'failed';
+  });
+  const runningCount = games.filter(g => g.status === 'running').length;
+  const completedCount = games.filter(g => g.status === 'completed').length;
+
   const gamesView = (
     <div style={{ width: '100%' }}>
       <button style={st.backBtn} onClick={() => setView('menu')}>Back</button>
@@ -2312,18 +2321,21 @@ export function GameLobby() {
         <span style={st.label}>Past Games</span>
         <button style={st.smallBtn} onClick={() => void fetchGames()}>Refresh</button>
       </div>
+      <div style={{ display: 'flex', gap: 0, borderRadius: 2, overflow: 'hidden', border: '2px solid rgba(61, 40, 18, 0.3)', marginBottom: 10 }}>
+        {([['completed', `Completed (${completedCount})`], ['running', `Live (${runningCount})`], ['all', 'All']] as const).map(([key, label]) => (
+          <button key={key} style={{ ...st.toggleBtn, background: gamesFilter === key ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: gamesFilter === key ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => setGamesFilter(key)}>{label}</button>
+        ))}
+      </div>
       {gamesError && <div style={st.errorBox}>{gamesError}</div>}
       {gamesLoading ? (
         <div style={{ textAlign: 'center', color: '#8b7355', padding: 12, fontSize: '0.8rem' }}>Loading games...</div>
-      ) : games.length === 0 ? (
+      ) : filteredGames.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#8b7355', padding: 20, fontSize: '0.75rem', lineHeight: 1.6 }}>
-          No games found.{gamesError ? ` (${gamesError})` : ' Checking GitHub...'}
-          <br />
-          <button style={{ ...st.smallBtn, marginTop: 8 }} onClick={() => void fetchGames()}>Retry</button>
+          No {gamesFilter === 'all' ? '' : gamesFilter} games found.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
-          {games.map((g) => (
+          {filteredGames.map((g) => (
             <div key={g.game_id} style={{ ...st.gameCard, justifyContent: 'flex-start', gap: 8 }} role="button" tabIndex={0}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => navigateWithTransition(`/game/${g.game_id}`)}>
                 <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>{g.game_id.slice(0, 8)}</span>
@@ -2332,6 +2344,13 @@ export function GameLobby() {
                   background: g.status === 'running' ? '#8b5e2a22' : g.status === 'completed' ? '#c9a84c22' : '#991B1B22',
                   color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#6b5840' : '#991B1B',
                 }}>{g.status}</span>
+                {g.winner && (
+                  <span style={{
+                    fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                    background: g.winner === 'good' ? '#c9a84c22' : '#991B1B22',
+                    color: g.winner === 'good' ? '#c9a84c' : '#991B1B',
+                  }}>{g.winner} wins</span>
+                )}
                 {g.total_days != null && (
                   <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days} days</span>
                 )}

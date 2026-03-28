@@ -664,7 +664,11 @@ async def stop_game(game_id: str) -> dict:
 
 @router.get("/api/games")
 async def list_games() -> list[GameResponse]:
-    """List all games."""
+    """List all games, sorted newest first.
+
+    Games marked "running" with no active task are reclassified as
+    "abandoned" so they don't clutter the list.
+    """
     from botc.api.persistence import _GAMES_DIR
     from datetime import datetime
 
@@ -673,6 +677,13 @@ async def list_games() -> list[GameResponse]:
         gid = path.stem.removeprefix("game_")
         if gid not in _games:
             _try_load_game(gid)
+
+    # Mark stale "running" games that have no active task as abandoned
+    for game_id, info in _games.items():
+        if info["status"] == "running":
+            task = info.get("task")
+            if task is None or task.done():
+                info["status"] = "abandoned"
 
     results = []
     for game_id, info in _games.items():
@@ -701,6 +712,9 @@ async def list_games() -> list[GameResponse]:
         resp.has_monitors = any(_GAMES_DIR.glob(f"monitor_{game_id}_*.json"))
 
         results.append(resp)
+
+    # Sort newest first
+    results.sort(key=lambda r: r.created_at or "", reverse=True)
     return results
 
 

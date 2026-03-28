@@ -2306,13 +2306,17 @@ export function GameLobby() {
   );
 
   // Curated game IDs — post-bugfix, real API games
-  const CURATED_GAME_IDS = new Set([
-    '9912e3b1f398', '574f26f0d91c', '26a48b53cf4e', 'a4f96775521c', 'cd28cb1386aa',
-  ]);
+  const CURATED_GAMES: Record<string, string> = {
+    '9912e3b1f398': 'The Scarlet Masquerade',
+    '574f26f0d91c': "The Poisoner's Gambit",
+    '26a48b53cf4e': 'A Crown Passed in Shadow',
+    'a4f96775521c': 'The Spy Who Spoke Too Much',
+    'cd28cb1386aa': 'Five Nights in Ravenswood',
+  };
 
   const [gamesFilter, setGamesFilter] = useState<'curated' | 'completed' | 'running' | 'all'>('curated');
   const filteredGames = games.filter((g) => {
-    if (gamesFilter === 'curated') return CURATED_GAME_IDS.has(g.game_id);
+    if (gamesFilter === 'curated') return g.game_id in CURATED_GAMES;
     if (gamesFilter === 'completed') return g.status === 'completed' && g.total_days != null;
     if (gamesFilter === 'running') return g.status === 'running';
     return g.status !== 'abandoned' && g.status !== 'failed';
@@ -2344,14 +2348,19 @@ export function GameLobby() {
           {filteredGames.map((g) => (
             <div key={g.game_id} style={{ ...st.gameCard, justifyContent: 'flex-start', gap: 8 }} role="button" tabIndex={0}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => navigateWithTransition(`/game/${g.game_id}`)}>
-                <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>{g.game_id.slice(0, 8)}</span>
-                <span style={{
-                  fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase',
-                  background: g.status === 'running' ? '#8b5e2a22' : g.status === 'completed' ? '#c9a84c22' : '#991B1B22',
-                  color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#6b5840' : '#991B1B',
-                }}>{g.status}</span>
-                {g.total_days != null && (
-                  <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days} days</span>
+                {CURATED_GAMES[g.game_id] ? (
+                  <span style={{ fontSize: '0.72rem', color: '#3d2812', fontWeight: 600, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
+                    {CURATED_GAMES[g.game_id]}
+                  </span>
+                ) : (
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>{g.game_id.slice(0, 8)}</span>
+                )}
+                {!CURATED_GAMES[g.game_id] && (
+                  <span style={{
+                    fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase',
+                    background: g.status === 'running' ? '#8b5e2a22' : g.status === 'completed' ? '#c9a84c22' : '#991B1B22',
+                    color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#6b5840' : '#991B1B',
+                  }}>{g.status}</span>
                 )}
                 {g.created_at && (
                   <span style={{ fontSize: '0.6rem', color: '#b89b6a', fontFamily: 'monospace' }}>{g.created_at}</span>

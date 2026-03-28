@@ -7,6 +7,7 @@ import base64
 import json as json_mod
 import logging
 import os
+import time
 import urllib.request
 import urllib.parse
 from typing import Any
@@ -347,7 +348,7 @@ async def create_game(request: CreateGameRequest) -> GameResponse:
     await asyncio.sleep(0.1)
     game_id = runner.state.game_id if runner.state else "pending"
 
-    _games[game_id] = {"status": "running", "runner": runner, "task": task}
+    _games[game_id] = {"status": "running", "runner": runner, "task": task, "created_ts": time.time()}
     _runners[game_id] = runner
 
     return GameResponse(game_id=game_id, status="running")
@@ -522,7 +523,7 @@ async def configured_game(request: ConfiguredGameRequest, raw_request: Request) 
 
     await asyncio.sleep(0.2)
     game_id = runner.state.game_id if runner.state else "pending"
-    _games[game_id] = {"status": "running", "runner": runner, "task": task}
+    _games[game_id] = {"status": "running", "runner": runner, "task": task, "created_ts": time.time()}
     _runners[game_id] = runner
 
     # Track credit charge for this game
@@ -619,7 +620,7 @@ async def quick_game(
 
     await asyncio.sleep(0.2)
     game_id = runner.state.game_id if runner.state else "pending"
-    _games[game_id] = {"status": "running", "runner": runner, "task": task}
+    _games[game_id] = {"status": "running", "runner": runner, "task": task, "created_ts": time.time()}
     _runners[game_id] = runner
 
     return GameResponse(game_id=game_id, status="running")
@@ -678,12 +679,25 @@ async def list_games() -> list[GameResponse]:
         if gid not in _games:
             _try_load_game(gid)
 
-    # Mark stale "running" games that have no active task as abandoned
+    # Clean up stale "running" games:
+    # - No active task → mark abandoned
+    # - Task alive but running >4 hours → cancel and mark abandoned
+    max_age = 4 * 3600  # 4 hours
+    now = time.time()
     for game_id, info in _games.items():
-        if info["status"] == "running":
-            task = info.get("task")
-            if task is None or task.done():
-                info["status"] = "abandoned"
+        if info["status"] != "running":
+            continue
+        task = info.get("task")
+        if task is None or task.done():
+            info["status"] = "abandoned"
+            if game_id in _runners:
+                del _runners[game_id]
+        elif "created_ts" in info and (now - info["created_ts"]) > max_age:
+            logger.warning("Canceling stale game %s (running >%dh)", game_id, max_age // 3600)
+            task.cancel()
+            info["status"] = "abandoned"
+            if game_id in _runners:
+                del _runners[game_id]
 
     results = []
     for game_id, info in _games.items():

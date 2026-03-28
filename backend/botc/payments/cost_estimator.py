@@ -19,10 +19,19 @@ PAID_ALLOWED_MODELS: set[str] = {
     "gpt-4o",
 }
 
-# Historical averages from ~13 completed games
-AVG_INPUT_TOKENS_PER_CALL = 5000
-AVG_OUTPUT_TOKENS_PER_CALL = 300
-CALLS_PER_PLAYER_PER_DAY = 9
+# Historical averages from completed games (5 games, 617 calls)
+CALLS_PER_PLAYER_PER_DAY = 5  # Observed: 4.0–5.1 per actual game day
+
+# Input tokens scale with player count (more players = longer game state/messages)
+BASE_INPUT_TOKENS = 3500
+INPUT_TOKENS_PER_PLAYER = 400  # Observed: ~400 extra tokens per added player
+
+# Output tokens: reasoning models include thinking tokens billed as output.
+# Detect reasoning models using the same prefixes as the LLM adapters.
+_REASONING_PREFIXES = ("o1", "o3", "o4", "gpt-5")
+_REASONING_KEYWORDS = ("deepseek-r1", "qwen3", "kimi-k2")
+AVG_OUTPUT_TOKENS_STANDARD = 400   # Observed: 150–400
+AVG_OUTPUT_TOKENS_REASONING = 1200  # Observed: 600–1500
 
 # Default pricing for unknown models (moderate assumption)
 DEFAULT_PRICING = (2.0, 10.0)
@@ -34,25 +43,49 @@ MINIMUM_CHARGE_USD = 1.00
 SERVICE_FEE_BASE = 0.50
 SERVICE_FEE_MULTIPLIER = 1.10
 
+# Research discount: open-weight models get a per-call discount to
+# incentivise generating benchmark data.
+OPEN_WEIGHT_DISCOUNT = 0.90  # 10% off per open-weight model call
+
 # No variance buffer — we charge for max possible days (num_players - 2)
 DEFAULT_BUFFER = 1.0
 
 
-def _model_cost_per_call(model: str) -> float:
-    """Estimate USD cost for a single LLM call with the given model."""
+def _resolve_pricing(model: str) -> tuple[float, float]:
+    """Look up (input_$/MTok, output_$/MTok) for a model."""
     pricing = MODEL_PRICING.get(model)
     if pricing is None:
-        # Try prefix matching (e.g. OpenRouter "anthropic/claude-3.5-sonnet")
         for key, val in MODEL_PRICING.items():
             if key in model or model.startswith(key):
                 pricing = val
                 break
-    if pricing is None:
-        pricing = DEFAULT_PRICING
+    return pricing or DEFAULT_PRICING
 
-    input_cost = (AVG_INPUT_TOKENS_PER_CALL / 1_000_000) * pricing[0]
-    output_cost = (AVG_OUTPUT_TOKENS_PER_CALL / 1_000_000) * pricing[1]
-    return input_cost + output_cost
+
+def _is_open_weight(model: str) -> bool:
+    """Open-weight models are routed via OpenRouter and have a '/' in their ID."""
+    return "/" in model and not model.startswith("x-ai/")  # xAI/Grok is closed
+
+
+def _is_reasoning_model(model: str) -> bool:
+    """Detect reasoning/thinking models using the same patterns as LLM adapters."""
+    base = model.lower().rsplit("/", 1)[-1]  # strip OpenRouter prefix
+    if any(base.startswith(p) for p in _REASONING_PREFIXES):
+        return True
+    return any(k in base for k in _REASONING_KEYWORDS)
+
+
+def _model_cost_per_call(model: str, num_players: int) -> float:
+    """Estimate USD cost for a single LLM call with the given model."""
+    pricing = _resolve_pricing(model)
+    avg_input = BASE_INPUT_TOKENS + INPUT_TOKENS_PER_PLAYER * num_players
+    avg_output = AVG_OUTPUT_TOKENS_REASONING if _is_reasoning_model(model) else AVG_OUTPUT_TOKENS_STANDARD
+    input_cost = (avg_input / 1_000_000) * pricing[0]
+    output_cost = (avg_output / 1_000_000) * pricing[1]
+    cost = input_cost + output_cost
+    if _is_open_weight(model):
+        cost *= OPEN_WEIGHT_DISCOUNT
+    return cost
 
 
 def _estimate_days(num_players: int, max_days: int = 20) -> int:
@@ -89,11 +122,14 @@ def estimate_game_cost(
 
     breakdown: dict[str, dict] = {}
     total_per_day = 0.0
+    open_weight_count = 0
 
     for model, count in model_counts.items():
-        cost_per_call = _model_cost_per_call(model)
+        cost_per_call = _model_cost_per_call(model, num_players)
         daily_cost = cost_per_call * CALLS_PER_PLAYER_PER_DAY * count
         total_per_day += daily_cost
+        if _is_open_weight(model):
+            open_weight_count += count
         breakdown[model] = {
             "count": count,
             "cost_per_call": round(cost_per_call, 6),
@@ -115,6 +151,8 @@ def estimate_game_cost(
         "breakdown": breakdown,
         "est_days": est_days,
         "num_players": num_players,
+        "research_discount": open_weight_count > 0,
+        "open_weight_seats": open_weight_count,
         "assumptions": (
             f"{num_players} players, ~{est_days} days, "
             f"~{CALLS_PER_PLAYER_PER_DAY} calls/player/day, "
@@ -134,7 +172,7 @@ def estimate_monitor_cost(
     """
     # Rough: 1 LLM call per ~20 events + 1 summary
     est_calls = max(1, game_event_count // 20) + 1
-    cost_per_call = _model_cost_per_call(model)
+    cost_per_call = _model_cost_per_call(model, 7)  # assume ~7p for monitor context
     estimated_cost = cost_per_call * est_calls
     charge_amount = max(estimated_cost * buffer_multiplier, 0.50)  # Lower minimum for monitors
 

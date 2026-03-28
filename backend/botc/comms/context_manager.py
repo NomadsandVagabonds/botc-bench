@@ -538,6 +538,10 @@ def _nomination_turn_instructions(player: Player, state: GameState) -> str:
         "Use {NOMINATE: <seat_number>} to nominate someone, or {PASS} if you choose not to."
     )
     lines.append(
+        "If you nominate, your <SAY> IS your accusation speech — state your "
+        "case for why this player should be executed. Be persuasive."
+    )
+    lines.append(
         "Talking about suspicions is NOT enough — if you want someone executed, "
         "you MUST nominate them now."
     )

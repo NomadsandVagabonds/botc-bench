@@ -7,6 +7,7 @@ import base64
 import json as json_mod
 import logging
 import os
+import time
 import urllib.request
 import urllib.parse
 from typing import Any
@@ -58,6 +59,39 @@ def _load_saved_games() -> None:
 
 # Load on module import (server startup)
 _load_saved_games()
+
+
+def _try_load_game(game_id: str) -> bool:
+    """Try to load a single game from disk into the registry. Returns True if loaded."""
+    if game_id in _games:
+        return True
+    from botc.api.persistence import _GAMES_DIR
+    saved_path = _GAMES_DIR / f"game_{game_id}.json"
+    if not saved_path.exists():
+        return False
+    try:
+        import json
+        data = json.loads(saved_path.read_text())
+        info: dict[str, Any] = {
+            "status": data.get("status", "completed"),
+            "saved": True,
+        }
+        if data.get("result_data"):
+            info["result_data"] = data["result_data"]
+        elif data.get("result"):
+            info["result_data"] = data["result"]
+        if data.get("events"):
+            info["events"] = data["events"]
+        if data.get("initial_state"):
+            info["initial_state"] = data["initial_state"]
+        if data.get("error"):
+            info["error"] = data["error"]
+        _games[game_id] = info
+        logger.info("Loaded game %s from disk on-demand", game_id)
+        return True
+    except Exception:
+        logger.exception("Failed to load game %s from disk", game_id)
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -314,7 +348,7 @@ async def create_game(request: CreateGameRequest) -> GameResponse:
     await asyncio.sleep(0.1)
     game_id = runner.state.game_id if runner.state else "pending"
 
-    _games[game_id] = {"status": "running", "runner": runner, "task": task}
+    _games[game_id] = {"status": "running", "runner": runner, "task": task, "created_ts": time.time()}
     _runners[game_id] = runner
 
     return GameResponse(game_id=game_id, status="running")
@@ -339,27 +373,7 @@ async def configured_game(request: ConfiguredGameRequest, raw_request: Request) 
     credit_user_id: str | None = None
     charge_amount: float = 0.0
 
-    # ── Credit-paid game: auth + model validation + balance check ──
-    if not is_byok:
-        user = await require_auth(raw_request)
-        credit_user_id = user["id"]
-
-        # Estimate cost and deduct credits
-        models = [sm.model for sm in request.seat_models]
-        estimate = estimate_game_cost(request.num_players, models, request.max_days)
-        charge_amount = estimate["charge_amount"]
-
-        from botc.wager.db import deduct_credits
-        try:
-            await deduct_credits(
-                credit_user_id, charge_amount, "game_debit", None,
-                f"{request.num_players}p game (est ${estimate['estimated_cost']:.2f})",
-            )
-        except ValueError as e:
-            raise HTTPException(status_code=402, detail=str(e))
-
-    # Collect required providers and look up their API keys
-    # Priority: client-provided keys > server .env
+    # ── Validate API keys first (before charging credits) ──
     required_providers = {sm.provider for sm in request.seat_models}
     provider_keys: dict[str, str] = {}
     missing: list[str] = []
@@ -387,6 +401,35 @@ async def configured_game(request: ConfiguredGameRequest, raw_request: Request) 
             status_code=400,
             detail=f"Missing API keys — provide them in provider_keys or set in server .env: {', '.join(missing)}",
         )
+
+    # ── Credit-paid game: model whitelist + auth + balance check ──
+    if not is_byok:
+        # Enforce model whitelist for paid games
+        from botc.payments.cost_estimator import PAID_ALLOWED_MODELS
+        invalid = [sm.model for sm in request.seat_models if sm.model not in PAID_ALLOWED_MODELS]
+        if invalid:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Models not available in credits mode: {', '.join(invalid)}. "
+                       f"Allowed: {', '.join(sorted(PAID_ALLOWED_MODELS))}",
+            )
+
+        user = await require_auth(raw_request)
+        credit_user_id = user["id"]
+
+        # Estimate cost and deduct credits (after all validation passes)
+        models = [sm.model for sm in request.seat_models]
+        estimate = estimate_game_cost(request.num_players, models, request.max_days)
+        charge_amount = estimate["charge_amount"]
+
+        from botc.wager.db import deduct_credits
+        try:
+            await deduct_credits(
+                credit_user_id, charge_amount, "game_debit", None,
+                f"{request.num_players}p game (est ${estimate['estimated_cost']:.2f})",
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=402, detail=str(e))
 
     # Build agent configs — agent_ids are placeholders; setup.py assigns character names
     agent_configs = [
@@ -480,7 +523,7 @@ async def configured_game(request: ConfiguredGameRequest, raw_request: Request) 
 
     await asyncio.sleep(0.2)
     game_id = runner.state.game_id if runner.state else "pending"
-    _games[game_id] = {"status": "running", "runner": runner, "task": task}
+    _games[game_id] = {"status": "running", "runner": runner, "task": task, "created_ts": time.time()}
     _runners[game_id] = runner
 
     # Track credit charge for this game
@@ -577,7 +620,7 @@ async def quick_game(
 
     await asyncio.sleep(0.2)
     game_id = runner.state.game_id if runner.state else "pending"
-    _games[game_id] = {"status": "running", "runner": runner, "task": task}
+    _games[game_id] = {"status": "running", "runner": runner, "task": task, "created_ts": time.time()}
     _runners[game_id] = runner
 
     return GameResponse(game_id=game_id, status="running")
@@ -585,13 +628,27 @@ async def quick_game(
 
 @router.post("/api/games/{game_id}/stop")
 async def stop_game(game_id: str) -> dict:
-    """Stop a running game immediately."""
+    """Stop a running game immediately, saving progress to disk."""
     if game_id not in _games:
         raise HTTPException(status_code=404, detail="Game not found")
 
     info = _games[game_id]
     if info["status"] != "running":
         return {"game_id": game_id, "status": info["status"], "message": "Game is not running"}
+
+    # Save checkpoint before stopping
+    runner = _runners.get(game_id)
+    if runner:
+        try:
+            save_game(
+                game_id,
+                "stopped",
+                events=runner.event_history,
+                initial_state=getattr(runner, "_initial_snapshot", None),
+            )
+            logger.info("Game %s checkpoint saved before stop", game_id)
+        except Exception:
+            logger.exception("Failed to save checkpoint for game %s", game_id)
 
     # Cancel the async task
     task = info.get("task")
@@ -603,14 +660,44 @@ async def stop_game(game_id: str) -> dict:
         del _runners[game_id]
 
     logger.info("Game %s stopped by user", game_id)
-    return {"game_id": game_id, "status": "stopped", "message": "Game stopped"}
+    return {"game_id": game_id, "status": "stopped", "message": "Game stopped (progress saved)"}
 
 
 @router.get("/api/games")
 async def list_games() -> list[GameResponse]:
-    """List all games."""
+    """List all games, sorted newest first.
+
+    Games marked "running" with no active task are reclassified as
+    "abandoned" so they don't clutter the list.
+    """
     from botc.api.persistence import _GAMES_DIR
     from datetime import datetime
+
+    # Pick up any games added to disk since server startup
+    for path in _GAMES_DIR.glob("game_*.json"):
+        gid = path.stem.removeprefix("game_")
+        if gid not in _games:
+            _try_load_game(gid)
+
+    # Clean up stale "running" games:
+    # - No active task → mark abandoned
+    # - Task alive but running >4 hours → cancel and mark abandoned
+    max_age = 4 * 3600  # 4 hours
+    now = time.time()
+    for game_id, info in _games.items():
+        if info["status"] != "running":
+            continue
+        task = info.get("task")
+        if task is None or task.done():
+            info["status"] = "abandoned"
+            if game_id in _runners:
+                del _runners[game_id]
+        elif "created_ts" in info and (now - info["created_ts"]) > max_age:
+            logger.warning("Canceling stale game %s (running >%dh)", game_id, max_age // 3600)
+            task.cancel()
+            info["status"] = "abandoned"
+            if game_id in _runners:
+                del _runners[game_id]
 
     results = []
     for game_id, info in _games.items():
@@ -639,12 +726,18 @@ async def list_games() -> list[GameResponse]:
         resp.has_monitors = any(_GAMES_DIR.glob(f"monitor_{game_id}_*.json"))
 
         results.append(resp)
+
+    # Sort newest first
+    results.sort(key=lambda r: r.created_at or "", reverse=True)
     return results
 
 
 @router.get("/api/games/{game_id}")
 async def get_game(game_id: str) -> dict:
     """Get game state or result."""
+    if game_id not in _games:
+        # Try on-demand load from disk (game added after server startup)
+        _try_load_game(game_id)
     if game_id not in _games:
         return {"error": "Game not found"}
 
@@ -822,15 +915,21 @@ async def stripe_webhook(request: Request) -> dict:
             session_id = session.id
 
             if user_id and credits > 0:
-                from botc.wager.db import add_credits
-                new_balance = await add_credits(
-                    user_id, credits, "purchase", session_id,
-                    f"Purchased {pack_id} ({credits:.0f} credits)",
-                )
-                logger.info(
-                    "Credits added: user %s +%.1f credits (pack %s), balance now $%.2f",
-                    user_id, credits, pack_id, new_balance,
-                )
+                try:
+                    from botc.wager.db import add_credits
+                    new_balance = await add_credits(
+                        user_id, credits, "purchase", session_id,
+                        f"Purchased {pack_id} ({credits:.0f} credits)",
+                    )
+                    logger.info(
+                        "Credits added: user %s +%.1f credits (pack %s), balance now $%.2f",
+                        user_id, credits, pack_id, new_balance,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to add credits for user %s (session %s, pack %s)",
+                        user_id, session_id, pack_id,
+                    )
 
     return {"status": "ok"}
 
@@ -1073,74 +1172,81 @@ async def game_websocket(websocket: WebSocket, game_id: str):
                 },
             })
 
-    elif game_id in _games:
-        # Completed or saved game — try to serve from disk or in-memory save data
-        info = _games[game_id]
-
-        # If not already loaded from disk, try loading the saved JSON file
-        if not info.get("saved") and not info.get("events"):
-            from botc.api.persistence import _GAMES_DIR
-            saved_path = _GAMES_DIR / f"game_{game_id}.json"
-            if saved_path.exists():
-                import json
-                try:
-                    saved_data = json.loads(saved_path.read_text())
-                    info["events"] = saved_data.get("events")
-                    info["initial_state"] = saved_data.get("initial_state")
-                    info["result_data"] = saved_data.get("result", saved_data.get("result_data"))
-                    info["saved"] = True
-                except Exception:
-                    logger.exception("Failed to load game %s for WebSocket", game_id)
-        initial = info.get("initial_state")
-
-        # Legacy games may not have initial_state — synthesize from result_data
-        if not initial and info.get("result_data"):
-            rd = info["result_data"]
-            initial = {
-                "game_id": rd.get("game_id", game_id),
-                "phase": "game_over",
-                "day_number": rd.get("total_days", 0),
-                "players": [
-                    {
-                        "seat": p.get("seat", i),
-                        "agent_id": p.get("agent_id", f"seat-{i}"),
-                        "character_name": p.get("character_name", p.get("agent_id", f"Player {i}")),
-                        "model_name": p.get("model", ""),
-                        "role": p.get("role", ""),
-                        "role_id": p.get("role", "").lower().replace(" ", "_"),
-                        "role_type": "",
-                        "alignment": p.get("alignment", "good"),
-                        "is_alive": p.get("survived", True),
-                        "is_poisoned": False,
-                        "is_drunk": False,
-                        "is_protected": False,
-                        "ghost_vote_used": False,
-                        "perceived_role": None,
-                        "butler_master": None,
-                    }
-                    for i, p in enumerate(rd.get("players", []))
-                ],
-                "breakout_groups": [],
-                "nominations": [],
-                "executed_today": None,
-                "winner": rd.get("winner"),
-                "night_kills": [],
-                "demon_bluffs": [],
-                "rng_seed": None,
-            }
-
-        if initial:
+    else:
+        # Not a live runner — try in-memory registry, then disk.
+        _try_load_game(game_id)
+        info = _games.get(game_id)
+        if not info:
             await websocket.send_json({
-                "type": "game.state",
-                "data": initial,
+                "type": "error",
+                "data": {"message": f"Game {game_id} not found"},
             })
-        if info.get("events"):
-            await websocket.send_json({
-                "type": "event.history",
-                "data": {
-                    "events": info["events"],
-                },
-            })
+        else:
+            # If not already loaded from disk, try loading the saved JSON file
+            if not info.get("saved") and not info.get("events"):
+                from botc.api.persistence import _GAMES_DIR
+                saved_path = _GAMES_DIR / f"game_{game_id}.json"
+                if saved_path.exists():
+                    import json
+                    try:
+                        saved_data = json.loads(saved_path.read_text())
+                        info["events"] = saved_data.get("events")
+                        info["initial_state"] = saved_data.get("initial_state")
+                        info["result_data"] = saved_data.get("result", saved_data.get("result_data"))
+                        info["saved"] = True
+                    except Exception:
+                        logger.exception("Failed to load game %s for WebSocket", game_id)
+
+            initial = info.get("initial_state")
+
+            # Legacy games may not have initial_state — synthesize from result_data
+            if not initial and info.get("result_data"):
+                rd = info["result_data"]
+                initial = {
+                    "game_id": rd.get("game_id", game_id),
+                    "phase": "game_over",
+                    "day_number": rd.get("total_days", 0),
+                    "players": [
+                        {
+                            "seat": p.get("seat", i),
+                            "agent_id": p.get("agent_id", f"seat-{i}"),
+                            "character_name": p.get("character_name", p.get("agent_id", f"Player {i}")),
+                            "model_name": p.get("model", ""),
+                            "role": p.get("role", ""),
+                            "role_id": p.get("role", "").lower().replace(" ", "_"),
+                            "role_type": "",
+                            "alignment": p.get("alignment", "good"),
+                            "is_alive": p.get("survived", True),
+                            "is_poisoned": False,
+                            "is_drunk": False,
+                            "is_protected": False,
+                            "ghost_vote_used": False,
+                            "perceived_role": None,
+                            "butler_master": None,
+                        }
+                        for i, p in enumerate(rd.get("players", []))
+                    ],
+                    "breakout_groups": [],
+                    "nominations": [],
+                    "executed_today": None,
+                    "winner": rd.get("winner"),
+                    "night_kills": [],
+                    "demon_bluffs": [],
+                    "rng_seed": None,
+                }
+
+            if initial:
+                await websocket.send_json({
+                    "type": "game.state",
+                    "data": initial,
+                })
+            if info.get("events"):
+                await websocket.send_json({
+                    "type": "event.history",
+                    "data": {
+                        "events": info["events"],
+                    },
+                })
 
     try:
         while True:

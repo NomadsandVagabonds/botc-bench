@@ -173,6 +173,9 @@ function normalizeEvent(raw: { type: string; data: any }): ServerEvent | null {
       // Not a state event — just log
       console.log('[ws] Game created:', data);
       return null;
+    case 'error':
+      console.error('[ws] Server error:', data?.message);
+      return { type: 'error', message: data?.message ?? 'Unknown error' } as any;
     case 'monitor.started':
     case 'monitor.phase':
     case 'monitor.complete':
@@ -225,6 +228,7 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
 
     // Track whether this is a replay (saved game, not live)
     let receivedInitialState: import('../types/events.ts').ServerEvent | null = null;
+    let initialStateTimer: ReturnType<typeof setTimeout> | null = null;
 
     ws.onmessage = (ev) => {
       try {
@@ -232,12 +236,33 @@ export function useWebSocket(gameId: string | null): UseWebSocketReturn {
         const event = normalizeEvent(raw);
         if (!event) return;
 
+        // Server-side error (e.g. game not found)
+        if (event.type === 'error') {
+          window.dispatchEvent(new CustomEvent('ws-error', { detail: (event as any).message }));
+          return;
+        }
+
         // First message is always game.state — save it to detect replay vs live
         if (event.type === 'game.state' && !receivedInitialState) {
           receivedInitialState = event;
           // Don't apply yet — wait to see if event.history follows (replay)
-          // or if live events follow (live game)
+          // or if live events follow (live game).
+          // Timeout: if no follow-up arrives within 500ms, apply as live game
+          // (covers failed/empty games that have no events).
+          initialStateTimer = setTimeout(() => {
+            if (receivedInitialState) {
+              applyEvent(receivedInitialState);
+              receivedInitialState = null;
+              useGameStore.setState({ theatricalMode: true });
+            }
+          }, 500);
           return;
+        }
+
+        // Clear the timeout — a follow-up message arrived in time
+        if (initialStateTimer) {
+          clearTimeout(initialStateTimer);
+          initialStateTimer = null;
         }
 
         // If we get event.history right after game.state, check if it's a completed game

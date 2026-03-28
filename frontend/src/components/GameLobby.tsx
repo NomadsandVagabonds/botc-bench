@@ -13,31 +13,28 @@ import { estimateCost, getCreditBalance } from '../api/rest.ts';
 // ── Available models ──────────────────────────────────────────────────
 
 const AVAILABLE_MODELS = [
-  // Anthropic (first-party)
+  // Open-weight (via OpenRouter) — primary benchmark targets
+  { id: 'moonshotai/kimi-k2.5', label: 'Kimi K2.5', provider: 'openrouter' },
+  { id: 'qwen/qwen3.5-397b-a17b', label: 'Qwen3.5 397B', provider: 'openrouter' },
+  { id: 'deepseek/deepseek-r1-0528', label: 'DeepSeek R1 0528', provider: 'openrouter' },
+  { id: 'deepseek/deepseek-v3.2', label: 'DeepSeek V3.2', provider: 'openrouter' },
+  { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B', provider: 'openrouter' },
+  // Closed-source — Anthropic
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', provider: 'anthropic' },
   { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4.6', provider: 'anthropic' },
   { id: 'claude-opus-4-20250514', label: 'Claude Opus 4.6', provider: 'anthropic' },
-  // OpenAI (first-party)
+  // Closed-source — OpenAI
   { id: 'gpt-4o', label: 'GPT-4o', provider: 'openai' },
-  { id: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai' },
   { id: 'o3-mini', label: 'o3-mini', provider: 'openai' },
   { id: 'o4-mini', label: 'o4-mini', provider: 'openai' },
   { id: 'gpt-4.1', label: 'GPT-4.1', provider: 'openai' },
-  { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', provider: 'openai' },
   { id: 'gpt-5.4', label: 'GPT-5.4', provider: 'openai' },
   { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', provider: 'openai' },
-  // Google (first-party)
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'google' },
-  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'google' },
+  // Closed-source — Google
   { id: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', provider: 'google' },
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', provider: 'google' },
-  // OpenRouter — non-first-party models only
-  { id: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B (OR)', provider: 'openrouter' },
-  { id: 'mistralai/mistral-large', label: 'Mistral Large (OR)', provider: 'openrouter' },
-  { id: 'moonshotai/kimi-k2', label: 'Kimi K2 (OR)', provider: 'openrouter' },
-  { id: 'deepseek/deepseek-r1', label: 'DeepSeek R1 (OR)', provider: 'openrouter' },
-  { id: 'qwen/qwen3-235b-a22b', label: 'Qwen3 235B (OR)', provider: 'openrouter' },
-  { id: 'x-ai/grok-4.20-beta', label: 'Grok 4.20 (OR)', provider: 'openrouter' },
+  // Closed-source — xAI (via OpenRouter)
+  { id: 'x-ai/grok-4.20-beta', label: 'Grok 4.20', provider: 'openrouter' },
 ];
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -49,13 +46,11 @@ const PROVIDER_COLORS: Record<string, string> = {
 
 const SCRIPTS: { label: string; value: string; note?: string }[] = [
   { label: 'Trouble Brewing', value: 'trouble_brewing' },
-  { label: 'Bad Moon Rising', value: 'bad_moon_rising', note: 'experimental' },
-  { label: 'Sects & Violets', value: 'sects_and_violets', note: 'experimental' },
 ];
 
 function buildMixedSeatModels(count: number): string[] {
   // Round-robin across Stripe-eligible models
-  const mixedOrder = ['claude-haiku-4-5-20251001', 'gpt-4o', 'gemini-3-flash-preview', 'o4-mini', 'gpt-5.4-mini'];
+  const mixedOrder = ['moonshotai/kimi-k2.5', 'qwen/qwen3.5-397b-a17b', 'deepseek/deepseek-r1-0528', 'deepseek/deepseek-v3.2', 'meta-llama/llama-3.3-70b-instruct'];
   return Array.from({ length: count }, (_, i) => mixedOrder[i % mixedOrder.length]);
 }
 
@@ -97,10 +92,10 @@ const SCRIPT_ROLES: Record<string, RoleInfo[]> = {
 };
 
 const ROLE_TYPE_COLORS: Record<string, string> = {
-  townsfolk: '#3B82F6',
-  outsider: '#06B6D4',
-  minion: '#F59E0B',
-  demon: '#EF4444',
+  townsfolk: '#6b5840',
+  outsider: '#5c3d1a',
+  minion: '#b34a28',
+  demon: '#991B1B',
 };
 
 const ROLE_TYPE_LABELS: Record<string, string> = {
@@ -218,10 +213,10 @@ function SeatRow({ seat, model, spriteId, usedCharacters, onChange, onCharChange
   onChange: (m: string) => void; onCharChange: (id: number | null) => void;
 }) {
   const selected = AVAILABLE_MODELS.find((m) => m.id === model);
-  const color = selected ? PROVIDER_COLORS[selected.provider] : '#6B7280';
+  const provColor = selected ? PROVIDER_COLORS[selected.provider] : '#5c3d1a';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <div style={{ width: 20, height: 20, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, color: '#1a0e04', flexShrink: 0 }}>{seat}</div>
+      <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#3d2812', border: `2px solid ${provColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, color: '#c9a84c', flexShrink: 0 }}>{seat}</div>
       <ModelSelect value={model} onChange={onChange} style={{ flex: '1 1 45%' }} />
       <CharacterSelect spriteId={spriteId} usedCharacters={usedCharacters} onChange={onCharChange} />
     </div>
@@ -234,15 +229,15 @@ function AssignedSeatRow({ seat, model, roleId, scriptId, spriteId, usedRoles, u
   onModelChange: (m: string) => void; onRoleChange: (r: string) => void; onCharChange: (id: number | null) => void;
 }) {
   const selected = AVAILABLE_MODELS.find((m) => m.id === model);
-  const modelColor = selected ? PROVIDER_COLORS[selected.provider] : '#6B7280';
+  const modelColor = selected ? PROVIDER_COLORS[selected.provider] : '#5c3d1a';
   const roles = SCRIPT_ROLES[scriptId] ?? [];
   const currentRole = roles.find((r) => r.id === roleId);
-  const roleColor = currentRole ? ROLE_TYPE_COLORS[currentRole.type] : '#6B7280';
+  const roleColor = currentRole ? ROLE_TYPE_COLORS[currentRole.type] : '#5c3d1a';
   const grouped = new Map<string, RoleInfo[]>();
   for (const r of roles) { const list = grouped.get(r.type) ?? []; list.push(r); grouped.set(r.type, list); }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <div style={{ width: 18, height: 18, borderRadius: '50%', background: modelColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 700, color: '#1a0e04', flexShrink: 0 }}>{seat}</div>
+      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#3d2812', border: `2px solid ${modelColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 700, color: '#c9a84c', flexShrink: 0 }}>{seat}</div>
       <ModelSelect value={model} onChange={onModelChange} style={{ flex: '1 1 30%', fontSize: '0.7rem', padding: '3px 4px' }} />
       <select value={roleId} onChange={(e) => onRoleChange(e.target.value)} style={{ ...st.select, flex: '1 1 30%', fontSize: '0.7rem', padding: '3px 4px', borderLeft: `3px solid ${roleColor}` }}>
         <option value="">-- random --</option>
@@ -289,22 +284,104 @@ function DistributionSummary({ playerCount, seatRoles, roleMode, scriptId }: {
   );
 }
 
+// ── Admin mode ──────────────────────────────────────────────────────
+// Activated by entering a passphrase. Triple-click the title to open
+// the prompt. Session persists to localStorage until explicitly cleared.
+
+const ADMIN_HASH = import.meta.env.VITE_ADMIN_HASH ?? '';
+
+async function sha256(text: string): Promise<string> {
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function useAdminMode() {
+  const [isAdmin, setIsAdmin] = useState(
+    () => localStorage.getItem('bloodbench_admin') === '1',
+  );
+
+  const authenticate = useCallback(async (passphrase: string): Promise<boolean> => {
+    const hash = await sha256(passphrase);
+    if (hash === ADMIN_HASH) {
+      localStorage.setItem('bloodbench_admin', '1');
+      setIsAdmin(true);
+      return true;
+    }
+    return false;
+  }, []);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('bloodbench_admin');
+    setIsAdmin(false);
+  }, []);
+
+  return { isAdmin, authenticate, logout };
+}
+
+function AdminPassphraseModal({ onSubmit, onClose }: { onSubmit: (pw: string) => void; onClose: () => void }) {
+  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 10000,
+      background: 'rgba(0,0,0,0.6)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+    }} onClick={onClose}>
+      <div style={{
+        background: '#1a1a2e', border: '2px solid #c9a84c', borderRadius: 10,
+        padding: '28px 32px', minWidth: 280, textAlign: 'center',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{ color: '#c9a84c', fontFamily: 'Georgia, serif', fontSize: '0.9rem', marginBottom: 16 }}>
+          Storyteller Access
+        </div>
+        <form onSubmit={e => { e.preventDefault(); onSubmit(value); }}>
+          <input
+            ref={inputRef}
+            type="password"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder="Passphrase"
+            style={{
+              width: '100%', padding: '8px 12px', boxSizing: 'border-box',
+              background: '#0a0806', border: '1px solid #5c3d1a', borderRadius: 4,
+              color: '#e8d5a3', fontSize: '0.85rem', fontFamily: 'monospace',
+              outline: 'none',
+            }}
+          />
+          <button type="submit" style={{
+            marginTop: 12, width: '100%', padding: '8px 0',
+            background: '#5c3d1a', color: '#e8d5a3', border: 'none',
+            borderRadius: 4, fontSize: '0.8rem', fontFamily: 'Georgia, serif',
+            cursor: 'pointer',
+          }}>
+            Enter
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Options tabs ─────────────────────────────────────────────────────
 
 type OptionsTab = 'rules' | 'conversation' | 'agents' | 'audio' | 'fun' | 'monitor' | 'wager' | 'probabilities' | 'api' | 'voice' | 'stats';
 
-const OPTIONS_TABS: { id: OptionsTab; label: string; stub?: boolean }[] = [
+const OPTIONS_TABS: { id: OptionsTab; label: string; stub?: boolean; adminOnly?: boolean }[] = [
   { id: 'rules', label: 'Game Rules' },
-  { id: 'conversation', label: 'Conversation' },
-  { id: 'agents', label: 'Agent Tuning' },
+  { id: 'conversation', label: 'Conversation', adminOnly: true },
+  { id: 'agents', label: 'Agent Tuning', adminOnly: true },
   { id: 'audio', label: 'Audio' },
-  { id: 'fun', label: 'Fun' },
-  { id: 'monitor', label: 'Monitor' },
-  { id: 'wager', label: "Crown's Wager" },
-  { id: 'probabilities', label: 'Probabilities', stub: true },
+  { id: 'fun', label: 'Fun', adminOnly: true },
+  { id: 'monitor', label: 'Monitor', adminOnly: true },
+  { id: 'wager', label: "Crown's Wager", adminOnly: true },
+  { id: 'probabilities', label: 'Probabilities', stub: true, adminOnly: true },
   { id: 'api', label: 'API Keys' },
-  { id: 'voice', label: 'Voice' },
-  { id: 'stats', label: 'Stats' },
+  { id: 'voice', label: 'Voice', adminOnly: true },
+  { id: 'stats', label: 'Stats', adminOnly: true },
 ];
 
 const SPEECH_STYLE_PRESETS: { id: string; label: string; description: string; prompt: string }[] = [
@@ -484,7 +561,7 @@ function StatsPanel({ shareStats, revealModels, onToggleShare }: {
               const m = stats.models[modelId];
               if (!m) return null;
               const provider = providerForModel(modelId);
-              const provColor = PROVIDER_COLORS[provider] ?? '#6B7280';
+              const provColor = PROVIDER_COLORS[provider] ?? '#5c3d1a';
               const goodRank = rankBadge(stats.rankings.good, modelId);
               const evilRank = rankBadge(stats.rankings.evil, modelId);
               const demonRank = rankBadge(stats.rankings.demon, modelId);
@@ -669,7 +746,7 @@ function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
     borderRight: '1px solid rgba(92, 61, 26, 0.15)',
   };
   const subTabActiveStyle: React.CSSProperties = {
-    background: 'rgba(124, 58, 237, 0.12)', fontWeight: 700, color: '#5b21b6',
+    background: 'rgba(139, 94, 42, 0.15)', fontWeight: 700, color: '#8b5e2a',
   };
 
   if (subTab === 'batch') {
@@ -731,8 +808,8 @@ function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
                     </span>
                     <span style={{
                       fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8,
-                      background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
-                      color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
+                      background: g.winner === 'good' ? '#c9a84c22' : '#991B1B22',
+                      color: g.winner === 'good' ? '#c9a84c' : '#991B1B',
                     }}>
                       {g.winner} wins
                     </span>
@@ -750,7 +827,7 @@ function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
                       background: 'rgba(124, 58, 237, 0.06)',
                     }}>
                       <span style={{
-                        fontSize: '0.62rem', fontWeight: 700, color: '#5b21b6', minWidth: 50,
+                        fontSize: '0.62rem', fontWeight: 700, color: '#8b5e2a', minWidth: 50,
                       }}>
                         {r.scores.total.toFixed(1)} pts
                       </span>
@@ -829,7 +906,7 @@ function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
       <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: '0.68rem', color: '#3d2812' }}>
           <input type="checkbox" checked={includeGroups} onChange={(e) => setIncludeGroups(e.target.checked)}
-            style={{ accentColor: '#7c3aed' }} />
+            style={{ accentColor: '#8b5e2a' }} />
           Include group conversations
         </label>
         <span style={{ fontSize: '0.58rem', color: '#8b7355' }}>
@@ -866,8 +943,8 @@ function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
                     </span>
                     <span style={{
                       fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8,
-                      background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
-                      color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
+                      background: g.winner === 'good' ? '#c9a84c22' : '#991B1B22',
+                      color: g.winner === 'good' ? '#c9a84c' : '#991B1B',
                     }}>
                       {g.winner} wins
                     </span>
@@ -881,7 +958,7 @@ function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
                       <span style={{
                         fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8,
-                        background: 'rgba(124, 58, 237, 0.1)', color: '#5b21b6',
+                        background: 'rgba(139, 94, 42, 0.12)', color: '#8b5e2a',
                       }}>
                         Score: {latestResult.scores.total.toFixed(1)}
                       </span>
@@ -911,7 +988,7 @@ function MonitorOptionsPanel({ games }: { games: GameListItem[] }) {
                     cursor: 'pointer', whiteSpace: 'nowrap',
                     background: latestResult ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.12)',
                     border: '1px solid rgba(124, 58, 237, 0.3)',
-                    color: '#5b21b6',
+                    color: '#8b5e2a',
                   }}>
                     {latestResult ? `Re-run (${modelInfo?.label ?? 'model'})` : `Run ${modelInfo?.label ?? 'Monitor'}`}
                   </button>
@@ -999,8 +1076,8 @@ function VoicePanel({ games }: { games: GameListItem[] }) {
                   </span>
                   <span style={{
                     fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8,
-                    background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
-                    color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
+                    background: g.winner === 'good' ? '#c9a84c22' : '#991B1B22',
+                    color: g.winner === 'good' ? '#c9a84c' : '#991B1B',
                   }}>
                     {g.winner} wins
                   </span>
@@ -1018,14 +1095,14 @@ function VoicePanel({ games }: { games: GameListItem[] }) {
               {/* Status / action */}
               {status === 'ready' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: '0.6rem', color: '#065F46', fontWeight: 600 }}>
+                  <span style={{ fontSize: '0.6rem', color: '#6b5840', fontWeight: 600 }}>
                     {clips} clips
                   </span>
                   <button style={{
                     ...voiceBtnStyle,
                     background: 'rgba(16, 185, 129, 0.1)',
                     border: '1px solid rgba(16, 185, 129, 0.3)',
-                    color: '#065F46',
+                    color: '#6b5840',
                   }} onClick={() => handleGenerate(g.game_id)}>
                     Regenerate
                   </button>
@@ -1105,7 +1182,7 @@ interface GameOptions {
 const DEFAULT_OPTIONS: GameOptions = {
   revealModels: 'true',
   seed: '',
-  maxDays: 50,
+  maxDays: 25,
   breakoutRounds: 1,
   messagesPerAgent: 2,
   regroupMessages: 1,
@@ -1319,14 +1396,14 @@ function LeaderboardView() {
                     <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center', fontWeight: 600 }}>${m.avg_cost_per_day.toFixed(3)}</span>
                     <span style={{ fontSize: '0.62rem', color: '#2a1a0a', textAlign: 'center' }}>{(m.avg_tokens_per_day / 1000).toFixed(0)}k</span>
                     <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center', fontWeight: 600 }}>{pct(m.overall_win_rate)}</span>
-                    <span style={{ fontSize: '0.68rem', color: '#1E40AF', textAlign: 'center', fontWeight: 600 }}>{m.good.played > 0 ? pct(m.good.win_rate) : '-'}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#c9a84c', textAlign: 'center', fontWeight: 600 }}>{m.good.played > 0 ? pct(m.good.win_rate) : '-'}</span>
                     <span style={{ fontSize: '0.68rem', color: '#991B1B', textAlign: 'center', fontWeight: 600 }}>{m.evil.played > 0 ? pct(m.evil.win_rate) : '-'}</span>
                     <span style={{ fontSize: '0.62rem', color: '#5a4630', textAlign: 'center' }}>{m.games_played}g</span>
                   </>
                 ) : (
                   <>
                     <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center', fontWeight: 600 }}>{pct(m.overall_win_rate)}</span>
-                    <span style={{ fontSize: '0.68rem', color: '#1E40AF', textAlign: 'center', fontWeight: 600 }}>{m.good.played > 0 ? pct(m.good.win_rate) : '-'}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#c9a84c', textAlign: 'center', fontWeight: 600 }}>{m.good.played > 0 ? pct(m.good.win_rate) : '-'}</span>
                     <span style={{ fontSize: '0.68rem', color: '#991B1B', textAlign: 'center', fontWeight: 600 }}>{m.evil.played > 0 ? pct(m.evil.win_rate) : '-'}</span>
                     <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center' }}>{m.good.noms_made > 0 ? pct(m.good.nom_accuracy) : '-'}</span>
                     <span style={{ fontSize: '0.68rem', color: '#2a1a0a', textAlign: 'center' }}>{m.good.votes_cast > 0 ? pct(m.good.vote_accuracy) : '-'}</span>
@@ -1345,7 +1422,7 @@ function LeaderboardView() {
                 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                     <div>
-                      <div style={{ fontWeight: 700, color: '#1E40AF', marginBottom: 3 }}>Good ({m.good.played}g, {pct(m.good.win_rate)} WR)</div>
+                      <div style={{ fontWeight: 700, color: '#c9a84c', marginBottom: 3 }}>Good ({m.good.played}g, {pct(m.good.win_rate)} WR)</div>
                       <div>Noms: {m.good.noms_hit_evil}/{m.good.noms_made} hit evil ({m.good.noms_made > 0 ? pct(m.good.nom_accuracy) : '-'})</div>
                       <div>Votes: {m.good.votes_correct}/{m.good.votes_cast} correct ({m.good.votes_cast > 0 ? pct(m.good.vote_accuracy) : '-'})</div>
                     </div>
@@ -1369,8 +1446,8 @@ function LeaderboardView() {
                         {Object.entries(m.roles).map(([role, rs]) => (
                           <span key={role} style={{
                             padding: '1px 6px', borderRadius: 8, fontSize: '0.52rem',
-                            background: rs.win_rate >= 0.5 ? '#10B98118' : '#EF444418',
-                            color: rs.win_rate >= 0.5 ? '#065F46' : '#991B1B',
+                            background: rs.win_rate >= 0.5 ? '#c9a84c18' : '#991B1B18',
+                            color: rs.win_rate >= 0.5 ? '#6b5840' : '#991B1B',
                           }}>
                             {role} {rs.wins}/{rs.played}
                           </span>
@@ -1407,6 +1484,20 @@ function _getSortValue(m: LeaderboardModel, key: string): number {
 
 export function GameLobby() {
   const navigate = useNavigate();
+  const { isAdmin, authenticate: adminAuthenticate, logout: adminLogout } = useAdminMode();
+
+  // Pick up wager_token from URL params (GitHub OAuth callback redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('wager_token');
+    if (urlToken) {
+      localStorage.setItem('wager_token', urlToken);
+      params.delete('wager_token');
+      const clean = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (clean ? `?${clean}` : ''));
+    }
+  }, []);
+  const [showAdminPrompt, setShowAdminPrompt] = useState(false);
   const lobbyAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Ambient idle video on scroll background
@@ -1521,9 +1612,15 @@ export function GameLobby() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [showCreditPurchase, setShowCreditPurchase] = useState(false);
+  const [showApiKeys, setShowApiKeys] = useState(false);
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [estimatedCost, setEstimatedCost] = useState<number | null>(null);
-  const [paymentMode, setPaymentMode] = useState<'stripe' | 'api'>('stripe');
+  const [paymentMode, setPaymentMode] = useState<'stripe' | 'api'>(() => {
+    // If returning from OAuth with a token, default to credits mode
+    const hasToken = !!localStorage.getItem('wager_token');
+    const returningFromAuth = new URLSearchParams(window.location.search).has('wager_token');
+    return (hasToken || returningFromAuth) ? 'stripe' : 'api';
+  });
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch credit balance on mount
@@ -1685,8 +1782,7 @@ export function GameLobby() {
       if (!hasClientKeys) {
         setStartError('No API keys entered.');
         setStarting(false);
-        setView('options');
-        setOptionsTab('api');
+        setShowApiKeys(true);
         return;
       }
       try {
@@ -1695,7 +1791,13 @@ export function GameLobby() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed';
         if (msg.includes('fetch') || msg.includes('Network')) setStartError('Cannot connect to server.');
-        else setStartError(msg);
+        else if (msg.includes('Missing API keys')) {
+          // Extract which providers are missing from the backend message
+          const match = msg.match(/:\s*(.+)$/);
+          const missing = match ? match[1] : '';
+          setStartError(`Missing API keys for: ${missing}. Enter them above or buy credits.`);
+          setShowApiKeys(true);
+        } else setStartError(msg);
       } finally { setStarting(false); }
       return;
     }
@@ -1760,28 +1862,75 @@ export function GameLobby() {
           <div style={st.field}>
             <label style={st.label}>Payment</label>
             <div style={{ display: 'flex', gap: 0, borderRadius: 2, overflow: 'hidden', border: '2px solid rgba(61, 40, 18, 0.3)' }}>
-              <button style={{ ...st.toggleBtn, background: paymentMode === 'stripe' ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: paymentMode === 'stripe' ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => setPaymentMode('stripe')}>Credits</button>
-              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: paymentMode === 'api' ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => setPaymentMode('api')}>API Keys</button>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'stripe' ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: paymentMode === 'stripe' ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => {
+                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const token = localStorage.getItem('wager_token');
+                if (!token && !isLocal) {
+                  // Redirect to GitHub OAuth, then back here
+                  const serverUrl = localStorage.getItem('bloodbench_server_url') || import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                  window.location.href = `${serverUrl}/api/wager/auth/github?redirect=${encodeURIComponent('/lobby')}`;
+                  return;
+                }
+                setPaymentMode('stripe');
+                // Fetch balance if we have a token (or localhost mock)
+                if (creditBalance === null) {
+                  getCreditBalance()
+                    .then((data) => setCreditBalance(data.balance))
+                    .catch(() => setCreditBalance(null));
+                }
+              }}>Credits</button>
+              <button style={{ ...st.toggleBtn, background: paymentMode === 'api' ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: paymentMode === 'api' ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => { setPaymentMode('api'); setShowApiKeys(true); }}>API Keys</button>
             </div>
           </div>
 
           {paymentMode === 'stripe' && (
+            <>
             <CreditBalanceInline
               balance={creditBalance}
               estimatedCost={estimatedCost}
               onBuyCredits={() => setShowCreditPurchase(true)}
             />
-          )}
-          {paymentMode === 'api' && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: '0.58rem', color: '#6b5840', lineHeight: 1.5 }}>
-                {Object.keys(clientKeys).length > 0
-                  ? <span style={{ color: '#2d5a2d', fontWeight: 600 }}>BYOK mode — using your API keys (free)</span>
-                  : <>No keys configured. <button style={{ background: 'none', border: 'none', color: '#c9a84c', fontSize: '0.58rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }} onClick={() => { setView('options'); setOptionsTab('api'); }}>Add API keys</button></>
-                }
-              </div>
+            <div style={{ fontSize: '0.52rem', color: '#6b5840', lineHeight: 1.4, marginBottom: 8, fontStyle: 'italic' }}>
+              Games played with open-weight models contribute to AI deception research data.
             </div>
+            </>
           )}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: '0.58rem', color: '#6b5840', lineHeight: 1.5 }}>
+              {Object.keys(clientKeys).length > 0
+                ? <span style={{ color: '#6b5840', fontWeight: 600 }}>BYOK mode — using your API keys (free)</span>
+                : <>No keys configured. <button style={{ background: 'none', border: 'none', color: '#b34a28', fontSize: '0.58rem', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontWeight: 600 }} onClick={() => setShowApiKeys(v => !v)}>Add API keys</button></>
+              }
+            </div>
+            {showApiKeys && (
+              <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(92, 61, 26, 0.06)', borderRadius: 4, border: '1px solid rgba(92, 61, 26, 0.15)' }}>
+                <div style={{ fontSize: '0.6rem', color: '#8b7355', marginBottom: 6, lineHeight: 1.4 }}>
+                  Keys are stored in your browser and sent directly to providers — never stored on our server. <a href="https://github.com/NomadsandVagabonds/botc-bench" target="_blank" rel="noopener noreferrer" style={{ color: '#b34a28' }}>Verify in our source code.</a>
+                </div>
+                {[
+                  { provider: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...' },
+                  { provider: 'openai', label: 'OpenAI', placeholder: 'sk-...' },
+                  { provider: 'google', label: 'Google', placeholder: 'AIza...' },
+                  { provider: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...' },
+                ].map(({ provider, label, placeholder }) => (
+                  <div key={provider} style={{ marginBottom: 4 }}>
+                    <input
+                      type="password"
+                      value={clientKeys[provider] ?? ''}
+                      onChange={e => updateClientKey(provider, e.target.value)}
+                      placeholder={`${label}: ${placeholder}`}
+                      style={{
+                        width: '100%', padding: '4px 8px', boxSizing: 'border-box',
+                        fontSize: '0.65rem', fontFamily: 'monospace',
+                        background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(92, 61, 26, 0.2)',
+                        borderRadius: 3, color: '#3d2812',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div style={st.field}>
             <label style={st.label}>Quick Fill</label>
@@ -1791,27 +1940,31 @@ export function GameLobby() {
             </button>
           </div>
 
-          <div style={st.field}>
-            <label style={st.label}>Role Assignment</label>
-            <div style={{ display: 'flex', gap: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(92, 61, 26, 0.25)' }}>
-              <button style={{ ...st.toggleBtn, background: roleMode === 'random' ? 'rgba(92, 61, 26, 0.2)' : 'transparent', fontWeight: roleMode === 'random' ? 700 : 400 }} onClick={() => setRoleMode('random')}>Random</button>
-              <button style={{ ...st.toggleBtn, background: roleMode === 'assigned' ? 'rgba(92, 61, 26, 0.2)' : 'transparent', fontWeight: roleMode === 'assigned' ? 700 : 400, opacity: isAssignedAvailable ? 1 : 0.4 }}
-                onClick={() => { if (isAssignedAvailable) setRoleMode('assigned'); }} disabled={!isAssignedAvailable}>Assigned</button>
-            </div>
-          </div>
-
-          {roleMode === 'assigned' && (
-            <div style={st.field}>
-              <label style={st.label}>Role Presets</label>
-              <div style={{ display: 'flex', gap: 5 }}>
-                <button style={{ ...st.smallBtn, borderLeft: '3px solid #EF4444' }} onClick={applyTeamVsTeamPreset}>Team vs Team</button>
+          {isAdmin && (
+            <>
+              <div style={st.field}>
+                <label style={st.label}>Role Assignment</label>
+                <div style={{ display: 'flex', gap: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid rgba(92, 61, 26, 0.25)' }}>
+                  <button style={{ ...st.toggleBtn, background: roleMode === 'random' ? 'rgba(92, 61, 26, 0.2)' : 'transparent', fontWeight: roleMode === 'random' ? 700 : 400 }} onClick={() => setRoleMode('random')}>Random</button>
+                  <button style={{ ...st.toggleBtn, background: roleMode === 'assigned' ? 'rgba(92, 61, 26, 0.2)' : 'transparent', fontWeight: roleMode === 'assigned' ? 700 : 400, opacity: isAssignedAvailable ? 1 : 0.4 }}
+                    onClick={() => { if (isAssignedAvailable) setRoleMode('assigned'); }} disabled={!isAssignedAvailable}>Assigned</button>
+                </div>
               </div>
-            </div>
+
+              {roleMode === 'assigned' && (
+                <div style={st.field}>
+                  <label style={st.label}>Role Presets</label>
+                  <div style={{ display: 'flex', gap: 5 }}>
+                    <button style={{ ...st.smallBtn, borderLeft: '3px solid #EF4444' }} onClick={applyTeamVsTeamPreset}>Team vs Team</button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <DistributionSummary playerCount={playerCount} seatRoles={seatRoles} roleMode={roleMode} scriptId={script} />
 
-          {roleMode === 'assigned' && roleWarnings.length > 0 && (
+          {isAdmin && roleMode === 'assigned' && roleWarnings.length > 0 && (
             <div style={{ marginTop: 6, padding: '6px 8px', borderRadius: 3, background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
               {roleWarnings.map((w, i) => <div key={i} style={{ fontSize: '0.62rem', color: '#991B1B', lineHeight: 1.4 }}>{w}</div>)}
             </div>
@@ -1856,11 +2009,31 @@ export function GameLobby() {
   const optionsView = (
     <div style={{ width: '100%' }}>
       <button style={st.backBtn} onClick={() => setView('menu')}>Back</button>
-      <div style={st.panelTitle}>Options</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <div
+          style={{ ...st.panelTitle, cursor: 'default', userSelect: 'none' }}
+          onClick={(e) => {
+            if (e.detail >= 3 && !isAdmin) setShowAdminPrompt(true);
+          }}
+        >
+          Options
+        </div>
+        {isAdmin && (
+          <span style={{ fontSize: '0.55rem', color: '#8b5e2a', fontStyle: 'italic', opacity: 0.7 }}>
+            Storyteller mode{' '}
+            <button onClick={adminLogout} style={{
+              background: 'none', border: 'none', color: '#8b5e2a',
+              fontSize: '0.55rem', cursor: 'pointer', textDecoration: 'underline', padding: 0,
+            }}>
+              (exit)
+            </button>
+          </span>
+        )}
+      </div>
 
       {/* Tab bar */}
       <div style={st.tabBar}>
-        {OPTIONS_TABS.map((tab) => (
+        {OPTIONS_TABS.filter(tab => isAdmin || !tab.adminOnly).map((tab) => (
           <button key={tab.id}
             style={{ ...st.tab, ...(optionsTab === tab.id ? st.tabActive : {}) }}
             onClick={() => setOptionsTab(tab.id)}>
@@ -1889,9 +2062,6 @@ export function GameLobby() {
             <OptionField label="Random Seed" help="Set a specific seed for reproducible games. Leave empty for random.">
               <input type="text" value={options.seed} onChange={(e) => updateOption('seed', e.target.value)}
                 placeholder="Random" style={{ ...st.select, width: 120 }} />
-            </OptionField>
-            <OptionField label={`Max Days: ${options.maxDays}`} help="Safety cap to prevent infinite games. Real BotC has no day limit.">
-              <NumberField value={options.maxDays} onChange={(v) => updateOption('maxDays', v)} min={5} max={100} />
             </OptionField>
           </>
         )}
@@ -1960,9 +2130,9 @@ export function GameLobby() {
                     <button key={preset.id} onClick={() => updateOption('speechStyle', preset.prompt)} style={{
                       padding: '5px 10px', borderRadius: 4, fontSize: '0.65rem', fontWeight: isActive ? 700 : 400,
                       cursor: 'pointer',
-                      border: isActive ? '1px solid #7c3aed' : '1px solid rgba(92, 61, 26, 0.2)',
+                      border: isActive ? '1px solid #8b5e2a' : '1px solid rgba(92, 61, 26, 0.2)',
                       background: isActive ? 'rgba(124, 58, 237, 0.12)' : 'transparent',
-                      color: isActive ? '#5b21b6' : '#5c3d1a',
+                      color: isActive ? '#8b5e2a' : '#5c3d1a',
                     }}>
                       {preset.label}
                     </button>
@@ -2023,7 +2193,7 @@ export function GameLobby() {
                       </span>
                       <span style={{
                         marginLeft: 8, fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                        background: '#F59E0B22', color: '#92400E',
+                        background: '#8b5e2a22', color: '#92400E',
                       }}>live</span>
                     </div>
                     <button onClick={() => navigateWithTransition(`/spectate/${g.game_id}`)} style={{
@@ -2048,7 +2218,7 @@ export function GameLobby() {
                       </span>
                       <span style={{
                         marginLeft: 8, fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                        background: '#10B98122', color: '#065F46',
+                        background: '#c9a84c22', color: '#6b5840',
                       }}>{g.winner} wins</span>
                       <span style={{
                         marginLeft: 4, fontSize: '0.55rem', padding: '1px 5px', borderRadius: 6,
@@ -2135,6 +2305,21 @@ export function GameLobby() {
     </div>
   );
 
+  // Curated game IDs — post-bugfix, real API games
+  const CURATED_GAME_IDS = new Set([
+    '9912e3b1f398', '574f26f0d91c', '26a48b53cf4e', 'a4f96775521c', 'cd28cb1386aa',
+  ]);
+
+  const [gamesFilter, setGamesFilter] = useState<'curated' | 'completed' | 'running' | 'all'>('curated');
+  const filteredGames = games.filter((g) => {
+    if (gamesFilter === 'curated') return CURATED_GAME_IDS.has(g.game_id);
+    if (gamesFilter === 'completed') return g.status === 'completed' && g.total_days != null;
+    if (gamesFilter === 'running') return g.status === 'running';
+    return g.status !== 'abandoned' && g.status !== 'failed';
+  });
+  const runningCount = games.filter(g => g.status === 'running').length;
+  const completedCount = games.filter(g => g.status === 'completed' && g.total_days != null).length;
+
   const gamesView = (
     <div style={{ width: '100%' }}>
       <button style={st.backBtn} onClick={() => setView('menu')}>Back</button>
@@ -2142,33 +2327,29 @@ export function GameLobby() {
         <span style={st.label}>Past Games</span>
         <button style={st.smallBtn} onClick={() => void fetchGames()}>Refresh</button>
       </div>
+      <div style={{ display: 'flex', gap: 0, borderRadius: 2, overflow: 'hidden', border: '2px solid rgba(61, 40, 18, 0.3)', marginBottom: 10 }}>
+        {([['curated', 'Featured'], ['completed', `All (${completedCount})`], ['running', `Live (${runningCount})`]] as const).map(([key, label]) => (
+          <button key={key} style={{ ...st.toggleBtn, background: gamesFilter === key ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: gamesFilter === key ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => setGamesFilter(key)}>{label}</button>
+        ))}
+      </div>
       {gamesError && <div style={st.errorBox}>{gamesError}</div>}
       {gamesLoading ? (
         <div style={{ textAlign: 'center', color: '#8b7355', padding: 12, fontSize: '0.8rem' }}>Loading games...</div>
-      ) : games.length === 0 ? (
+      ) : filteredGames.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#8b7355', padding: 20, fontSize: '0.75rem', lineHeight: 1.6 }}>
-          No games found.{gamesError ? ` (${gamesError})` : ' Checking GitHub...'}
-          <br />
-          <button style={{ ...st.smallBtn, marginTop: 8 }} onClick={() => void fetchGames()}>Retry</button>
+          No {gamesFilter === 'all' ? '' : gamesFilter} games found.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
-          {games.map((g) => (
+          {filteredGames.map((g) => (
             <div key={g.game_id} style={{ ...st.gameCard, justifyContent: 'flex-start', gap: 8 }} role="button" tabIndex={0}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => navigateWithTransition(`/game/${g.game_id}`)}>
                 <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#3d2812' }}>{g.game_id.slice(0, 8)}</span>
                 <span style={{
                   fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase',
-                  background: g.status === 'running' ? '#F59E0B22' : g.status === 'completed' ? '#10B98122' : '#EF444422',
-                  color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#065F46' : '#991B1B',
+                  background: g.status === 'running' ? '#8b5e2a22' : g.status === 'completed' ? '#c9a84c22' : '#991B1B22',
+                  color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#6b5840' : '#991B1B',
                 }}>{g.status}</span>
-                {g.winner && (
-                  <span style={{
-                    fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                    background: g.winner === 'good' ? '#3B82F622' : '#EF444422',
-                    color: g.winner === 'good' ? '#1E40AF' : '#991B1B',
-                  }}>{g.winner} wins</span>
-                )}
                 {g.total_days != null && (
                   <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days} days</span>
                 )}
@@ -2209,6 +2390,15 @@ export function GameLobby() {
     <>
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       {transitioning && <PageTransition onMidpoint={handleTransitionMidpoint} />}
+      {showAdminPrompt && (
+        <AdminPassphraseModal
+          onSubmit={async (pw) => {
+            await adminAuthenticate(pw);
+            setShowAdminPrompt(false);
+          }}
+          onClose={() => setShowAdminPrompt(false)}
+        />
+      )}
       {showCreditPurchase && (
         <CreditPurchaseModal
           gameAmount={estimatedCost != null ? Math.ceil(estimatedCost) : undefined}

@@ -14,12 +14,6 @@ export interface ReasoningEntry {
 
 // ── UI state types ──────────────────────────────────────────────────
 
-export interface MessageFilter {
-  types: MessageType[];
-  seatFilter: number | null;
-  groupFilter: string | null;
-}
-
 export interface GameStore {
   // Connection
   connected: boolean;
@@ -32,7 +26,6 @@ export interface GameStore {
   selectedPlayer: number | null;
   selectedGroup: string | null;
   showObserverInfo: boolean;
-  messageFilter: MessageFilter;
   speed: number; // 1 = normal, 2 = 2x, 0 = paused
   paused: boolean;
 
@@ -102,17 +95,11 @@ export interface GameStore {
   selectPlayer: (seat: number | null) => void;
   selectGroup: (groupId: string | null) => void;
   toggleObserverInfo: () => void;
-  setMessageFilter: (filter: Partial<MessageFilter>) => void;
   setSpeed: (speed: number) => void;
   togglePause: () => void;
   reset: () => void;
 }
 
-const initialMessageFilter: MessageFilter = {
-  types: [],
-  seatFilter: null,
-  groupFilter: null,
-};
 
 export const useGameStore = create<GameStore>()((set, get) => ({
   // ── Initial state ───────────────────────────────────────────────
@@ -122,7 +109,6 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   selectedPlayer: null,
   selectedGroup: null,
   showObserverInfo: true,
-  messageFilter: initialMessageFilter,
   speed: 1,
   paused: false,
   playerReasoning: {},
@@ -1039,10 +1025,6 @@ export const useGameStore = create<GameStore>()((set, get) => ({
   selectGroup: (groupId) => set({ selectedGroup: groupId }),
   toggleObserverInfo: () =>
     set((s) => ({ showObserverInfo: !s.showObserverInfo })),
-  setMessageFilter: (filter) =>
-    set((s) => ({
-      messageFilter: { ...s.messageFilter, ...filter },
-    })),
   setSpeed: (speed) => set({ speed, paused: speed === 0 }),
   togglePause: () =>
     set((s) => ({
@@ -1147,7 +1129,6 @@ export const useGameStore = create<GameStore>()((set, get) => ({
       selectedPlayer: null,
       selectedGroup: null,
       showObserverInfo: true,
-      messageFilter: initialMessageFilter,
       speed: 1,
       paused: false,
       playerReasoning: {},

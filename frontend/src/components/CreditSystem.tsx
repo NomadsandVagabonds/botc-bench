@@ -128,8 +128,8 @@ export function CreditBalanceInline({
 // Fallback packs if API hasn't deployed yet
 const FALLBACK_PACKS: CreditPack[] = [
   { id: 'pack_5', credits: 5, price_usd: 5, label: '$5 — 5 credits' },
-  { id: 'pack_10', credits: 10, price_usd: 10, label: '$10 — 10 credits' },
-  { id: 'pack_20', credits: 20, price_usd: 20, label: '$20 — 20 credits' },
+  { id: 'pack_10', credits: 11, price_usd: 10, label: '$10 — 11 credits (+10%)' },
+  { id: 'pack_20', credits: 24, price_usd: 20, label: '$20 — 24 credits (+20%)' },
 ];
 
 export function CreditPurchaseModal({ onClose, gameAmount }: { onClose: () => void; gameAmount?: number }) {

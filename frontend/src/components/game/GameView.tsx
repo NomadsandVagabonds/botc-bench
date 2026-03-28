@@ -6,7 +6,6 @@ import { ConversationPanel } from './ConversationPanel.tsx';
 import { PlayerDetailDrawer } from './PlayerDetailDrawer.tsx';
 import { VotingOverlay } from './VotingOverlay.tsx';
 import { DebriefPanel } from './DebriefPanel.tsx';
-// GameLog removed — replaced by VotingOverlay in the bottom bar
 import { ReplayScrubber } from './ReplayScrubber.tsx';
 import { MonitorPanel } from './MonitorPanel.tsx';
 import { useGameStore } from '../../stores/gameStore.ts';
@@ -177,6 +176,14 @@ export function GameView() {
   const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
   const [showStoryteller, setShowStoryteller] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Listen for server-side WebSocket errors (e.g. game not found)
+  useEffect(() => {
+    const handler = (e: Event) => setLoadError((e as CustomEvent).detail);
+    window.addEventListener('ws-error', handler);
+    return () => window.removeEventListener('ws-error', handler);
+  }, []);
+
   const [allMonitorResults, setAllMonitorResults] = useState<MonitorResult[]>([]);
   const [selectedMonitorId, setSelectedMonitorId] = useState<string | null>(null);
   const [showMonitor, setShowMonitor] = useState(false);

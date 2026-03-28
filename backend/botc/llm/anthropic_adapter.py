@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import time
 
 import anthropic
+
+log = logging.getLogger(__name__)
 
 from botc.llm.provider import AgentConfig, LLMProvider, LLMResponse
 
@@ -86,6 +89,17 @@ class AnthropicProvider(LLMProvider):
         content = "".join(
             block.text for block in response.content if block.type == "text"
         )
+
+        # Log prompt cache stats
+        cache_read = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+        cache_create = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+        total_in = response.usage.input_tokens
+        uncached = total_in - cache_read - cache_create
+        if cache_read or cache_create:
+            log.info(
+                "Anthropic %s cache: %d read, %d created, %d uncached (of %d total input)",
+                self.config.model, cache_read, cache_create, uncached, total_in,
+            )
 
         return LLMResponse(
             content=content,

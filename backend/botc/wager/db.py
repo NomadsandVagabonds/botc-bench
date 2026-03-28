@@ -277,15 +277,16 @@ async def deduct_credits(
 ) -> float:
     """Deduct credits from user balance. Raises ValueError if insufficient."""
     db = await get_db()
-    balance = await get_credit_balance(user_id)
-    if balance < amount:
+    # Atomic: only deducts if balance is sufficient (prevents race conditions)
+    cursor = await db.execute(
+        "UPDATE users SET credit_balance = credit_balance - ? WHERE id = ? AND credit_balance >= ?",
+        (amount, user_id, amount),
+    )
+    if cursor.rowcount == 0:
+        balance = await get_credit_balance(user_id)
         raise ValueError(
             f"Insufficient credits: need ${amount:.2f}, have ${balance:.2f}"
         )
-    await db.execute(
-        "UPDATE users SET credit_balance = credit_balance - ? WHERE id = ?",
-        (amount, user_id),
-    )
     rows = await db.execute_fetchall(
         "SELECT credit_balance FROM users WHERE id = ?", (user_id,)
     )

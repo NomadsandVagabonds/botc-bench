@@ -54,7 +54,7 @@ class GoogleProvider(LLMProvider):
         is_thinking_model = any(
             k in model_lower for k in ("2.5-pro", "2.5-flash", "3.0", "3.1", "3-flash", "3-pro")
         )
-        effective_max = max(max_tokens, 32768) if is_thinking_model else max_tokens
+        effective_max = max(max_tokens, 8192) if is_thinking_model else max_tokens
 
         config_kwargs: dict = {
             "system_instruction": system_prompt,
@@ -111,6 +111,14 @@ class GoogleProvider(LLMProvider):
         usage = response.usage_metadata
         input_tokens = usage.prompt_token_count if usage else 0
         output_tokens = usage.candidates_token_count if usage else 0
+
+        # Log cache stats
+        cached = getattr(usage, "cached_content_token_count", 0) if usage else 0
+        if cached:
+            logger.info(
+                "Google %s cache: %d cached of %d prompt tokens",
+                self.config.model, cached, input_tokens,
+            )
 
         return LLMResponse(
             content=content,

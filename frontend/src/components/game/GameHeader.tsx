@@ -87,24 +87,26 @@ export function GameHeader({ muted = false, onToggleMute }: GameHeaderProps) {
           ${totalCost.toFixed(4)}
         </span>
 
-        {/* Speed controls */}
-        <div style={s.speedGroup}>
-          <button style={s.ctrl} onClick={togglePause} title={paused ? 'Resume' : 'Pause'}>
-            {paused ? '\u25B6' : '\u275A\u275A'}
-          </button>
-          {[0.25, 0.5, 1, 2, 4].map((sp) => (
-            <button
-              key={sp}
-              style={{
-                ...s.ctrl,
-                ...(speed === sp && !paused ? s.ctrlActive : {}),
-              }}
-              onClick={() => setSpeed(sp)}
-            >
-              {sp}x
+        {/* Speed controls (replay only) */}
+        {replayMode && (
+          <div style={s.speedGroup}>
+            <button style={s.ctrl} onClick={togglePause} title={paused ? 'Resume' : 'Pause'}>
+              {paused ? '\u25B6' : '\u275A\u275A'}
             </button>
-          ))}
-        </div>
+            {[0.25, 0.5, 1, 2, 4].map((sp) => (
+              <button
+                key={sp}
+                style={{
+                  ...s.ctrl,
+                  ...(speed === sp && !paused ? s.ctrlActive : {}),
+                }}
+                onClick={() => setSpeed(sp)}
+              >
+                {sp}x
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Observer toggle */}
         <button
@@ -138,7 +140,11 @@ export function GameHeader({ muted = false, onToggleMute }: GameHeaderProps) {
         )}
 
         {/* Lobby */}
-        <button style={s.lobbyBtn} onClick={() => navigate('/')} title="Back to lobby">
+        <button style={s.lobbyBtn} onClick={() => {
+          const isLive = !replayMode && !isGameOver;
+          if (isLive && !confirm(`Leave this game? It will keep running in the background.\n\nRejoin at: ${window.location.href}`)) return;
+          navigate('/');
+        }} title="Back to lobby">
           Lobby
         </button>
 

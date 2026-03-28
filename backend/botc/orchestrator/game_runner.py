@@ -451,6 +451,7 @@ class GameRunner:
                 messages=[{"role": "user", "content": debrief_prompt}],
                 temperature=0.9,
                 max_tokens=150,
+                reasoning_effort="low",
             )
             self._record_tokens(
                 agent_id=agent.agent_id,
@@ -873,18 +874,8 @@ class GameRunner:
             if state.executed_today is not None:
                 return False
 
-            # Broadcast any speech
-            if parsed.say:
-                msg = Message(
-                    id=uuid.uuid4().hex,
-                    type=MessageType.PUBLIC_SPEECH,
-                    phase_id=state.phase_id,
-                    sender_seat=player.seat,
-                    content=parsed.say,
-                )
-                state.add_message(msg)
-
-            # Check for a nomination action
+            # Check for a nomination action (before broadcasting speech,
+            # because if they nominate, their SAY becomes the accusation)
             nomination = None
             for action in parsed.actions:
                 if action.action_type == "NOMINATE" and action.target is not None:
@@ -908,6 +899,16 @@ class GameRunner:
                         break  # Only one nomination per player
 
             if nomination is None:
+                # No nomination — broadcast their speech as regular public speech
+                if parsed.say:
+                    msg = Message(
+                        id=uuid.uuid4().hex,
+                        type=MessageType.PUBLIC_SPEECH,
+                        phase_id=state.phase_id,
+                        sender_seat=player.seat,
+                        content=parsed.say,
+                    )
+                    state.add_message(msg)
                 continue  # Player passed
 
             # --- Virgin ability may have caused an execution ---
@@ -957,10 +958,26 @@ class GameRunner:
                 "day": state.day_number,
             })
 
-            # 1. Nominator gives accusation speech
-            accusation_text = await self._get_speech(
-                nominator_player, nominee_player, state, speech_type="accusation"
-            )
+            # 1. Accusation: use the nominator's SAY from their nomination
+            #    turn (already broadcast as PUBLIC_SPEECH above). Re-broadcast
+            #    as ACCUSATION type so the defense prompt and UI see it.
+            accusation_text = parsed.say or ""
+            if accusation_text:
+                acc_msg = Message(
+                    id=uuid.uuid4().hex,
+                    type=MessageType.ACCUSATION,
+                    phase_id=state.phase_id,
+                    sender_seat=nominator_player.seat,
+                    content=accusation_text,
+                )
+                state.add_message(acc_msg)
+                self._emit("message.new", {
+                    "seat": nominator_player.seat,
+                    "content": accusation_text,
+                    "type": "accusation",
+                    "phase": state.phase.value,
+                    "day": state.day_number,
+                })
 
             # 2. Nominee gives defense speech (receives accusation as context)
             defense_text = await self._get_speech(
@@ -1274,13 +1291,51 @@ class GameRunner:
     # Death narration
     # -------------------------------------------------------------------
 
+    # Preferred models for narration and other utility calls.
+    # These are fast, good at creative short-form, and inexpensive.
+    # Ordered by preference — first match among available agents wins.
+    _NARRATOR_MODEL_PREFIXES = (
+        "gemini-3",           # Gemini 3 Flash — best at creative short-form
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "claude-haiku",
+        "gpt-4o-mini", "gpt-4.1-mini", "gpt-5.4-mini",
+        "gpt-4o",
+    )
+
+    def _pick_narrator_agent(self) -> "Agent | None":
+        """Pick the best available agent for narration and utility calls.
+
+        Prefers direct-provider agents (Anthropic, Google, OpenAI) over
+        OpenRouter, since OpenRouter adds latency and cost markup.
+        Falls back to OpenRouter if it's the only provider available.
+        """
+        agents = list(self.agents.values())
+        if not agents:
+            return None
+
+        # Split into direct-provider and OpenRouter agents
+        direct = [a for a in agents if a.llm_config.provider != "openrouter"]
+        openrouter = [a for a in agents if a.llm_config.provider == "openrouter"]
+
+        # Try direct-provider agents first, then OpenRouter
+        for pool in (direct, openrouter):
+            for prefix in self._NARRATOR_MODEL_PREFIXES:
+                for agent in pool:
+                    model = agent.llm_config.model.lower()
+                    base = model.rsplit("/", 1)[-1] if "/" in model else model
+                    if base.startswith(prefix):
+                        return agent
+
+        # No preferred model found — use first direct agent, or first OpenRouter
+        return direct[0] if direct else agents[0]
+
     async def _narrate_death(self, player: Player, state: GameState) -> str:
         """Generate a dramatic/funny death narration from the Storyteller.
 
-        Uses whichever LLM provider is available, falling back to templates.
+        Prefers the cheapest available model. Uses low reasoning effort.
         """
-        # Try to use the first available agent's provider for narration
-        narrator_agent = next(iter(self.agents.values()), None)
+        narrator_agent = self._pick_narrator_agent()
         if narrator_agent is None:
             return f"{player.character_name} was found dead in the village square."
 
@@ -1305,7 +1360,8 @@ class GameRunner:
                                f"There are {len(state.alive_players)} villagers remaining.",
                 }],
                 temperature=0.95,
-                max_tokens=512,
+                max_tokens=100,
+                reasoning_effort="low",
             )
             narration = response.content.strip().strip('"')
             self._record_tokens(

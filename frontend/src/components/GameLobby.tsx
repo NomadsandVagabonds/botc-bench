@@ -2305,14 +2305,20 @@ export function GameLobby() {
     </div>
   );
 
-  const [gamesFilter, setGamesFilter] = useState<'all' | 'completed' | 'running'>('completed');
+  // Curated game IDs — post-bugfix, real API games
+  const CURATED_GAME_IDS = new Set([
+    '9912e3b1f398', '574f26f0d91c', '26a48b53cf4e', 'a4f96775521c', 'cd28cb1386aa',
+  ]);
+
+  const [gamesFilter, setGamesFilter] = useState<'curated' | 'completed' | 'running' | 'all'>('curated');
   const filteredGames = games.filter((g) => {
-    if (gamesFilter === 'completed') return g.status === 'completed';
+    if (gamesFilter === 'curated') return CURATED_GAME_IDS.has(g.game_id);
+    if (gamesFilter === 'completed') return g.status === 'completed' && g.total_days != null;
     if (gamesFilter === 'running') return g.status === 'running';
     return g.status !== 'abandoned' && g.status !== 'failed';
   });
   const runningCount = games.filter(g => g.status === 'running').length;
-  const completedCount = games.filter(g => g.status === 'completed').length;
+  const completedCount = games.filter(g => g.status === 'completed' && g.total_days != null).length;
 
   const gamesView = (
     <div style={{ width: '100%' }}>
@@ -2322,7 +2328,7 @@ export function GameLobby() {
         <button style={st.smallBtn} onClick={() => void fetchGames()}>Refresh</button>
       </div>
       <div style={{ display: 'flex', gap: 0, borderRadius: 2, overflow: 'hidden', border: '2px solid rgba(61, 40, 18, 0.3)', marginBottom: 10 }}>
-        {([['completed', `Completed (${completedCount})`], ['running', `Live (${runningCount})`], ['all', 'All']] as const).map(([key, label]) => (
+        {([['curated', 'Featured'], ['completed', `All (${completedCount})`], ['running', `Live (${runningCount})`]] as const).map(([key, label]) => (
           <button key={key} style={{ ...st.toggleBtn, background: gamesFilter === key ? '#8b1a1a' : 'rgba(30, 20, 10, 0.06)', color: gamesFilter === key ? '#e8d5a3' : '#3d2812', fontWeight: 700 }} onClick={() => setGamesFilter(key)}>{label}</button>
         ))}
       </div>
@@ -2344,13 +2350,6 @@ export function GameLobby() {
                   background: g.status === 'running' ? '#8b5e2a22' : g.status === 'completed' ? '#c9a84c22' : '#991B1B22',
                   color: g.status === 'running' ? '#92400E' : g.status === 'completed' ? '#6b5840' : '#991B1B',
                 }}>{g.status}</span>
-                {g.winner && (
-                  <span style={{
-                    fontSize: '0.6rem', fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                    background: g.winner === 'good' ? '#c9a84c22' : '#991B1B22',
-                    color: g.winner === 'good' ? '#c9a84c' : '#991B1B',
-                  }}>{g.winner} wins</span>
-                )}
                 {g.total_days != null && (
                   <span style={{ fontSize: '0.6rem', color: '#8b7355' }}>{g.total_days} days</span>
                 )}
